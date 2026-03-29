@@ -1,7 +1,6 @@
 defmodule Elevator.ControllerTest do
   use ExUnit.Case
   alias Elevator.Controller
-  alias Elevator.State
 
   describe "Elevator Actor Lifecycle" do
     test "Starting a passenger elevator" do
@@ -19,7 +18,6 @@ defmodule Elevator.ControllerTest do
       Controller.request_floor(pid, :car, 4)
 
       # Wait a tiny bit for the mailbox to be processed
-      # (Alternatively, we could use a synchronous call for verification)
       state = Controller.get_state(pid)
       assert state.heading == :up
       assert {:car, 4} in state.requests
@@ -28,25 +26,30 @@ defmodule Elevator.ControllerTest do
     test "Handling concurrent requests (Race Condition Proof)" do
       {:ok, pid} = Controller.start_link()
 
-      # Simulate 100 people pressing buttons simultaneously!
-      # We send them from 100 different "Process tasks"
+      # Simulate parallel button presses
       tasks = for i <- 1..5 do
         Task.async(fn -> Controller.request_floor(pid, :hall, i) end)
       end
 
-      # Wait for all "fingers" to finish pressing
+      # Wait for all "fingers" to finish
       Enum.each(tasks, &Task.await/1)
 
-      # Assert: Every single request must be in the queue in the correct order
       state = Controller.get_state(pid)
       
-      # Since they were concurrent, we don't know the order, but we know the count
-      # (Filtering unique because we might have duplicates if tasks overlapped)
       unique_targets = Enum.map(state.requests, fn {_, f} -> f end) |> Enum.sort()
       assert unique_targets == [1, 2, 3, 4, 5]
     end
-  end
 
-  # We'll use a hack to test the timer during development/audit
-  # In a real app, we'd use a configuration variable or a mock
+    test "Rule 1.4: Sliding Inactivity Window (Return to Base)" do
+      # Start with a very fast timer (10ms)
+      {:ok, pid} = Controller.start_link(timer_ms: 10)
+      
+      # Wait for 50ms (well past the 10ms timeout)
+      Process.sleep(50)
+
+      # Assert: It should have automatically added a request for Floor 1
+      state = Controller.get_state(pid)
+      assert {:hall, 1} in state.requests
+    end
+  end
 end
