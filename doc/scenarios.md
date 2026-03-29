@@ -47,7 +47,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Receive `:button_pressed, :door_open`.
   - **Then**: Discard the closing attempt, transition back to `:opening`.
 
-- [ ] **Scenario 3.2: Reset Auto-Close Timer**
+- [x] **Scenario 3.2: Reset Auto-Close Timer**
   - **Given**: Doors are `:open`.
   - **When**: Receive `:button_pressed, :door_open`.
   - **Then**: The "Auto-Close" timer is reset (simulated by resetting the `last_activity_at` timestamp).
