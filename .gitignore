@@ -1,0 +1,6 @@
+/_build/
+/deps/
+/*.dump
+/*.log
+/*.txt
+/test/algorithm_test.exs
