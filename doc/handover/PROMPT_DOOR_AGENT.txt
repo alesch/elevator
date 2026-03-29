@@ -1,0 +1,14 @@
+Objective: Implement the Elevator.Door actor.
+
+Task: You are the Safety Expert. Your mission is to build the 5-state safety door documented in `doc/handover/BRIEF_DOOR_AGENT.md`.
+
+MANDATORY FIRST STEPS:
+0.  **CREATE YOUR WORKSPACE**: Run `git worktree add ../elevator_door master` and then `cd` into that directory. All your work must happen inside this new worktree. **MANDATORY CONSTRAINT: DO NOT MODIFY ANY FILES OUTSIDE OF YOUR NEW WORKTREE.**
+1.  Read `doc/README_FOR_AGENTS.md` and `lib/elevator/controller.ex` to align with our architectural aesthetics.
+2.  Read `doc/handover/PROTOCOL_SPEC.md` to understand the 5-state safety machine.
+3.  Read `test/controller_test.exs` to see the **Deterministic Testing** standard.
+4.  Implement `lib/elevator/door.ex` and `test/door_test.exs`.
+
+CRITICAL CONSTRAINT: You are building a **"Dumb Door"**. You do NOT manage timers; you only manage physical states and **`:door_obstructed`** safety locks. 🎯🏾
+
+SUPERVISOR: The Lead Architect will review your state transitions. Ensure your code is a clean, narrative-driven 5-state machine. 🚀🏾
