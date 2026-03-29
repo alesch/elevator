@@ -28,3 +28,13 @@ This document is for future AI agents working with **Alex** on the Elixir Elevat
 * **Command Restriction**: Do NOT run commands on files outside this project directory.
 * **Documentation Sync**: Always keep `doc/controller_rules.md` and `doc/scenarios.md` updated and in 1:1 sync with the logic code. They are the "Ground Truth."
 * **Note to Agent**: The brain artifacts are periodically cleaned up to reduce noise. Use the docs in `/doc/` as the single source of truth.
+
+---
+
+## 4. "Clean Code" Preferences (Alex's Style)
+
+* **Code as a Story**: Code must be readable from top to bottom. Use the pipe operator `|>` to make state transformations a narrative.
+* **No Redundant Comments**: Descriptive naming is superior to repetition. Delete any comment that doesn't add a unique semantic insight.
+* **Mission-Critical Spec**: Include `@spec` for ALL functions (including private ones) for total internal transparency.
+* **Visual Grouping**: Use clear section headers in modules to separate "Public API" from "Internal Logic."
+* **Observable Catch-alls**: Always use `Logger.warning` in catch-all function clauses to surface unexpected events immediately.
