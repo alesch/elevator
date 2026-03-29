@@ -15,6 +15,12 @@ defmodule Elevator.State do
     weight_limit: 1000
   ]
 
+  @doc "Creates a standard passenger elevator state."
+  def new_passenger, do: %__MODULE__{weight_limit: 1000}
+
+  @doc "Creates a heavy-duty freight elevator state."
+  def new_freight, do: %__MODULE__{weight_limit: 5000}
+
   @doc """
   Adds a floor request to the state with a specific source (:hall or :car).
   """
