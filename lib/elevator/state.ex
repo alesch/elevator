@@ -2,6 +2,8 @@ defmodule Elevator.State do
   @moduledoc """
   The internal state of the elevator box.
   """
+  alias __MODULE__, as: State
+
   defstruct current_floor: 1,
             heading: :idle,
             door_status: :closed,
@@ -28,17 +30,17 @@ defmodule Elevator.State do
 
   @doc "Creates a standard passenger elevator state."
   @spec new_passenger() :: t()
-  def new_passenger, do: %__MODULE__{weight_limit: 1000}
+  def new_passenger, do: %State{weight_limit: 1000}
 
   @doc "Creates a heavy-duty freight elevator state."
   @spec new_freight() :: t()
-  def new_freight, do: %__MODULE__{weight_limit: 5000}
+  def new_freight, do: %State{weight_limit: 5000}
 
   @doc """
   Adds a floor request to the state with a specific source (:hall or :car).
   """
   @spec request_floor(t(), atom(), integer()) :: t()
-  def request_floor(%__MODULE__{} = state, source, floor) when is_integer(floor) do
+  def request_floor(%State{} = state, source, floor) when is_integer(floor) do
     state
     |> add_request(source, floor)
     |> update_heading()
@@ -49,7 +51,7 @@ defmodule Elevator.State do
   Initiates the braking sequence only if we should stop at this floor.
   """
   @spec process_current_floor(t()) :: t()
-  def process_current_floor(%__MODULE__{} = state) do
+  def process_current_floor(%State{} = state) do
     if should_stop_at?(state, state.current_floor) do
       %{state | motor_status: :stopping}
     else
@@ -71,13 +73,13 @@ defmodule Elevator.State do
   Central event handler for physical component confirmations.
   """
   @spec handle_event(t(), atom(), integer() | nil) :: t()
-  def handle_event(%__MODULE__{motor_status: :stopping} = state, :motor_stopped, _now) do
+  def handle_event(%State{motor_status: :stopping} = state, :motor_stopped, _now) do
     state
     |> fulfill_current_floor_requests()
     |> confirm_stopped_at_floor()
   end
 
-  def handle_event(%__MODULE__{door_status: :opening} = state, :door_open_done, now) do
+  def handle_event(%State{door_status: :opening} = state, :door_open_done, now) do
     %{state | door_status: :open, last_activity_at: now}
   end
 
@@ -87,23 +89,23 @@ defmodule Elevator.State do
   Handles physical button presses (e.g., from the box panel).
   """
   @spec handle_button_press(t(), atom(), integer()) :: t()
-  def handle_button_press(%__MODULE__{door_status: :closing} = state, :door_open, _now) do
+  def handle_button_press(%State{door_status: :closing} = state, :door_open, _now) do
     %{state | door_status: :opening}
   end
 
-  def handle_button_press(%__MODULE__{door_status: :open} = state, :door_open, now) do
+  def handle_button_press(%State{door_status: :open} = state, :door_open, now) do
     %{state | last_activity_at: now}
   end
 
   # Default: No change for unknown buttons or states
-  def handle_button_press(%__MODULE__{} = state, _button, _now), do: state
+  def handle_button_press(%State{} = state, _button, _now), do: state
 
   @doc """
   Updates the current weight in the box.
   If weight exceeds weight_limit, sets status to :overload.
   """
   @spec update_weight(t(), integer()) :: t()
-  def update_weight(%__MODULE__{} = state, new_weight) do
+  def update_weight(%State{} = state, new_weight) do
     state
     |> set_weight(new_weight)
     |> update_overload_status()
