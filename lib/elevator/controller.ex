@@ -33,17 +33,15 @@ defmodule Elevator.Controller do
 
   @impl true
   def init(opts) do
-    # 1. Determine which kind of elevator we are booting
-    state = case Keyword.get(opts, :type, :passenger) do
-      :freight -> State.new_freight()
-      _ -> State.new_passenger()
-    end
-
-    # 2. Start the Return-to-Base timer
     timer_ms = Keyword.get(opts, :timer_ms, @default_return_to_base_ms)
-    timer_ref = schedule_return_to_base(timer_ms)
 
-    {:ok, %{state: state, timer: timer_ref, timer_ms: timer_ms}}
+    data = %{
+      state: build_initial_state(opts),
+      timer_ms: timer_ms,
+      timer: schedule_return_to_base(timer_ms)
+    }
+
+    {:ok, data}
   end
 
   @impl true
@@ -77,6 +75,13 @@ defmodule Elevator.Controller do
   # ---------------------------------------------------------------------------
   # ## Private Helpers
   # ---------------------------------------------------------------------------
+
+  defp build_initial_state(opts) do
+    case Keyword.get(opts, :type, :passenger) do
+      :freight -> State.new_freight()
+      _ -> State.new_passenger()
+    end
+  end
 
   defp schedule_return_to_base(ms) do
     Process.send_after(self(), :return_to_base, ms)
