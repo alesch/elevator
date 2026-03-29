@@ -74,9 +74,15 @@ defmodule Elevator.Controller do
   # ---------------------------------------------------------------------------
 
   defp build_initial_state(opts) do
-    case Keyword.get(opts, :type, :passenger) do
+    base_state = case Keyword.get(opts, :type, :passenger) do
       :freight -> State.new_freight()
       _ -> State.new_passenger()
+    end
+
+    if floor = Keyword.get(opts, :current_floor) do
+      %{base_state | current_floor: floor}
+    else
+      base_state
     end
   end
 
