@@ -154,7 +154,7 @@ defmodule Elevator.State do
 
       # 2. Transition: If no requests ahead, but requests exist in opposite direction
       has_requests_behind?(state) ->
-        %{state | heading: transition_heading(state.heading)}
+        %{state | heading: transition_heading(state)}
 
       # 3. Retire: No requests anywhere
       true ->
@@ -179,8 +179,14 @@ defmodule Elevator.State do
   defp has_requests_behind?(%{heading: :idle} = state),
     do: Enum.any?(state.requests, fn {_, _} -> true end)
 
-  defp transition_heading(:up), do: :down
-  defp transition_heading(:down), do: :up
-  # Or logic to pick best start
-  defp transition_heading(:idle), do: :up
+  defp transition_heading(%State{heading: :up}), do: :down
+  defp transition_heading(%State{heading: :down}), do: :up
+
+  defp transition_heading(%State{heading: :idle} = state) do
+    cond do
+      Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end) -> :up
+      Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end) -> :down
+      true -> :idle
+    end
+  end
 end
