@@ -53,6 +53,7 @@ defmodule Elevator.State do
     state
     |> add_request(source, floor)
     |> update_heading()
+    |> process_current_floor()
   end
 
   @doc """
@@ -141,7 +142,7 @@ defmodule Elevator.State do
     # 2. Stop for Hall requests only if capacity > 100kg
     Enum.any?(state.requests, fn
       {:car, ^floor} -> true
-      {:hall, ^floor} -> remaining_capacity(state) > 100
+      {:hall, ^floor} -> remaining_capacity(state) >= 100
       _ -> false
     end)
   end
