@@ -27,6 +27,11 @@ defmodule Elevator.Controller do
     GenServer.call(pid, :get_state)
   end
 
+  @doc "Fetches the internal timer reference (Diagnostics only)."
+  def get_timer_ref(pid) do
+    GenServer.call(pid, :get_timer_ref)
+  end
+
   # ---------------------------------------------------------------------------
   # ## Server Callbacks
   # ---------------------------------------------------------------------------
@@ -57,6 +62,11 @@ defmodule Elevator.Controller do
   @impl true
   def handle_call(:get_state, _from, data) do
     {:reply, data.state, data}
+  end
+
+  @impl true
+  def handle_call(:get_timer_ref, _from, data) do
+    {:reply, data.timer, data}
   end
 
   @impl true
