@@ -1,66 +1,61 @@
 # Elevator Controller: Logic Rules
 
-## Key Rules (Executive Summary)
+This document captures the "Executive Summary" of our current ELIXIR implementation. It is the high-level logic that governs our functional core.
 
-* **The Elevator Algorithm**: The elevator satisfies all requests in its current direction before reversing.
-* **Safety Interlock**: The motor cannot and will not move unless the door confirms it is fully closed.
-* **Obstruction Recovery**: If the door sensor is blocked during closing, it immediately halts and re-opens.
-* **Internal Priority**: Passenger requests from inside the box are prioritized for the current travel direction.
-* **Return to Base**: The elevator returns to Floor 1 if it has been idle for 5 minutes.
+## 1. Movement & Direction Rules (The LOOK Algorithm)
 
-## 1. Movement & Direction Rules
+* **Rule 1.1: Intent vs. Action**
+  - **`heading`**: Represents **INTENTION** (`:up`, `:down`, `:idle`). This determines where the elevator *wants* to go.
+  - **`motor_status`**: Represents **PHYSICAL MOVEMENT** (`:running`, `:stopping`, `:stopped`).
 
-* **Rule 1.1: Idle State**
-    If the elevator is `:idle` and a request is received (from a floor or the box), change state to `{:moving, direction}` where the direction is calculated based on the current floor and the target floor.
-* **Rule 1.2: Stopping at Floors**
-    If the elevator is `:moving_up` or `:moving_down` and there is a request for the current floor (either a `:call_up`/`:call_down` from the floor or a `:go_to` from the box), the elevator must stop.
-* **Rule 1.3: Directional Bias (The "Elevator Algorithm")**
-  * If `:moving_up`, it continues as long as there are requests above it.
-  * If `:moving_down`, it continues as long as there are requests below it.
-  * It only changes direction once all requests in the current direction are satisfied.
+* **Rule 1.2: Directional Bias (The Sweep)**
+  - Once moving in a direction, the elevator continues to satisfy all requests in that direction until none remain.
+  - It only reverses heading once all requests in the current direction are satisfied and there is work in the opposite direction.
+
+* **Rule 1.3: Retiring (Idle State)**
+  - If no requests remain in any direction, the `heading` becomes `:idle`.
+
 * **Rule 1.4: Return to Base**
-    If the state is `:idle_closed` for more than 5 minutes (300 seconds), add a `:go_to, floor: 1` request to the queue.
+  - If the state remains `:idle` for more than 5 minutes (300 seconds), an automatic `{:car, 1}` request is added to the queue.
+
+* **Rule 1.5: Full Load Bypass**
+  - If `remaining_capacity <= 100kg` (current weight > 900kg), the elevator will bypass all Hall Requests (`{:hall, floor}`) on its path.
+  - It will **ALWAYS** stop for Car Requests (`{:car, floor}`), as passengers need to exit.
 
 ## 2. Safety & Door Rules
 
 * **Rule 2.1: Door Precedence**
-    The Motor/Box cannot move (state cannot be `:moving`) unless the Door state is `:closed`.
-* **Rule 2.2: Arrival Sequence**
-    When the elevator arrives at a floor:
-    1. Stop the motor.
-    2. Command the Door to `:open`.
-    3. Wait for the `:door_open` status.
-    4. Start a "Door Hold" timer (e.g., 5 seconds).
+  - The motor **CANNOT** be in the `:running` status unless the `door_status` is confirmed to be `:closed`.
+
+* **Rule 2.2: Asynchronous Arrival Protocol**
+  - When reaching a target floor:
+    1. Set `motor_status: :stopping`. (Braking Phase)
+    2. Wait for `:motor_stopped` confirmation. 
+    3. Transition to `motor_status: :stopped` and `door_status: :opening`.
+    4. Only once the door confirms `:door_open_done`, transition to `door_status: :open`.
+
 * **Rule 2.3: Door Obstruction**
-    If the Door is `:closing` and a `:door_sensor_blocked` message is received:
-    1. Immediately stop closing.
-    2. Command the Door to `:open`.
-    3. Reset the "Door Hold" timer.
+  - If the door is `:closing` and a `:door_sensor_blocked` message is received, it must immediately return to `:opening`.
 
-## 3. Floor Panel (External) vs. Box Panel (Internal)
+## 3. Request Tracking
 
-* **Rule 3.1: External Calls**
-    A `:call_up` or `:call_down` from a Floor Panel is added to the "Global Request Queue".
-* **Rule 3.2: Internal Selection**
-    An internal `:go_to` request is added to the "Global Request Queue" with the highest priority for stopping (if it's in the current direction).
+* **Rule 3.1: Tagged Requests**
+  - **`{:hall, floor}`**: External call from a floor panel. Subject to "Full Load Bypass".
+  - **`{:car, floor}`**: Internal selection from the box panel. High priority (Passenger is already inside).
 
-## 4. Edge Cases & Failures (Early Simulation)
+## 4. Emergency & Edge Cases
 
-* **Rule 4.1: Emergency Stop**
-    If an `:emergency_stop` is received from the Box Panel:
-    1. Immediately stop the Motor.
-    2. Transition to `:emergency_mode`.
-    3. Ignore all other requests until `:reset`.
-* **Rule 4.2: Illegal Requests**
-    A request for Floor 6 in a 5-floor system must be ignored or return an error.
+* **Rule 4.1: Overload State**
+  - If `weight > 1000kg`, set status to `:overload`.
+  - All door closing attempts are blocked while in `:overload`.
 
 ---
 
-## State Transition Table (Draft)
+## Technical State (State Machine Mapping)
 
-| Current State | Event | New State | Commands Sent |
+| Current Motor | Event | New Motor | Door |
 | :--- | :--- | :--- | :--- |
-| `:idle_closed` | `{:call, floor: 5}` | `:moving_up` | Motor: `move_up` |
-| `:moving_up` | `:floor_arrival(3)` | `:door_opening` | Motor: `stop`, Door: `open` |
-| `:door_opening` | `:door_open_done` | `:door_open_idle` | Start Timer (5s) |
-| `:door_closing` | `:sensor_blocked` | `:door_opening` | Door: `stop`, Door: `open` |
+| `:stopped` | `{:hall, 5}` | `:running` | `:closed` |
+| `:running` | `Arrival(F5)` | `:stopping` | `:closed` |
+| `:stopping` | `:motor_stopped` | `:stopped` | `:opening` |
+| `:stopped` | `:door_open_done` | `:stopped` | `:open` |
