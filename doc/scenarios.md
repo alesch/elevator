@@ -81,6 +81,21 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Request for F1 is received.
   - **Then**: `heading` becomes `:down` (correctly identifying the request is below).
 
+- [x] **Scenario 4.6: Same-Floor Interaction**
+  - **Given**: Elevator at F3, state is `:idle`.
+  - **When**: Receive `{:car, 3}` (or hall).
+  - **Then**: `motor_status` becomes `:stopping` to immediately open doors.
+
+- [x] **Scenario 4.7: Weight Thresholds**
+  - **Given**: Elevators stop normally up to 900kg.
+  - **When**: Weight is 901kg+ (or remaining capacity < 100kg).
+  - **Then**: Bypass hall calls, but ALWAYS honor car calls.
+
+- [x] **Scenario 4.8: Boundary Reversals**
+  - **Given**: Elevator at F5 (Top) heading UP.
+  - **When**: Queued requests above are empty.
+  - **Then**: `heading` MUST transition to `:idle` or `:down` (never higher).
+
 ---
 
 ## Technical State (The State Machine)
