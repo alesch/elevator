@@ -55,14 +55,9 @@ defmodule Elevator.State do
   Central event handler for physical component confirmations.
   """
   def handle_event(%__MODULE__{motor_status: :stopping} = state, :motor_stopped) do
-    # Remove BOTH car and hall requests for this floor upon arrival
-    new_requests = Enum.reject(state.requests, fn {_, f} -> f == state.current_floor end)
-    
-    %{state | 
-      motor_status: :stopped, 
-      door_status: :opening,
-      requests: new_requests
-    }
+    state
+    |> fulfill_current_floor_requests()
+    |> confirm_stopped_at_floor()
   end
 
   def handle_event(%__MODULE__{door_status: :opening} = state, :door_open_done) do
@@ -99,6 +94,15 @@ defmodule Elevator.State do
     else
       %{state | requests: state.requests ++ [{source, floor}]}
     end
+  end
+
+  defp fulfill_current_floor_requests(state) do
+    new_requests = Enum.reject(state.requests, fn {_, f} -> f == state.current_floor end)
+    %{state | requests: new_requests}
+  end
+
+  defp confirm_stopped_at_floor(state) do
+    %{state | motor_status: :stopped, door_status: :opening}
   end
 
   defp remaining_capacity(state), do: state.weight_limit - state.weight
