@@ -14,7 +14,6 @@ defmodule Elevator.StateTest do
   end
 
   test "requesting a floor above the current floor sets heading and adds request" do
-    # Note: State is immutable! We get a NEW state back.
     state = %State{current_floor: 1, heading: :idle}
 
     new_state = State.request_floor(state, :car, 4)
@@ -34,7 +33,7 @@ defmodule Elevator.StateTest do
     # Assert
     assert new_state.motor_status == :stopping
     # Request should NOT be removed yet (until confirmed stopped)
-    assert {:car, 3} in new_state.requests 
+    assert {:car, 3} in new_state.requests
   end
 
   test "Scenario 1.3: Completing braking and opening doors" do
@@ -47,7 +46,8 @@ defmodule Elevator.StateTest do
     # Assert
     assert new_state.motor_status == :stopped
     assert new_state.door_status == :opening
-    assert new_state.requests == [] # Now it is safe to clear the request
+    # Now it is safe to clear the request
+    assert new_state.requests == []
   end
 
   test "Scenario 1.4: Door transition to open" do
