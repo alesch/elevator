@@ -56,4 +56,32 @@ defmodule Elevator.EdgeCasesTest do
       assert new_state.status == :normal
     end
   end
+
+  describe "Scenario 4.8: Boundary Floors (F1/F5)" do
+    test "At F5 heading UP with no requests above -> Retire to :idle" do
+      # Even if something set heading to :up (which shouldn't happen), update_heading must fix it
+      state = %State{current_floor: 5, heading: :up, requests: []}
+      
+      # Act: Force a heading update (by adding a no-op request or calling update_heading if it were public)
+      # We'll use request_floor for a floor we are already at
+      new_state = State.request_floor(state, :car, 5)
+
+      # Assert: Heading becomes :idle because there is nowhere higher to go
+      assert new_state.heading == :idle
+    end
+
+    test "At F1 heading DOWN with no requests below -> Retire to :idle" do
+      state = %State{current_floor: 1, heading: :down, requests: []}
+      new_state = State.request_floor(state, :car, 1)
+
+      assert new_state.heading == :idle
+    end
+
+    test "Extreme Reversal: At F5, request for F1 -> Heading becomes :down" do
+      state = %State{current_floor: 5, heading: :idle}
+      new_state = State.request_floor(state, :hall, 1)
+
+      assert new_state.heading == :down
+    end
+  end
 end
