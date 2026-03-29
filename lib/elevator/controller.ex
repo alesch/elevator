@@ -45,15 +45,13 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  def handle_cast({:request_floor, source, floor}, %{state: state, timer: timer, timer_ms: timer_ms} = data) do
-    # 1. Update the functional core
-    new_state = State.request_floor(state, source, floor)
+  def handle_cast({:request_floor, source, floor}, data) do
+    new_data =
+      data
+      |> update_core_state(source, floor)
+      |> reset_inactivity_timer()
 
-    # 2. Reset the Return-to-Base timer (Rule 1.4 sliding window)
-    Process.cancel_timer(timer)
-    new_timer = schedule_return_to_base(timer_ms)
-
-    {:noreply, %{data | state: new_state, timer: new_timer}}
+    {:noreply, new_data}
   end
 
   @impl true
@@ -81,6 +79,15 @@ defmodule Elevator.Controller do
       :freight -> State.new_freight()
       _ -> State.new_passenger()
     end
+  end
+
+  defp update_core_state(data, source, floor) do
+    %{data | state: State.request_floor(data.state, source, floor)}
+  end
+
+  defp reset_inactivity_timer(%{timer: timer, timer_ms: ms} = data) do
+    Process.cancel_timer(timer)
+    %{data | timer: schedule_return_to_base(ms)}
   end
 
   defp schedule_return_to_base(ms) do
