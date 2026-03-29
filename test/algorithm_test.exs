@@ -42,8 +42,8 @@ defmodule Elevator.AlgorithmTest do
 
   describe "Full Load Bypass (Scenarios 4.3 & 4.4)" do
     test "Scenario 4.3: Bypass Hall request when near weight limit" do
-      # Arrange: Moving UP to 5, Weight 900kg (Limit 1000kg)
-      state = %State{current_floor: 1, heading: :up, requests: [{:car, 5}], weight: 900}
+      # Arrange: Moving UP to 5, Weight 901kg (Limit 1000kg)
+      state = %State{current_floor: 1, heading: :up, requests: [{:car, 5}], weight: 901}
       state = State.request_floor(state, :hall, 3)
 
       # Act: Move to 3

@@ -60,14 +60,13 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  def handle_info(:return_to_base, %{state: state, timer_ms: timer_ms} = data) do
-    # Rule 1.4: Auto-inject Hall request for Floor 1 after inactivity
-    new_state = State.request_floor(state, :hall, 1)
-    
-    # Reschedule timer
-    new_timer = schedule_return_to_base(timer_ms)
+  def handle_info(:return_to_base, data) do
+    new_data =
+      data
+      |> update_core_state(:hall, 1)
+      |> reset_inactivity_timer()
 
-    {:noreply, %{data | state: new_state, timer: new_timer}}
+    {:noreply, new_data}
   end
 
   # ---------------------------------------------------------------------------
