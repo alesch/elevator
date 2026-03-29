@@ -3,6 +3,7 @@ defmodule Elevator.State do
   The internal state of the elevator box.
   """
   alias __MODULE__, as: State
+  require Logger
 
   defstruct current_floor: 1,
             heading: :idle,
@@ -83,7 +84,10 @@ defmodule Elevator.State do
     %{state | door_status: :open, last_activity_at: now}
   end
 
-  def handle_event(state, _event, _now), do: state
+  def handle_event(state, event, _now) do
+    Logger.warning("Unexpected event #{inspect(event)} in state: #{inspect(state)}")
+    state
+  end
 
   @doc """
   Handles physical button presses (e.g., from the box panel).
@@ -98,7 +102,10 @@ defmodule Elevator.State do
   end
 
   # Default: No change for unknown buttons or states
-  def handle_button_press(%State{} = state, _button, _now), do: state
+  def handle_button_press(state, button, _now) do
+    Logger.warning("Unexpected button press #{inspect(button)} in state: #{inspect(state)}")
+    state
+  end
 
   @doc """
   Updates the current weight in the box.
