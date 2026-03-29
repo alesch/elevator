@@ -76,6 +76,11 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Receive `{:car, 3}`.
   - **Then**: **STOP** at Floor 3 anyway, because an internal passenger needs to exit.
 
+- [x] **Scenario 4.5: Context-Aware Wake Up**
+  - **Given**: Elevator is at F5, state is `:idle`.
+  - **When**: Request for F1 is received.
+  - **Then**: `heading` becomes `:down` (correctly identifying the request is below).
+
 ---
 
 ## Technical State (The State Machine)

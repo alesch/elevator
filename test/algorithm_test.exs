@@ -67,4 +67,28 @@ defmodule Elevator.AlgorithmTest do
       assert new_state.motor_status == :stopping
     end
   end
+
+  describe "Wake Up Logic (Scenario 4.5)" do
+    test "Scenario 4.5: Context-Aware Wake Up (Idle at F5 heads DOWN for F1)" do
+      # Arrange: Elevator is idle at Floor 5
+      state = %State{current_floor: 5, heading: :idle}
+
+      # Act: Request comes in for Floor 1
+      new_state = State.request_floor(state, :hall, 1)
+
+      # Assert: Heading correctly switches to :down
+      assert new_state.heading == :down
+    end
+
+    test "Idle elevator at F1 heads UP for F3" do
+      # Arrange: Elevator is idle at Floor 1
+      state = %State{current_floor: 1, heading: :idle}
+
+      # Act: Request comes in for Floor 3
+      new_state = State.request_floor(state, :hall, 3)
+
+      # Assert: Heading correctly switches to :up
+      assert new_state.heading == :up
+    end
+  end
 end

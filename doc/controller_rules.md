@@ -22,6 +22,11 @@ This document captures the "Executive Summary" of our current ELIXIR implementat
   - If `remaining_capacity <= 100kg` (current weight > 900kg), the elevator will bypass all Hall Requests (`{:hall, floor}`) on its path.
   - It will **ALWAYS** stop for Car Requests (`{:car, floor}`), as passengers need to exit.
 
+* **Rule 1.6: Context-Aware Wake Up**
+  - When an `:idle` elevator receives a request, it must choose its initial heading based on the relative position of the work:
+    - If any request exists **above** the current floor -> Set heading to `:up`.
+    - If any request exists **below** the current floor -> Set heading to `:down`.
+
 ## 2. Safety & Door Rules
 
 * **Rule 2.1: Door Precedence**
