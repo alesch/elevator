@@ -21,8 +21,8 @@ defmodule Elevator.AlgorithmTest do
       # Arrange: At 3, just finished a request, no more work
       state = %State{current_floor: 3, heading: :up, requests: [{:car, 3}], motor_status: :stopping}
       
-      # Act: Confirm stopped (which removes the request)
-      state = State.handle_event(state, :motor_stopped)
+      # Act: Confirm stopped at T=0 (which removes the request)
+      state = State.handle_event(state, :motor_stopped, 0)
       
       # Assert: Heading is still :up until we explicitly update it
       assert state.heading == :up

@@ -60,24 +60,26 @@ defmodule Elevator.State do
     |> confirm_stopped_at_floor()
   end
 
-  def handle_event(%__MODULE__{door_status: :opening} = state, :door_open_done) do
-    %{state | door_status: :open, last_activity_at: system_time()}
+  def handle_event(%__MODULE__{door_status: :opening} = state, :door_open_done, now) do
+    %{state | door_status: :open, last_activity_at: now}
   end
 
-  def handle_event(state, _event), do: state
+  def handle_event(state, _event, _now), do: state
 
-  # Mockable system time for tests
-  defp system_time, do: 0
 
   @doc """
   Handles physical button presses (e.g., from the box panel).
   """
-  def handle_button_press(%__MODULE__{door_status: :closing} = state, :door_open) do
+  def handle_button_press(%__MODULE__{door_status: :closing} = state, :door_open, _now) do
     %{state | door_status: :opening}
   end
 
+  def handle_button_press(%__MODULE__{door_status: :open} = state, :door_open, now) do
+    %{state | last_activity_at: now}
+  end
+
   # Default: No change for unknown buttons or states
-  def handle_button_press(%__MODULE__{} = state, _button), do: state
+  def handle_button_press(%__MODULE__{} = state, _button, _now), do: state
 
   @doc """
   Updates the current weight in the box.

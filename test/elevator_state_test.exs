@@ -54,11 +54,23 @@ defmodule Elevator.StateTest do
     # Arrange
     state = %State{door_status: :opening}
 
-    # Act
-    new_state = State.handle_event(state, :door_open_done)
+    # Act: Doors open at T=100
+    new_state = State.handle_event(state, :door_open_done, 100)
 
     # Assert
     assert new_state.door_status == :open
+    assert new_state.last_activity_at == 100
+  end
+
+  test "Scenario 3.2: Reset Auto-Close Timer" do
+    # Arrange: Doors are open, last activity was at T=100
+    state = %State{door_status: :open, last_activity_at: 100}
+
+    # Act: Press "Open" button at T=150
+    new_state = State.handle_button_press(state, :door_open, 150)
+
+    # Assert
+    assert new_state.last_activity_at == 150
   end
 
   test "Scenario 2.2: Weight sensor triggers overload if weight > limit" do
