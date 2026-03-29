@@ -26,4 +26,5 @@ This document is for future AI agents working with **Alex** on the Elixir Elevat
 ## 3. Rules for agents (CRITICAL)
 
 * **Command Restriction**: Do NOT run commands on files outside this project directory.
+* **Documentation Sync**: Always keep `doc/controller_rules.md` and `doc/scenarios.md` updated and in 1:1 sync with the logic code. They are the "Ground Truth."
 * **Note to Agent**: The brain artifacts are periodically cleaned up to reduce noise. Use the docs in `/doc/` as the single source of truth.
