@@ -1,0 +1,47 @@
+defmodule Elevator.SensorTest do
+  @moduledoc """
+  Proves the Nervous System: Floor detection and Notification.
+  """
+  use ExUnit.Case, async: true
+  alias Elevator.Sensor
+
+  setup do
+    # Inject self() as the controller to catch notifications locally
+    # Use name: nil to prevent global registration and avoid collisions in parallel tests
+    pid = start_supervised!({Sensor, [current_floor: 1, controller: self(), name: nil]})
+    %{sensor: pid}
+  end
+
+  test "starts at the specified floor", %{sensor: pid} do
+    assert Sensor.get_floor(pid) == 1
+  end
+
+  test "motor pulse UP increments the floor", %{sensor: pid} do
+    # Simulate a pulse from the Motor
+    send(pid, {:motor_pulse, :up})
+
+    # Wait for the async process (Sync peek)
+    _ = Sensor.get_floor(pid)
+    
+    assert Sensor.get_floor(pid) == 2
+  end
+
+  test "motor pulse DOWN decrements the floor", %{sensor: _pid} do
+    # Stop the default sensor from setup to start a new one with F3
+    stop_supervised!(Sensor)
+    pid = start_supervised!({Sensor, [current_floor: 3, controller: self(), name: nil]})
+
+    send(pid, {:motor_pulse, :down})
+
+    _ = Sensor.get_floor(pid)
+    
+    assert Sensor.get_floor(pid) == 2
+  end
+
+  test "sensor notifies the Controller upon arrival", %{sensor: pid} do
+    send(pid, {:motor_pulse, :up})
+
+    # The Sensor should notify the Controller (the test process): {:floor_arrival, 2}
+    assert_receive {:floor_arrival, 2}
+  end
+end

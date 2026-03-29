@@ -6,7 +6,7 @@ This document defines the **Internal Messaging Interface** for the Elevator Acto
 
 | Direction | Message | Type | Description |
 | :--- | :--- | :--- | :--- |
-| C → M | `{:move_to, floor}` | `cast` | Command motor to start moving toward a floor. |
+| C → M | `{:move, direction}` | `cast` | Command motor to start moving `:up` or `:down`. |
 | C → M | `:stop_now` | `cast` | Emergency/Immediate brake. |
 
 ## 2. Controller ↔ Sensor (The "Nerves")
@@ -40,6 +40,7 @@ The **Supervisor** will manage the following child specs:
 ## 5. Handover Orchestration (Completion Signal)
 
 When an agent completes their mission, they MUST:
+
 1. Use (and create if necessary) the directory: `handover_status/`
 2. Create a file: `handover_status/DONE_[ROLE]` (e.g., `DONE_MOTOR`).
 3. Write the **Absolute Worktree Path** inside that file so the Supervisor can locate the work.

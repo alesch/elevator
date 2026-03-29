@@ -1,10 +1,10 @@
 defmodule Elevator.ControllerTest do
-  use ExUnit.Case
-  alias Elevator.Controller
+  use ExUnit.Case, async: true
+  alias Elevator.{Controller, Door, Motor}
 
   describe "Elevator Actor Lifecycle" do
     test "Starting a passenger elevator" do
-      {:ok, pid} = Controller.start_link(type: :passenger)
+      {:ok, pid} = Controller.start_link(type: :passenger, motor: self(), door: self(), name: nil)
 
       state = Controller.get_state(pid)
       assert state.weight_limit == 1000
@@ -12,17 +12,22 @@ defmodule Elevator.ControllerTest do
     end
 
     test "Requesting a floor via cast (Asynchronous)" do
-      {:ok, pid} = Controller.start_link()
+      {:ok, pid} = Controller.start_link(motor: self(), door: self(), name: nil)
 
       # Cast is "fire and forget"
       Controller.request_floor(pid, :car, 4)
       state = Controller.get_state(pid)
       assert state.heading == :up
       assert {:car, 4} in state.requests
+
+      # Verify the physical command was sent to the "motor" (our self())
+      assert_receive {:"$gen_cast", {:move, :up}}
+      # Verify the physical command was sent to the "door" (our self())
+      assert_receive {:"$gen_cast", :close}
     end
 
     test "Handling concurrent requests (Race Condition Proof)" do
-      {:ok, pid} = Controller.start_link()
+      {:ok, pid} = Controller.start_link(motor: self(), door: self(), name: nil)
 
       # Simulate parallel button presses
       tasks =
@@ -40,7 +45,7 @@ defmodule Elevator.ControllerTest do
     end
 
     test "Rule 1.4: Inactivity Window (Deterministic Verification)" do
-      {:ok, pid} = Controller.start_link()
+      {:ok, pid} = Controller.start_link(motor: self(), door: self(), name: nil)
 
       # 1. Verify Scheduling (Intent)
       # We inspect the internal timer to prove the actor INTENDS to return to base
