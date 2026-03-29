@@ -148,19 +148,8 @@ defmodule Elevator.State do
 
   defp update_heading(state) do
     cond do
-      # 1. Continue Up
-      state.heading == :up and any_requests_above?(state) -> state
-
-      # 2. Continue Down
-      state.heading == :down and any_requests_below?(state) -> state
-
-      # 3. Transition to Up (from Down or Idle)
       any_requests_above?(state) -> %{state | heading: :up}
-
-      # 4. Transition to Down (from Up or Idle)
       any_requests_below?(state) -> %{state | heading: :down}
-
-      # 5. Retire
       true -> %{state | heading: :idle}
     end
   end
