@@ -127,8 +127,10 @@ defmodule Elevator.State do
   end
 
   defp fulfill_current_floor_requests(state) do
-    new_requests = Enum.reject(state.requests, fn {_, f} -> f == state.current_floor end)
-    %{state | requests: new_requests}
+    state
+    |> Map.update!(:requests, fn reqs ->
+      Enum.reject(reqs, fn {_, f} -> f == state.current_floor end)
+    end)
   end
 
   defp confirm_stopped_at_floor(state) do
