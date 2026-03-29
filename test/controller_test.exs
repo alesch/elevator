@@ -16,8 +16,6 @@ defmodule Elevator.ControllerTest do
 
       # Cast is "fire and forget"
       Controller.request_floor(pid, :car, 4)
-
-      # Wait a tiny bit for the mailbox to be processed
       state = Controller.get_state(pid)
       assert state.heading == :up
       assert {:car, 4} in state.requests
