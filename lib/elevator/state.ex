@@ -162,31 +162,30 @@ defmodule Elevator.State do
     end
   end
 
-  defp has_requests_ahead?(%{heading: :up} = state),
-    do: Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
-
-  defp has_requests_ahead?(%{heading: :down} = state),
-    do: Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
-
+  defp has_requests_ahead?(%{heading: :up} = state), do: any_requests_above?(state)
+  defp has_requests_ahead?(%{heading: :down} = state), do: any_requests_below?(state)
   defp has_requests_ahead?(_), do: false
 
-  defp has_requests_behind?(%{heading: :up} = state),
-    do: Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
-
-  defp has_requests_behind?(%{heading: :down} = state),
-    do: Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
-
-  defp has_requests_behind?(%{heading: :idle} = state),
-    do: Enum.any?(state.requests, fn {_, _} -> true end)
+  defp has_requests_behind?(%{heading: :up} = state), do: any_requests_below?(state)
+  defp has_requests_behind?(%{heading: :down} = state), do: any_requests_above?(state)
+  defp has_requests_behind?(%{heading: :idle} = state), do: Enum.any?(state.requests)
 
   defp transition_heading(%State{heading: :up}), do: :down
   defp transition_heading(%State{heading: :down}), do: :up
 
   defp transition_heading(%State{heading: :idle} = state) do
     cond do
-      Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end) -> :up
-      Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end) -> :down
+      any_requests_above?(state) -> :up
+      any_requests_below?(state) -> :down
       true -> :idle
     end
+  end
+
+  defp any_requests_above?(state) do
+    Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
+  end
+
+  defp any_requests_below?(state) do
+    Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
   end
 end
