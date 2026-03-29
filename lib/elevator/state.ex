@@ -25,8 +25,9 @@ defmodule Elevator.State do
   Adds a floor request to the state with a specific source (:hall or :car).
   """
   def request_floor(%__MODULE__{} = state, source, floor) when is_integer(floor) do
-    state = add_request(state, source, floor)
-    update_heading(state)
+    state
+    |> add_request(source, floor)
+    |> update_heading()
   end
 
   @doc """
@@ -86,8 +87,9 @@ defmodule Elevator.State do
   If weight exceeds weight_limit, sets status to :overload.
   """
   def update_weight(%__MODULE__{} = state, new_weight) do
-    new_status = if new_weight > state.weight_limit, do: :overload, else: :normal
-    %{state | weight: new_weight, status: new_status}
+    state
+    |> set_weight(new_weight)
+    |> update_overload_status()
   end
 
   defp add_request(state, source, floor) do
@@ -105,6 +107,13 @@ defmodule Elevator.State do
 
   defp confirm_stopped_at_floor(state) do
     %{state | motor_status: :stopped, door_status: :opening}
+  end
+
+  defp set_weight(state, weight), do: %{state | weight: weight}
+
+  defp update_overload_status(state) do
+    new_status = if state.weight > state.weight_limit, do: :overload, else: :normal
+    %{state | status: new_status}
   end
 
   defp remaining_capacity(state), do: state.weight_limit - state.weight
