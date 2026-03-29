@@ -5,6 +5,10 @@ defmodule Elevator.State do
   alias __MODULE__, as: State
   require Logger
 
+  # ---------------------------------------------------------------------------
+  # ## Data Structure & Initialization
+  # ---------------------------------------------------------------------------
+
   defstruct current_floor: 1,
             heading: :idle,
             door_status: :closed,
@@ -37,8 +41,12 @@ defmodule Elevator.State do
   @spec new_freight() :: t()
   def new_freight, do: %State{weight_limit: 5000}
 
+  # ---------------------------------------------------------------------------
+  # ## Public State Transitions
+  # ---------------------------------------------------------------------------
+
   @doc """
-  Adds a floor request to the state with a specific source (:hall or :car).
+  Adds a floor request to the state and updates the heading.
   """
   @spec request_floor(t(), atom(), integer()) :: t()
   def request_floor(%State{} = state, source, floor) when is_integer(floor) do
@@ -48,8 +56,8 @@ defmodule Elevator.State do
   end
 
   @doc """
-  Processes the current floor arrival.
-  Initiates the braking sequence only if we should stop at this floor.
+  Processes the current floor arrival logic.
+  Initiates braking if this is a target floor.
   """
   @spec process_current_floor(t()) :: t()
   def process_current_floor(%State{} = state) do
@@ -60,18 +68,8 @@ defmodule Elevator.State do
     end
   end
 
-  defp should_stop_at?(state, floor) do
-    # 1. Always stop for Car requests (internal)
-    # 2. Stop for Hall requests (external) only if we have capacity
-    Enum.any?(state.requests, fn
-      {:car, ^floor} -> true
-      {:hall, ^floor} -> remaining_capacity(state) > 100
-      _ -> false
-    end)
-  end
-
   @doc """
-  Central event handler for physical component confirmations.
+  Central event handler for component confirmations.
   """
   @spec handle_event(t(), atom(), integer() | nil) :: t()
   def handle_event(%State{motor_status: :stopping} = state, :motor_stopped, _now) do
@@ -90,7 +88,7 @@ defmodule Elevator.State do
   end
 
   @doc """
-  Handles physical button presses (e.g., from the box panel).
+  Handles physical button presses.
   """
   @spec handle_button_press(t(), atom(), integer()) :: t()
   def handle_button_press(%State{door_status: :closing} = state, :door_open, _now) do
@@ -101,15 +99,13 @@ defmodule Elevator.State do
     %{state | last_activity_at: now}
   end
 
-  # Default: No change for unknown buttons or states
   def handle_button_press(state, button, _now) do
     Logger.warning("Unexpected button press #{inspect(button)} in state: #{inspect(state)}")
     state
   end
 
   @doc """
-  Updates the current weight in the box.
-  If weight exceeds weight_limit, sets status to :overload.
+  Updates the current weight and checks for overload.
   """
   @spec update_weight(t(), integer()) :: t()
   def update_weight(%State{} = state, new_weight) do
@@ -118,11 +114,15 @@ defmodule Elevator.State do
     |> update_overload_status()
   end
 
-  defp add_request(state, source, floor) do
-    if {source, floor} in state.requests do
-      state
-    else
-      %{state | requests: state.requests ++ [{source, floor}]}
+  # ---------------------------------------------------------------------------
+  # ## Private Internal Logic
+  # ---------------------------------------------------------------------------
+
+  defp update_heading(state) do
+    cond do
+      any_requests_above?(state) -> %{state | heading: :up}
+      any_requests_below?(state) -> %{state | heading: :down}
+      true -> %{state | heading: :idle}
     end
   end
 
@@ -130,6 +130,16 @@ defmodule Elevator.State do
     state
     |> Map.update!(:requests, fn reqs ->
       Enum.reject(reqs, fn {_, f} -> f == state.current_floor end)
+    end)
+  end
+
+  defp should_stop_at?(state, floor) do
+    # 1. Always stop for Car requests
+    # 2. Stop for Hall requests only if capacity > 100kg
+    Enum.any?(state.requests, fn
+      {:car, ^floor} -> true
+      {:hall, ^floor} -> remaining_capacity(state) > 100
+      _ -> false
     end)
   end
 
@@ -146,19 +156,19 @@ defmodule Elevator.State do
 
   defp remaining_capacity(state), do: state.weight_limit - state.weight
 
-  defp update_heading(state) do
-    cond do
-      any_requests_above?(state) -> %{state | heading: :up}
-      any_requests_below?(state) -> %{state | heading: :down}
-      true -> %{state | heading: :idle}
-    end
-  end
-
   defp any_requests_above?(state) do
     Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
   end
 
   defp any_requests_below?(state) do
     Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
+  end
+
+  defp add_request(state, source, floor) do
+    if {source, floor} in state.requests do
+      state
+    else
+      %{state | requests: state.requests ++ [{source, floor}]}
+    end
   end
 end
