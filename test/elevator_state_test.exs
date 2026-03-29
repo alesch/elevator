@@ -99,7 +99,7 @@ defmodule Elevator.StateTest do
     state = %State{door_status: :closing}
 
     # Act
-    new_state = State.handle_button_press(state, :door_open)
+    new_state = State.handle_button_press(state, :door_open, 0)
 
     # Assert
     assert new_state.door_status == :opening

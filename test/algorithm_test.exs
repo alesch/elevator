@@ -29,7 +29,7 @@ defmodule Elevator.AlgorithmTest do
       
       # Now update heading (this would happen after door cycle in the real app)
       # For now, we test the logic directly
-      new_state = State.request_floor(state, :car, 3) # Re-triggering a (noop) request to force update_heading
+      _new_state = State.request_floor(state, :car, 3) # Re-triggering a (noop) request to force update_heading
       # Wait, request_floor calls update_heading. Let's just call it if it were public or test the side effect.
       
       # Actually, let's test that if we add no new requests, the state remains consistent.
