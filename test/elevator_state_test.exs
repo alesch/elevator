@@ -41,8 +41,8 @@ defmodule Elevator.StateTest do
     # Arrange
     state = %State{current_floor: 3, motor_status: :stopping, requests: [{:car, 3}]}
 
-    # Act
-    new_state = State.handle_event(state, :motor_stopped)
+    # Act: Complete braking at T=0
+    new_state = State.handle_event(state, :motor_stopped, 0)
 
     # Assert
     assert new_state.motor_status == :stopped

@@ -2,28 +2,42 @@ defmodule Elevator.State do
   @moduledoc """
   The internal state of the elevator box.
   """
-  defstruct [
-    current_floor: 1,
-    heading: :idle,
-    door_status: :closed,
-    requests: [],
-    last_activity_at: 0,
-    status: :normal,
-    door_sensor: :clear,
-    motor_status: :stopped,
-    weight: 0,
-    weight_limit: 1000
-  ]
+  defstruct current_floor: 1,
+            heading: :idle,
+            door_status: :closed,
+            requests: [],
+            last_activity_at: 0,
+            status: :normal,
+            door_sensor: :clear,
+            motor_status: :stopped,
+            weight: 0,
+            weight_limit: 1000
+
+  @type t :: %__MODULE__{
+          current_floor: integer(),
+          heading: :up | :down | :idle,
+          door_status: :open | :closed | :opening | :closing,
+          requests: list({atom(), integer()}),
+          last_activity_at: integer(),
+          status: :normal | :overload | :emergency,
+          door_sensor: :clear | :blocked,
+          motor_status: :running | :stopping | :stopped,
+          weight: integer(),
+          weight_limit: integer()
+        }
 
   @doc "Creates a standard passenger elevator state."
+  @spec new_passenger() :: t()
   def new_passenger, do: %__MODULE__{weight_limit: 1000}
 
   @doc "Creates a heavy-duty freight elevator state."
+  @spec new_freight() :: t()
   def new_freight, do: %__MODULE__{weight_limit: 5000}
 
   @doc """
   Adds a floor request to the state with a specific source (:hall or :car).
   """
+  @spec request_floor(t(), atom(), integer()) :: t()
   def request_floor(%__MODULE__{} = state, source, floor) when is_integer(floor) do
     state
     |> add_request(source, floor)
@@ -34,6 +48,7 @@ defmodule Elevator.State do
   Processes the current floor arrival.
   Initiates the braking sequence only if we should stop at this floor.
   """
+  @spec process_current_floor(t()) :: t()
   def process_current_floor(%__MODULE__{} = state) do
     if should_stop_at?(state, state.current_floor) do
       %{state | motor_status: :stopping}
@@ -55,7 +70,8 @@ defmodule Elevator.State do
   @doc """
   Central event handler for physical component confirmations.
   """
-  def handle_event(%__MODULE__{motor_status: :stopping} = state, :motor_stopped) do
+  @spec handle_event(t(), atom(), integer() | nil) :: t()
+  def handle_event(%__MODULE__{motor_status: :stopping} = state, :motor_stopped, _now) do
     state
     |> fulfill_current_floor_requests()
     |> confirm_stopped_at_floor()
@@ -67,10 +83,10 @@ defmodule Elevator.State do
 
   def handle_event(state, _event, _now), do: state
 
-
   @doc """
   Handles physical button presses (e.g., from the box panel).
   """
+  @spec handle_button_press(t(), atom(), integer()) :: t()
   def handle_button_press(%__MODULE__{door_status: :closing} = state, :door_open, _now) do
     %{state | door_status: :opening}
   end
@@ -86,6 +102,7 @@ defmodule Elevator.State do
   Updates the current weight in the box.
   If weight exceeds weight_limit, sets status to :overload.
   """
+  @spec update_weight(t(), integer()) :: t()
   def update_weight(%__MODULE__{} = state, new_weight) do
     state
     |> set_weight(new_weight)
@@ -134,15 +151,25 @@ defmodule Elevator.State do
     end
   end
 
-  defp has_requests_ahead?(%{heading: :up} = state), do: Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
-  defp has_requests_ahead?(%{heading: :down} = state), do: Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
+  defp has_requests_ahead?(%{heading: :up} = state),
+    do: Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
+
+  defp has_requests_ahead?(%{heading: :down} = state),
+    do: Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
+
   defp has_requests_ahead?(_), do: false
 
-  defp has_requests_behind?(%{heading: :up} = state), do: Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
-  defp has_requests_behind?(%{heading: :down} = state), do: Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
-  defp has_requests_behind?(%{heading: :idle} = state), do: Enum.any?(state.requests, fn {_, _} -> true end)
+  defp has_requests_behind?(%{heading: :up} = state),
+    do: Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
+
+  defp has_requests_behind?(%{heading: :down} = state),
+    do: Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
+
+  defp has_requests_behind?(%{heading: :idle} = state),
+    do: Enum.any?(state.requests, fn {_, _} -> true end)
 
   defp reverse_heading(:up), do: :down
   defp reverse_heading(:down), do: :up
-  defp reverse_heading(:idle), do: :up # Or logic to pick best start
+  # Or logic to pick best start
+  defp reverse_heading(:idle), do: :up
 end
