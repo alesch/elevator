@@ -118,6 +118,7 @@ defmodule Elevator.State do
   # ## Private Internal Logic
   # ---------------------------------------------------------------------------
 
+  @spec update_heading(t()) :: t()
   defp update_heading(state) do
     cond do
       any_requests_above?(state) -> %{state | heading: :up}
@@ -126,6 +127,7 @@ defmodule Elevator.State do
     end
   end
 
+  @spec fulfill_current_floor_requests(t()) :: t()
   defp fulfill_current_floor_requests(state) do
     state
     |> Map.update!(:requests, fn reqs ->
@@ -133,6 +135,7 @@ defmodule Elevator.State do
     end)
   end
 
+  @spec should_stop_at?(t(), integer()) :: boolean()
   defp should_stop_at?(state, floor) do
     # 1. Always stop for Car requests
     # 2. Stop for Hall requests only if capacity > 100kg
@@ -143,27 +146,34 @@ defmodule Elevator.State do
     end)
   end
 
+  @spec confirm_stopped_at_floor(t()) :: t()
   defp confirm_stopped_at_floor(state) do
     %{state | motor_status: :stopped, door_status: :opening}
   end
 
+  @spec set_weight(t(), integer()) :: t()
   defp set_weight(state, weight), do: %{state | weight: weight}
 
+  @spec update_overload_status(t()) :: t()
   defp update_overload_status(state) do
     new_status = if state.weight > state.weight_limit, do: :overload, else: :normal
     %{state | status: new_status}
   end
 
+  @spec remaining_capacity(t()) :: integer()
   defp remaining_capacity(state), do: state.weight_limit - state.weight
 
+  @spec any_requests_above?(t()) :: boolean()
   defp any_requests_above?(state) do
     Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
   end
 
+  @spec any_requests_below?(t()) :: boolean()
   defp any_requests_below?(state) do
     Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
   end
 
+  @spec add_request(t(), atom(), integer()) :: t()
   defp add_request(state, source, floor) do
     if {source, floor} in state.requests do
       state
