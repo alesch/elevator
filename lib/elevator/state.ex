@@ -148,36 +148,20 @@ defmodule Elevator.State do
 
   defp update_heading(state) do
     cond do
-      # 1. Keep Heading: If there are requests ahead of us in the current direction
-      has_requests_ahead?(state) ->
-        state
+      # 1. Continue Up
+      state.heading == :up and any_requests_above?(state) -> state
 
-      # 2. Transition: If no requests ahead, but requests exist in opposite direction
-      has_requests_behind?(state) ->
-        %{state | heading: transition_heading(state)}
+      # 2. Continue Down
+      state.heading == :down and any_requests_below?(state) -> state
 
-      # 3. Retire: No requests anywhere
-      true ->
-        %{state | heading: :idle}
-    end
-  end
+      # 3. Transition to Up (from Down or Idle)
+      any_requests_above?(state) -> %{state | heading: :up}
 
-  defp has_requests_ahead?(%{heading: :up} = state), do: any_requests_above?(state)
-  defp has_requests_ahead?(%{heading: :down} = state), do: any_requests_below?(state)
-  defp has_requests_ahead?(_), do: false
+      # 4. Transition to Down (from Up or Idle)
+      any_requests_below?(state) -> %{state | heading: :down}
 
-  defp has_requests_behind?(%{heading: :up} = state), do: any_requests_below?(state)
-  defp has_requests_behind?(%{heading: :down} = state), do: any_requests_above?(state)
-  defp has_requests_behind?(%{heading: :idle} = state), do: Enum.any?(state.requests)
-
-  defp transition_heading(%State{heading: :up}), do: :down
-  defp transition_heading(%State{heading: :down}), do: :up
-
-  defp transition_heading(%State{heading: :idle} = state) do
-    cond do
-      any_requests_above?(state) -> :up
-      any_requests_below?(state) -> :down
-      true -> :idle
+      # 5. Retire
+      true -> %{state | heading: :idle}
     end
   end
 
