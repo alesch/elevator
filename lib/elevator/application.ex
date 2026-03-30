@@ -15,19 +15,20 @@ defmodule Elevator.Application do
   @spec start(Application.start_type(), any()) :: {:ok, pid()} | {:error, term()}
   def start(_type, _args) do
     # Discovery and Observability Layer must be first.
-    children = [
-      # 1. Industrial Discovery Layer
-      {Registry, [keys: :unique, name: Elevator.Registry]},
+    children =
+      [
+        # 1. Industrial Discovery Layer
+        {Registry, [keys: :unique, name: Elevator.Registry]},
 
-      # 2. Industrial Monitoring (Telemetry)
-      {ElevatorWeb.Telemetry, []},
+        # 2. Industrial Monitoring (Telemetry)
+        {ElevatorWeb.Telemetry, []},
 
-      # 3. Messaging Bridge
-      {Phoenix.PubSub, [name: Elevator.PubSub]},
+        # 3. Messaging Bridge
+        {Phoenix.PubSub, [name: Elevator.PubSub]},
 
-      # 4. Persistence Layer (Vault)
-      {Elevator.Vault, [name: Elevator.Vault]}
-    ] ++ hardware_profile()
+        # 4. Persistence Layer (Vault)
+        {Elevator.Vault, [name: Elevator.Vault]}
+      ] ++ hardware_profile()
 
     opts = [strategy: :one_for_one, name: Elevator.Supervisor]
     Supervisor.start_link(children, opts)

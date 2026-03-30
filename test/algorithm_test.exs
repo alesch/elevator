@@ -19,19 +19,26 @@ defmodule Elevator.AlgorithmTest do
 
     test "Scenario 4.2 (Retire): Heading becomes :idle when no requests remain" do
       # Arrange: At 3, just finished a request, no more work
-      state = %State{current_floor: 3, heading: :up, requests: [{:car, 3}], motor_status: :stopping}
-      
+      state = %State{
+        current_floor: 3,
+        heading: :up,
+        requests: [{:car, 3}],
+        motor_status: :stopping
+      }
+
       # Act: Confirm stopped at T=0 (which removes the request)
       state = State.handle_event(state, :motor_stopped, 0)
-      
+
       # Assert: Heading is still :up until we explicitly update it
       assert state.heading == :up
-      
+
       # Now update heading (this would happen after door cycle in the real app)
       # For now, we test the logic directly
-      _new_state = State.request_floor(state, :car, 3) # Re-triggering a (noop) request to force update_heading
+      # Re-triggering a (noop) request to force update_heading
+      _new_state = State.request_floor(state, :car, 3)
+
       # Wait, request_floor calls update_heading. Let's just call it if it were public or test the side effect.
-      
+
       # Actually, let's test that if we add no new requests, the state remains consistent.
       # Let's test the "Reverse" case
       state_with_down = %{state | requests: [{:hall, 1}]}
@@ -51,7 +58,8 @@ defmodule Elevator.AlgorithmTest do
       new_state = State.process_current_floor(state)
 
       # Assert: It should NOT stop (stays :stopped or :running - here it stays same)
-      assert new_state.motor_status == :stopped # (Default in this test setup)
+      # (Default in this test setup)
+      assert new_state.motor_status == :stopped
     end
 
     test "Scenario 4.4: Honor Car request even when near weight limit" do

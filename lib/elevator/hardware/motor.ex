@@ -6,7 +6,8 @@ defmodule Elevator.Hardware.Motor do
   use GenServer
   require Logger
 
-  @transit_ms 2000 # 2 seconds per floor
+  # 2 seconds per floor
+  @transit_ms 2000
 
   # ---------------------------------------------------------------------------
   # ## Public API
@@ -61,9 +62,12 @@ defmodule Elevator.Hardware.Motor do
   def handle_cast({:move, direction, opts}, state) do
     speed = Keyword.get(opts, :speed, :normal)
 
-    :telemetry.execute([:elevator, :hardware, :motor, :move], %{direction: direction, speed: speed})
+    :telemetry.execute([:elevator, :hardware, :motor, :move], %{
+      direction: direction,
+      speed: speed
+    })
 
-    state = 
+    state =
       state
       |> cancel_timer()
       |> update_motion_state(:moving, direction, speed)
@@ -77,7 +81,7 @@ defmodule Elevator.Hardware.Motor do
   def handle_cast(:stop_now, state) do
     :telemetry.execute([:elevator, :hardware, :motor, :stop], %{})
 
-    state = 
+    state =
       state
       |> cancel_timer()
       |> update_motion_state(:stopped, nil, :normal)
@@ -110,23 +114,27 @@ defmodule Elevator.Hardware.Motor do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec update_motion_state(map(), :moving | :stopped, :up | :down | nil, :normal | :slow) :: map()
+  @spec update_motion_state(map(), :moving | :stopped, :up | :down | nil, :normal | :slow) ::
+          map()
   defp update_motion_state(state, status, direction, speed) do
     %{state | status: status, direction: direction, speed: speed}
   end
 
   @spec start_transit_timer(map()) :: map()
   defp start_transit_timer(%{direction: direction, speed: speed} = state) do
-    ms = case speed do
-      :slow -> 5000
-      _ -> @transit_ms
-    end
+    ms =
+      case speed do
+        :slow -> 5000
+        _ -> @transit_ms
+      end
+
     timer = Process.send_after(self(), {:pulse, direction}, ms)
     %{state | timer: timer}
   end
 
   @spec cancel_timer(map()) :: map()
   defp cancel_timer(%{timer: nil} = state), do: state
+
   defp cancel_timer(%{timer: ref} = state) do
     Process.cancel_timer(ref)
     %{state | timer: nil}

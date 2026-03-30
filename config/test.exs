@@ -14,5 +14,5 @@ config :logger, level: :warning
 config :phoenix, :plug_init_mode, :runtime
 # Disabling the hardware stack and server for unit tests 
 # to allow isolated testing of functional modules.
-config :elevator, 
+config :elevator,
   hardware_stack_enabled: false

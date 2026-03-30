@@ -33,10 +33,10 @@ defmodule Elevator.MotorTest do
   test "stopping motion cancels the timer", %{motor: pid} do
     # Start moving
     Motor.move(pid, :up)
-    
+
     # Wait for cast to process (Sync peek)
     _ = Motor.get_state(pid)
-    
+
     # Stop moving
     Motor.stop(pid)
 
@@ -56,7 +56,7 @@ defmodule Elevator.MotorTest do
 
     assert ref1 != ref2
     # Verify the first timer was cancelled
-    assert Process.read_timer(ref1) == false 
+    assert Process.read_timer(ref1) == false
     # Verify the new timer is active
     assert is_integer(Process.read_timer(ref2))
   end
@@ -64,10 +64,10 @@ defmodule Elevator.MotorTest do
   test "motor notifies the sensor upon pulse", %{motor: pid} do
     # Start moving to trigger pulses
     Motor.move(pid, :up)
-    
+
     # Manually trigger the pulse info to bypass waiting 2s
     send(pid, {:pulse, :up})
-    
+
     # The Motor should notify the Sensor (the test process): {:motor_pulse, :up}
     assert_receive {:motor_pulse, :up}
   end

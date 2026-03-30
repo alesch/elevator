@@ -11,7 +11,9 @@ defmodule Elevator.SensorTest do
     vault = start_supervised!({Elevator.Vault, [name: nil]})
 
     # Inject self() as the controller to catch notifications locally
-    pid = start_supervised!({Sensor, [current_floor: 1, vault: vault, controller: self(), name: nil]})
+    pid =
+      start_supervised!({Sensor, [current_floor: 1, vault: vault, controller: self(), name: nil]})
+
     %{sensor: pid, vault: vault}
   end
 
@@ -25,19 +27,21 @@ defmodule Elevator.SensorTest do
 
     # Wait for the async process (Sync peek)
     _ = Sensor.get_floor(pid)
-    
+
     assert Sensor.get_floor(pid) == 2
   end
 
   test "motor pulse DOWN decrements the floor", %{sensor: _pid, vault: vault} do
     # Stop the default sensor from setup to start a new one with F3
     stop_supervised!(Sensor)
-    pid = start_supervised!({Sensor, [current_floor: 3, vault: vault, controller: self(), name: nil]})
+
+    pid =
+      start_supervised!({Sensor, [current_floor: 3, vault: vault, controller: self(), name: nil]})
 
     send(pid, {:motor_pulse, :down})
 
     _ = Sensor.get_floor(pid)
-    
+
     assert Sensor.get_floor(pid) == 2
   end
 

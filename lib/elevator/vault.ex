@@ -40,6 +40,7 @@ defmodule Elevator.Vault do
     if Keyword.get(opts, :name) != nil do
       {:ok, _} = Registry.register(Elevator.Registry, :vault, nil)
     end
+
     {:ok, nil}
   end
 
@@ -50,7 +51,8 @@ defmodule Elevator.Vault do
   end
 
   @impl true
-  @spec handle_call(:get, GenServer.from(), integer() | nil) :: {:reply, integer() | nil, integer() | nil}
+  @spec handle_call(:get, GenServer.from(), integer() | nil) ::
+          {:reply, integer() | nil, integer() | nil}
   def handle_call(:get, _from, floor) do
     {:reply, floor, floor}
   end

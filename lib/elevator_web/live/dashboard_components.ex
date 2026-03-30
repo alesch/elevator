@@ -13,6 +13,7 @@ defmodule ElevatorWeb.DashboardComponents do
   @doc "Renders a visual indicator for a specific floor slot in the shaft."
   attr :floor, :integer, required: true
   attr :active, :boolean, default: false
+
   def floor_slot(assigns) do
     ~H"""
     <div class={["floor-slot", @active && "floor-active"]}></div>
@@ -22,6 +23,7 @@ defmodule ElevatorWeb.DashboardComponents do
   @doc "Renders the elevator car itself with animated doors."
   attr :floor, :any, required: true
   attr :door_state, :atom, required: true
+
   def elevator_car(assigns) do
     ~H"""
     <div
@@ -39,6 +41,7 @@ defmodule ElevatorWeb.DashboardComponents do
   attr :icon, :string, required: true
   attr :label, :string, required: true
   attr :state, :atom, required: true
+
   def status_box(assigns) do
     ~H"""
     <div class="actor-status">

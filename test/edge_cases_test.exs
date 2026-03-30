@@ -30,7 +30,7 @@ defmodule Elevator.EdgeCasesTest do
       # Rule 1.5: If weight > 900kg, bypass. (We'll check if we want 'greater than' or 'greater than or equal')
       # Our Rule 1.5 says '> 900kg'. So 900kg should actually STOP.
       state = %State{current_floor: 1, heading: :up, requests: [{:car, 5}], weight: 900}
-      
+
       # Hall call at F3
       new_state = State.request_floor(state, :hall, 3)
 
@@ -61,7 +61,7 @@ defmodule Elevator.EdgeCasesTest do
     test "At F5 heading UP with no requests above -> Retire to :idle" do
       # Even if something set heading to :up (which shouldn't happen), update_heading must fix it
       state = %State{current_floor: 5, heading: :up, requests: []}
-      
+
       # Act: Force a heading update (by adding a no-op request or calling update_heading if it were public)
       # We'll use request_floor for a floor we are already at
       new_state = State.request_floor(state, :car, 5)

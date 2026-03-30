@@ -15,25 +15,30 @@ defmodule Elevator.HomingTest do
   test "Smart Homing: Crash on F0 (Ground) results in Zero-Move Recovery", %{vault: vault} do
     # 1. Simulate Reality: Vault knows F0, and Sensor sees F0
     Vault.put_floor(vault, 0)
-    
+
     # 2. Start hardware stack
     motor = start_supervised!({Motor, [name: nil]})
     sensor = start_supervised!({Sensor, [vault: vault, current_floor: 0, name: nil]})
     door = start_supervised!({Door, [name: nil]})
 
     # 3. Boot the Controller
-    {:ok, ctrl} = Controller.start_link(
-      vault: vault, motor: motor, sensor: sensor, door: door, name: nil
-    )
+    {:ok, ctrl} =
+      Controller.start_link(
+        vault: vault,
+        motor: motor,
+        sensor: sensor,
+        door: door,
+        name: nil
+      )
 
     # 4. Verification (State-Based)
     # Give it a millisecond for handle_continue to finish
-    _ = Controller.get_state(ctrl) 
+    _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
     assert state.status == :normal
     assert state.current_floor == 0
-    
+
     # Motor should still be stopped
     assert Motor.get_state(motor).status == :stopped
   end
@@ -47,13 +52,18 @@ defmodule Elevator.HomingTest do
     sensor = start_supervised!({Sensor, [vault: nil, current_floor: 1, name: nil]})
     door = start_supervised!({Door, [name: nil]})
 
-    {:ok, ctrl} = Controller.start_link(
-      vault: vault, motor: motor, sensor: sensor, door: door, name: nil
-    )
+    {:ok, ctrl} =
+      Controller.start_link(
+        vault: vault,
+        motor: motor,
+        sensor: sensor,
+        door: door,
+        name: nil
+      )
 
     # 3. Verification
     _ = Controller.get_state(ctrl)
-    
+
     # Controller should be :rehoming
     state = Controller.get_state(ctrl)
     assert state.status == :rehoming
@@ -67,14 +77,20 @@ defmodule Elevator.HomingTest do
 
   test "Smart Homing: Cold Start (Vault empty) results in Physical Homing", %{vault: vault} do
     # 1. Vault is empty (never used)
-    
+
     motor = start_supervised!({Motor, [name: nil]})
-    sensor = start_supervised!({Sensor, [vault: vault, name: nil]}) # Defaults to F1
+    # Defaults to F1
+    sensor = start_supervised!({Sensor, [vault: vault, name: nil]})
     door = start_supervised!({Door, [name: nil]})
 
-    {:ok, ctrl} = Controller.start_link(
-      vault: vault, motor: motor, sensor: sensor, door: door, name: nil
-    )
+    {:ok, ctrl} =
+      Controller.start_link(
+        vault: vault,
+        motor: motor,
+        sensor: sensor,
+        door: door,
+        name: nil
+      )
 
     # 2. Verification
     _ = Controller.get_state(ctrl)
@@ -83,7 +99,7 @@ defmodule Elevator.HomingTest do
 
     # 3. Simulating arrival at Floor 0 to finish homing
     send(ctrl, {:floor_arrival, 0})
-    
+
     # Give it a tiny bit to process the message
     _ = Controller.get_state(ctrl)
 
@@ -100,16 +116,21 @@ defmodule Elevator.HomingTest do
     sensor = start_supervised!({Sensor, [vault: vault, current_floor: nil, name: nil]})
     door = start_supervised!({Door, [name: nil]})
 
-    {:ok, ctrl} = Controller.start_link(
-      vault: vault, motor: motor, sensor: sensor, door: door, name: nil
-    )
+    {:ok, ctrl} =
+      Controller.start_link(
+        vault: vault,
+        motor: motor,
+        sensor: sensor,
+        door: door,
+        name: nil
+      )
 
     _ = Controller.get_state(ctrl)
     assert Controller.get_state(ctrl).status == :rehoming
 
     # 2. Send a request
     Controller.request_floor(ctrl, :car, 2)
-    
+
     # 3. Verify it was ignored
     state = Controller.get_state(ctrl)
     assert state.requests == []

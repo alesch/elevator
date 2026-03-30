@@ -6,7 +6,8 @@ defmodule Elevator.Hardware.Door do
   use GenServer
   require Logger
 
-  @op_ms 1000 # 1 second for opening/closing
+  # 1 second for opening/closing
+  @op_ms 1000
 
   # ---------------------------------------------------------------------------
   # ## Public API
@@ -69,7 +70,7 @@ defmodule Elevator.Hardware.Door do
   @impl true
   @spec handle_cast(:open, map()) :: {:noreply, map()}
   def handle_cast(:open, state) do
-    state = 
+    state =
       state
       |> cancel_timer()
       |> start_timer(:fully_opened, @op_ms)
@@ -81,7 +82,7 @@ defmodule Elevator.Hardware.Door do
   @impl true
   @spec handle_cast(:close, map()) :: {:noreply, map()}
   def handle_cast(:close, state) do
-    state = 
+    state =
       state
       |> cancel_timer()
       |> start_timer(:fully_closed, @op_ms)
@@ -95,7 +96,7 @@ defmodule Elevator.Hardware.Door do
   def handle_cast(:door_obstructed, state) do
     :telemetry.execute([:elevator, :hardware, :safety, :obstruction], %{})
 
-    state = 
+    state =
       state
       |> cancel_timer()
       |> update_status(:obstructed)
@@ -145,6 +146,7 @@ defmodule Elevator.Hardware.Door do
 
   @spec cancel_timer(map()) :: map()
   defp cancel_timer(%{timer: nil} = state), do: state
+
   defp cancel_timer(%{timer: ref} = state) do
     Process.cancel_timer(ref)
     %{state | timer: nil}

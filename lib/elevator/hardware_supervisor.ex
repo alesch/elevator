@@ -27,10 +27,11 @@ defmodule Elevator.HardwareSupervisor do
       {Elevator.Hardware.Door, [name: Elevator.Hardware.Door]},
 
       # 4. The Orchestrator (The Brain)
-      {Elevator.Controller, [
-        current_floor: 1, 
-        name: Elevator.Controller
-      ]}
+      {Elevator.Controller,
+       [
+         current_floor: 1,
+         name: Elevator.Controller
+       ]}
     ]
 
     Supervisor.init(children, strategy: :one_for_all)

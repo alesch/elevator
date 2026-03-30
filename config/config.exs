@@ -18,8 +18,7 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
-config :elevator, 
+config :elevator,
   hardware_stack_enabled: true
 
 import_config "#{config_env()}.exs"
-

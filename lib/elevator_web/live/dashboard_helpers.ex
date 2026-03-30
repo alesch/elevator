@@ -15,9 +15,14 @@ defmodule ElevatorWeb.DashboardHelpers do
 
   @doc "Determines the industrial color code for a given component status."
   @spec state_color(atom()) :: String.t()
-  def state_color(state) when state in [:idle, :stopped, :clear, :open, :normal], do: "#2ecc71" # Green
-  def state_color(state) when state in [:moving, :running, :tracking, :closed, :rehoming], do: "#3498db" # Blue
-  def state_color(_), do: "#f39c12" # Yellow/Orange
+  # Green
+  def state_color(state) when state in [:idle, :stopped, :clear, :open, :normal], do: "#2ecc71"
+  # Blue
+  def state_color(state) when state in [:moving, :running, :tracking, :closed, :rehoming],
+    do: "#3498db"
+
+  # Yellow/Orange
+  def state_color(_), do: "#f39c12"
 
   @doc "Formats a status atom for display."
   @spec format_status(atom()) :: String.t()

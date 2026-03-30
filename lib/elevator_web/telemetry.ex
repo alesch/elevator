@@ -35,13 +35,16 @@ defmodule ElevatorWeb.Telemetry do
       # Hardware Metrics
       counter("elevator.hardware.pulse.count", description: "Total floor transit pulses"),
       last_value("elevator.hardware.door.state", description: "Current door binary state"),
-      
+
       # Safety Metrics
       counter("elevator.safety.overload.count", description: "Total overload events"),
-      
+
       # VM Metrics
       summary("phoenix.endpoint.stop.duration", unit: {:native, :millisecond}),
-      summary("phoenix.router_dispatch.stop.duration", tags: [:route], unit: {:native, :millisecond})
+      summary("phoenix.router_dispatch.stop.duration",
+        tags: [:route],
+        unit: {:native, :millisecond}
+      )
     ]
   end
 

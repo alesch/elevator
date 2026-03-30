@@ -18,7 +18,7 @@ defmodule Elevator.DoorTest do
 
   test "opening the door starts the opening timer", %{door: pid} do
     Door.open(pid)
-    
+
     state = Door.get_state(pid)
     assert state.status == :opening
     assert is_reference(state.timer)
@@ -32,24 +32,25 @@ defmodule Elevator.DoorTest do
     Door.open(pid)
     # Wait for casts to process
     _ = Door.get_state(pid)
-    
+
     Door.close(pid)
     assert Door.get_state(pid).status == :closing
-    
+
     # Simulate an obstruction
     Door.obstruct(pid)
 
     state = Door.get_state(pid)
     assert state.status == :obstructed
-    assert state.timer == nil # Timer should be cancelled
-    
+    # Timer should be cancelled
+    assert state.timer == nil
+
     # Verify the Controller (the test process) was notified of the safety alarm
     assert_receive :door_obstructed
   end
 
   test "door notifies the Controller upon full opening", %{door: pid} do
     Door.open(pid)
-    
+
     # Manually trigger the transition to bypass waiting 1s
     send(pid, :fully_opened)
 

@@ -5,7 +5,7 @@ defmodule ElevatorWeb.DashboardLive do
   """
   use ElevatorWeb, :live_view
   require Logger
-  
+
   import ElevatorWeb.DashboardComponents
 
   # ---------------------------------------------------------------------------
@@ -20,10 +20,11 @@ defmodule ElevatorWeb.DashboardLive do
     end
 
     # Initial state from the real Controller (via Discovery Layer)
-    state = case Registry.lookup(Elevator.Registry, :controller) do
-      [{pid, _}] -> Elevator.Controller.get_state(pid)
-      _ -> %Elevator.State{}
-    end
+    state =
+      case Registry.lookup(Elevator.Registry, :controller) do
+        [{pid, _}] -> Elevator.Controller.get_state(pid)
+        _ -> %Elevator.State{}
+      end
 
     {:ok,
      assign(socket,
@@ -40,7 +41,8 @@ defmodule ElevatorWeb.DashboardLive do
   end
 
   @impl true
-  @spec handle_info({:elevator_state, Elevator.State.t()}, Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_info({:elevator_state, Elevator.State.t()}, Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:elevator_state, state}, socket) do
     new_log_entry = build_log_entry(state, socket.assigns)
 
@@ -57,7 +59,8 @@ defmodule ElevatorWeb.DashboardLive do
       |> update(:activity_log, fn logs ->
         case new_log_entry do
           nil -> logs
-          entry -> [entry | Enum.take(logs, 19)] # Keep last 20 (Using attribute in next refactor)
+          # Keep last 20 (Using attribute in next refactor)
+          entry -> [entry | Enum.take(logs, 19)]
         end
       end)
 
@@ -66,14 +69,16 @@ defmodule ElevatorWeb.DashboardLive do
 
   # Catch-all for unexpected industrial messages
   @impl true
-  @spec handle_info(term(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_info(term(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info(msg, socket) do
     Logger.warning("Dashboard: Unexpected info message #{inspect(msg)}")
     {:noreply, socket}
   end
 
   @impl true
-  @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) :: {:noreply, Phoenix.LiveView.Socket.t()}
+  @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_event("request_floor", %{"floor" => floor}, socket) do
     # Commands find the :controller via discovery automatically in the API
     Elevator.Controller.request_floor(:car, String.to_integer(floor))
@@ -92,7 +97,10 @@ defmodule ElevatorWeb.DashboardLive do
 
   # Catch-all for unexpected industrial events
   def handle_event(event, params, socket) do
-    Logger.warning("Dashboard: Unexpected event #{inspect(event)} with params: #{inspect(params)}")
+    Logger.warning(
+      "Dashboard: Unexpected event #{inspect(event)} with params: #{inspect(params)}"
+    )
+
     {:noreply, socket}
   end
 
@@ -195,7 +203,11 @@ defmodule ElevatorWeb.DashboardLive do
         %{actor: "🚪", time: current_time(), msg: "Doors #{Atom.to_string(new_state.door_status)}"}
 
       new_state.motor_status != old_assigns.motor_state ->
-        %{actor: "⚙️", time: current_time(), msg: "Motor #{Atom.to_string(new_state.motor_status)}"}
+        %{
+          actor: "⚙️",
+          time: current_time(),
+          msg: "Motor #{Atom.to_string(new_state.motor_status)}"
+        }
 
       true ->
         nil

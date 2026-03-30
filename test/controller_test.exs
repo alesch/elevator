@@ -10,7 +10,7 @@ defmodule Elevator.ControllerTest do
     # Start dependencies with name: nil to allow parallel isolation
     vault = start_supervised!({Vault, [name: nil]})
     sensor = start_supervised!({Sensor, [vault: vault, name: nil]})
-    
+
     # Pre-seed the Vault & Sensor to F1 so we start in :normal status for standard tests
     Vault.put_floor(vault, 1)
 
@@ -20,14 +20,15 @@ defmodule Elevator.ControllerTest do
   describe "Elevator Actor Lifecycle" do
     test "Starting a passenger elevator", %{vault: vault, sensor: sensor} do
       # Note: motor and door are self() for command capture
-      {:ok, pid} = Controller.start_link(
-        type: :passenger, 
-        motor: self(), 
-        door: self(), 
-        vault: vault, 
-        sensor: sensor, 
-        name: nil
-      )
+      {:ok, pid} =
+        Controller.start_link(
+          type: :passenger,
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
 
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
@@ -38,13 +39,14 @@ defmodule Elevator.ControllerTest do
     end
 
     test "Requesting a floor via cast (Asynchronous)", %{vault: vault, sensor: sensor} do
-      {:ok, pid} = Controller.start_link(
-        motor: self(), 
-        door: self(), 
-        vault: vault, 
-        sensor: sensor, 
-        name: nil
-      )
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
 
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
@@ -61,13 +63,14 @@ defmodule Elevator.ControllerTest do
     end
 
     test "Handling concurrent requests (Race Condition Proof)", %{vault: vault, sensor: sensor} do
-      {:ok, pid} = Controller.start_link(
-        motor: self(), 
-        door: self(), 
-        vault: vault, 
-        sensor: sensor, 
-        name: nil
-      )
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
 
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
@@ -87,14 +90,18 @@ defmodule Elevator.ControllerTest do
       assert unique_targets == [1, 2, 3, 4, 5]
     end
 
-    test "Rule 1.4: Inactivity Window (Deterministic Verification)", %{vault: vault, sensor: sensor} do
-      {:ok, pid} = Controller.start_link(
-        motor: self(), 
-        door: self(), 
-        vault: vault, 
-        sensor: sensor, 
-        name: nil
-      )
+    test "Rule 1.4: Inactivity Window (Deterministic Verification)", %{
+      vault: vault,
+      sensor: sensor
+    } do
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
 
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
@@ -102,7 +109,7 @@ defmodule Elevator.ControllerTest do
       # 1. Verify Scheduling (Intent)
       timer_ref = Controller.get_timer_ref(pid)
       assert is_reference(timer_ref)
-      
+
       # 2. Verify Logic (Action)
       send(pid, :return_to_base)
 

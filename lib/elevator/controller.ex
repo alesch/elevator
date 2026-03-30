@@ -7,7 +7,8 @@ defmodule Elevator.Controller do
   require Logger
   alias Elevator.State
 
-  @default_return_to_base_ms 300_000 # 5 minutes
+  # 5 minutes
+  @default_return_to_base_ms 300_000
 
   # ---------------------------------------------------------------------------
   # ## Public API
@@ -63,7 +64,7 @@ defmodule Elevator.Controller do
     end
 
     timer_ms = Keyword.get(opts, :timer_ms, @default_return_to_base_ms)
-    
+
     data = %{
       state: build_initial_state(opts),
       timer_ms: timer_ms,
@@ -101,7 +102,7 @@ defmodule Elevator.Controller do
         # Manual move :down at :slow speed
         lookup_hardware(data, :motor, &Elevator.Hardware.Motor.move(&1, :down, speed: :slow))
         lookup_hardware(data, :door, &Elevator.Hardware.Door.close/1)
-        
+
         broadcast_state(new_state)
         {:noreply, %{data | state: new_state}}
     end
