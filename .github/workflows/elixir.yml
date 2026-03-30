@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-22.04
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+      MIX_ENV: test
 
     steps:
     - uses: actions/checkout@v4
@@ -33,7 +34,9 @@ jobs:
     - name: Restore dependencies cache
       uses: actions/cache@v4
       with:
-        path: deps
+        path: |
+          deps
+          _build
         key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
         restore-keys: ${{ runner.os }}-mix-
         
