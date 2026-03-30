@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title>
+      Elevator GUI
+    </.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+    <script defer phx-track-static type="text/javascript" src="https://cdn.jsdelivr.net/npm/phoenix_live_view@0.20.2/priv/static/phoenix_live_view.min.js"></script>
+    <script defer phx-track-static type="text/javascript" src="https://cdn.jsdelivr.net/npm/phoenix@1.7.10/priv/static/phoenix.min.js"></script>
+    <script>
+      window.addEventListener("load", () => {
+        let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+        let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+        liveSocket.connect()
+      })
+    </script>
+  </head>
+  <body>
+    <%= @inner_content %>
+  </body>
+</html>

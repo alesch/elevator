@@ -3,7 +3,7 @@ defmodule Elevator.SensorTest do
   Proves the Nervous System: Floor detection and Notification.
   """
   use ExUnit.Case, async: false
-  alias Elevator.Sensor
+  alias Elevator.Hardware.Sensor
 
   setup do
     # Start the Vault first to satisfy the dependency in Sensor.init

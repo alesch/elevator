@@ -3,7 +3,8 @@ defmodule Elevator.HomingTest do
   Verifies the Smart Homing logic using Real Components (No manual mocks).
   """
   use ExUnit.Case, async: false
-  alias Elevator.{Vault, Controller, Motor, Sensor, Door}
+  alias Elevator.{Vault, Controller}
+  alias Elevator.Hardware.{Motor, Sensor, Door}
 
   setup do
     # Start the Vault first with a unique name
@@ -92,6 +93,7 @@ defmodule Elevator.HomingTest do
     assert Vault.get_floor(vault) == 0
   end
 
+  @tag :capture_log
   test "Smart Homing: Requests are ignored during rehoming", %{vault: vault} do
     # 1. Force rehoming status
     motor = start_supervised!({Motor, [name: nil]})

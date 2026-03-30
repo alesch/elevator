@@ -3,7 +3,7 @@ defmodule Elevator.DoorTest do
   Proves the Safety Machine: Opening, Closing, and Obstruction.
   """
   use ExUnit.Case, async: true
-  alias Elevator.Door
+  alias Elevator.Hardware.Door
 
   setup do
     # Inject self() as the controller to catch notifications locally

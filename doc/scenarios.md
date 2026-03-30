@@ -25,7 +25,7 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 2. Safety Interlocks & Sensors
 
-- [ ] **Scenario 2.1: Door Obstruction**
+- [x] **Scenario 2.1: Door Obstruction**
   - **Given**: Doors are `:closing`.
   - **When**: Receive `:door_sensor_blocked`.
   - **Then**: Immediately transition `door_status` back to `:opening`.
@@ -100,7 +100,7 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 5. Homing & Crash Recovery
 
-- [ ] **Scenario 5.1: Cold Start (No Persistence)**
+- [x] **Scenario 5.1: Cold Start (No Persistence)**
   - **Given**: `Elevator.Vault` is empty.
   - **When**: System starts.
   - **Then**:
@@ -108,14 +108,14 @@ This document defines the testable reality of our simulation. We use these scena
     - `head` is `:down`, `speed` is `:slow`.
     - `current_floor` is `:unknown`.
 
-- [ ] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
+- [x] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
   - **Given**: `Elevator.Vault` stores `Floor 3` AND `Elevator.Sensor` is currently at `Floor 3`.
   - **When**: System reboots (e.g., after a crash).
   - **Then**:
     - `status` transitions `:rehoming` -> `:normal` immediately.
     - No motor movement is triggered.
 
-- [ ] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
+- [x] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
   - **Given**: `Elevator.Vault` says `Floor 3` but `Elevator.Sensor` is `:unknown` (or mismatches).
   - **When**: System reboots.
   - **Then**:
@@ -123,7 +123,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `head` is `:down`, `speed` is `:slow`.
     - Move until physical sensor confirms arrival.
 
-- [ ] **Scenario 5.3: Homing Completion**
+- [x] **Scenario 5.4: Homing Completion**
   - **Given**: `status` is `:rehoming`.
   - **When**: Controller receives `{:floor_arrival, 2}`.
   - **Then**:

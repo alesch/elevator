@@ -3,7 +3,7 @@ defmodule Elevator.MotorTest do
   Proves the 2-second transit physics of the Motor actor.
   """
   use ExUnit.Case, async: true
-  alias Elevator.Motor
+  alias Elevator.Hardware.Motor
 
   setup do
     # Inject self() as the sensor to catch pulses locally

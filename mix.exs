@@ -13,11 +13,21 @@ defmodule Elevator.MixProject do
 
   def application do
     [
-      extra_applications: [:logger]
+      extra_applications: [:logger],
+      mod: {Elevator.Application, []}
     ]
   end
 
   defp deps do
-    []
+    [
+      {:phoenix, "~> 1.7.10"},
+      {:phoenix_live_view, "~> 0.20.2"},
+      {:phoenix_live_reload, "~> 1.2", only: :dev},
+      {:phoenix_pubsub, "~> 2.1"},
+      {:telemetry_metrics, "~> 0.6"},
+      {:telemetry_poller, "~> 1.0"},
+      {:jason, "~> 1.4"},
+      {:bandit, "~> 1.1"}
+    ]
   end
 end

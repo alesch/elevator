@@ -3,7 +3,8 @@ defmodule Elevator.ControllerTest do
   Functional Tests for the Elevator Controller Architecture.
   """
   use ExUnit.Case, async: false
-  alias Elevator.{Controller, Vault, Sensor, Motor}
+  alias Elevator.{Controller, Vault}
+  alias Elevator.Hardware.Sensor
 
   setup do
     # Start dependencies with name: nil to allow parallel isolation
