@@ -24,8 +24,8 @@ defmodule Elevator.Sensor do
     # 1. Recover vault dependency
     vault = Keyword.get(opts, :vault, Elevator.Vault)
 
-    # 2. Try to recover floor from the Vault
-    vault_floor = Elevator.Vault.get_floor(vault)
+    # 2. Try to recover floor from the Vault (if available)
+    vault_floor = if vault, do: Elevator.Vault.get_floor(vault), else: nil
 
     # 3. Handle state
     floor = vault_floor || Keyword.get(opts, :current_floor, 1)
