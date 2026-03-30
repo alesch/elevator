@@ -21,10 +21,16 @@ defmodule Elevator.Sensor do
   # --- Callbacks ---
 
   def init(opts) do
-    # Start at the floor specified in opts, or defaults to 1.
-    floor = Keyword.get(opts, :current_floor, 1)
+    # 1. Recover vault dependency
+    vault = Keyword.get(opts, :vault, Elevator.Vault)
+
+    # 2. Try to recover floor from the Vault
+    vault_floor = Elevator.Vault.get_floor(vault)
+
+    # 3. Handle state
+    floor = vault_floor || Keyword.get(opts, :current_floor, 1)
     controller = Keyword.get(opts, :controller)
-    {:ok, %{current_floor: floor, controller: controller}}
+    {:ok, %{current_floor: floor, controller: controller, vault: vault}}
   end
 
   def handle_call(:get_floor, _from, %{current_floor: floor} = state) do

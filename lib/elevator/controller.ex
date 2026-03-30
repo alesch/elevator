@@ -4,6 +4,7 @@ defmodule Elevator.Controller do
   Handles concurrency, state persistence, and timer-based behavior.
   """
   use GenServer
+  require Logger
   alias Elevator.State
 
   @default_return_to_base_ms 300_000 # 5 minutes
@@ -42,16 +43,26 @@ defmodule Elevator.Controller do
     timer_ms = Keyword.get(opts, :timer_ms, @default_return_to_base_ms)
     motor = Keyword.get(opts, :motor)
     door = Keyword.get(opts, :door)
+    sensor = Keyword.get(opts, :sensor)
+    vault = Keyword.get(opts, :vault, Elevator.Vault)
 
     data = %{
       state: build_initial_state(opts),
       timer_ms: timer_ms,
       timer: schedule_return_to_base(timer_ms),
       motor: motor,
-      door: door
+      door: door,
+      sensor: sensor,
+      vault: vault
     }
 
-    {:ok, data}
+    {:ok, data, {:continue, :homing_check}}
+  end
+
+  @impl true
+  def handle_cast({:request_floor, source, floor}, %{state: %{status: :rehoming}} = data) do
+    Logger.warning("Ignoring request #{inspect(source)} to floor #{floor} during REHOMING")
+    {:noreply, data}
   end
 
   @impl true
@@ -66,9 +77,36 @@ defmodule Elevator.Controller do
   end
 
   @impl true
+  def handle_continue(:homing_check, data) do
+    vault_floor = Elevator.Vault.get_floor(data.vault)
+    sensor_floor = Elevator.Sensor.get_floor(data.sensor)
+
+    cond do
+      # CASE 1: Perfect agreement (Zero-move recovery)
+      vault_floor == sensor_floor and vault_floor != nil ->
+        Logger.info("Controller: Standard Recovery at Floor #{vault_floor}")
+        {:noreply, %{data | state: %{data.state | current_floor: vault_floor, status: :normal}}}
+
+      # CASE 2: Ambiguity or Cold Start (Perform physical homing)
+      true ->
+        Logger.info("Controller: Entering REHOMING mode. Moving :down at :slow speed.")
+        new_state = %{data.state | status: :rehoming}
+        # Manual move :down at :slow speed
+        Elevator.Motor.move(data.motor, :down, speed: :slow)
+        Elevator.Door.close(data.door)
+        {:noreply, %{data | state: new_state}}
+    end
+  end
+
+  @impl true
   def handle_info({:floor_arrival, floor}, data) do
-    # Update our functional state with the physical position
-    new_state = %{data.state | current_floor: floor}
+    # 1. Persist the arrival to the Vault
+    Elevator.Vault.put_floor(data.vault, floor)
+
+    # 2. Update functional state
+    # If we were rehoming, we are now NORMAL
+    new_status = if data.state.status == :rehoming, do: :normal, else: data.state.status
+    new_state = %{data.state | current_floor: floor, status: new_status}
 
     new_data =
       %{data | state: new_state}

@@ -21,12 +21,12 @@ defmodule Elevator.State do
             weight_limit: 1000
 
   @type t :: %__MODULE__{
-          current_floor: integer(),
+          current_floor: integer() | :unknown,
           heading: :up | :down | :idle,
           door_status: :open | :closed | :opening | :closing,
           requests: list({atom(), integer()}),
           last_activity_at: integer(),
-          status: :normal | :overload | :emergency,
+          status: :normal | :overload | :emergency | :rehoming,
           door_sensor: :clear | :blocked,
           motor_status: :running | :stopping | :stopped,
           weight: integer(),

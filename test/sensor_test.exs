@@ -2,14 +2,17 @@ defmodule Elevator.SensorTest do
   @moduledoc """
   Proves the Nervous System: Floor detection and Notification.
   """
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   alias Elevator.Sensor
 
   setup do
+    # Start the Vault first to satisfy the dependency in Sensor.init
+    # We use name: nil to avoid name collisions between parallel tests.
+    vault = start_supervised!({Elevator.Vault, [name: nil]})
+
     # Inject self() as the controller to catch notifications locally
-    # Use name: nil to prevent global registration and avoid collisions in parallel tests
-    pid = start_supervised!({Sensor, [current_floor: 1, controller: self(), name: nil]})
-    %{sensor: pid}
+    pid = start_supervised!({Sensor, [current_floor: 1, vault: vault, controller: self(), name: nil]})
+    %{sensor: pid, vault: vault}
   end
 
   test "starts at the specified floor", %{sensor: pid} do
@@ -26,10 +29,10 @@ defmodule Elevator.SensorTest do
     assert Sensor.get_floor(pid) == 2
   end
 
-  test "motor pulse DOWN decrements the floor", %{sensor: _pid} do
+  test "motor pulse DOWN decrements the floor", %{sensor: _pid, vault: vault} do
     # Stop the default sensor from setup to start a new one with F3
     stop_supervised!(Sensor)
-    pid = start_supervised!({Sensor, [current_floor: 3, controller: self(), name: nil]})
+    pid = start_supervised!({Sensor, [current_floor: 3, vault: vault, controller: self(), name: nil]})
 
     send(pid, {:motor_pulse, :down})
 

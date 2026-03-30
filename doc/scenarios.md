@@ -62,7 +62,7 @@ This document defines the testable reality of our simulation. We use these scena
 - [x] **Scenario 4.2: Reverse or Retire**
   - **Given**: Moving `:up` from 0 to 3, with no more requests above.
   - **When**: All requests at 3 are satisfied.
-  - **Then**: 
+  - **Then**:
     - If requests exist below -> Change `heading` to `:down`.
     - If NO requests exist anywhere -> Change `heading` to `:idle`.
 
@@ -98,9 +98,45 @@ This document defines the testable reality of our simulation. We use these scena
 
 ---
 
+## 5. Homing & Crash Recovery
+
+- [ ] **Scenario 5.1: Cold Start (No Persistence)**
+  - **Given**: `Elevator.Vault` is empty.
+  - **When**: System starts.
+  - **Then**:
+    - `status` is `:rehoming`.
+    - `head` is `:down`, `speed` is `:slow`.
+    - `current_floor` is `:unknown`.
+
+- [ ] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
+  - **Given**: `Elevator.Vault` stores `Floor 3` AND `Elevator.Sensor` is currently at `Floor 3`.
+  - **When**: System reboots (e.g., after a crash).
+  - **Then**:
+    - `status` transitions `:rehoming` -> `:normal` immediately.
+    - No motor movement is triggered.
+
+- [ ] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
+  - **Given**: `Elevator.Vault` says `Floor 3` but `Elevator.Sensor` is `:unknown` (or mismatches).
+  - **When**: System reboots.
+  - **Then**:
+    - `status` is `:rehoming`.
+    - `head` is `:down`, `speed` is `:slow`.
+    - Move until physical sensor confirms arrival.
+
+- [ ] **Scenario 5.3: Homing Completion**
+  - **Given**: `status` is `:rehoming`.
+  - **When**: Controller receives `{:floor_arrival, 2}`.
+  - **Then**:
+    - `status` becomes `:normal`.
+    - `motor_status` becomes `:stopping`.
+    - `Vault` is updated with `Floor 2`.
+    - Accept new requests.
+
+---
+
 ## Technical State (The State Machine)
 
 - **Door States**: `:open`, `:closing`, `:closed`, `:opening`, `:blocked`.
 - **Motor Status**: `:running`, `:stopping`, `:stopped`.
-- **Elevator Status**: `:normal`, `:overload`, `:emergency`.
+- **Elevator Status**: `:normal`, `:overload`, `:emergency`, `:rehoming`.
 - **Request Format**: `{:hall, floor}` (External), `{:car, floor}` (Internal).

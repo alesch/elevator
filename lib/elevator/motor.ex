@@ -15,8 +15,8 @@ defmodule Elevator.Motor do
   end
 
   @doc "Starts pulling cables in the specified direction."
-  def move(pid \\ __MODULE__, direction) when direction in [:up, :down] do
-    GenServer.cast(pid, {:move, direction})
+  def move(pid \\ __MODULE__, direction, opts \\ []) when direction in [:up, :down] do
+    GenServer.cast(pid, {:move, direction, opts})
   end
 
   @doc "Stops all motion immediately."
@@ -33,14 +33,16 @@ defmodule Elevator.Motor do
 
   def init(opts) do
     sensor = Keyword.get(opts, :sensor)
-    {:ok, %{status: :stopped, direction: nil, timer: nil, sensor: sensor}}
+    {:ok, %{status: :stopped, direction: nil, speed: :normal, timer: nil, sensor: sensor}}
   end
 
-  def handle_cast({:move, direction}, state) do
+  def handle_cast({:move, direction, opts}, state) do
+    speed = Keyword.get(opts, :speed, :normal)
+
     state = state
             |> cancel_timer()
-            |> start_transit_timer(direction)
-            |> update_motion_state(:moving, direction)
+            |> update_motion_state(:moving, direction, speed)
+            |> start_transit_timer()
 
     {:noreply, state}
   end
@@ -48,7 +50,7 @@ defmodule Elevator.Motor do
   def handle_cast(:stop_now, state) do
     state = state
             |> cancel_timer()
-            |> update_motion_state(:stopped, nil)
+            |> update_motion_state(:stopped, nil, :normal)
 
     {:noreply, state}
   end
@@ -57,23 +59,26 @@ defmodule Elevator.Motor do
     {:reply, state, state}
   end
 
-  def handle_info({:pulse, direction}, state) do
+  def handle_info({:pulse, _direction}, state) do
     # Notify the Sensor (Nervous System) that a physical unit has been traversed
-    notify_sensor(state, direction)
+    notify_sensor(state, state.direction)
 
-    # Schedule the next pulse (Keep spinning)
-    new_state = start_transit_timer(state, direction)
-    {:noreply, new_state}
+    # Schedule the next pulse (Keep spinning at current speed)
+    {:noreply, start_transit_timer(state)}
   end
 
   # --- Private Helpers ---
 
-  defp update_motion_state(state, status, direction) do
-    %{state | status: status, direction: direction}
+  defp update_motion_state(state, status, direction, speed) do
+    %{state | status: status, direction: direction, speed: speed}
   end
 
-  defp start_transit_timer(state, direction) do
-    timer = Process.send_after(self(), {:pulse, direction}, @transit_ms)
+  defp start_transit_timer(%{direction: direction, speed: speed} = state) do
+    ms = case speed do
+      :slow -> 5000
+      _ -> @transit_ms
+    end
+    timer = Process.send_after(self(), {:pulse, direction}, ms)
     %{state | timer: timer}
   end
 

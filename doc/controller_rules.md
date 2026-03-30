@@ -57,11 +57,33 @@ This document captures the "Executive Summary" of our current ELIXIR implementat
 
 ---
 
+---
+
+## 5. State Persistence & Re-homing
+
+* **Rule 5.1: State Persistence (Continuous Backup)**
+  * Every time a `{:floor_arrival, floor}` event is confirmed by the Sensor, the Controller must asynchronously update the `Elevator.Vault` with the current floor.
+  * This ensures that in the event of a process crash and `:one_for_all` restart, the system knows where the elevator was last seen.
+
+* **Rule 5.2: The Homing Procedure (Power-On Safety)**
+  * Upon startup (boot or crash recovery), the elevator enters `status: :rehoming`.
+  * **Homing Strategy (Smart Homing)**:
+    * **Step 1: Detection**: Compare `Vault.get_floor()` with `Sensor.get_floor()`.
+    * **Step 2: Decision**:
+      * If they match and indicate a valid floor -> Transition directly to `status: :normal` (Zero-move recovery).
+      * If they mismatch or indicate `:unknown` -> Move `:down` at **SLOW** speed until a floor sensor is triggered.
+  * **Request Blocking**: While in `:rehoming` status, the Controller MUST ignore all `{:hall, floor}` and `{:car, floor}` requests.
+  * **Homing Completion**: Once position is verified (either via Step 1 or via a physical arrival), transition to `:normal` and update the `Vault`.
+
+---
+
 ## Technical State (State Machine Mapping)
 
-| Current Motor | Event | New Motor | Door |
-| :--- | :--- | :--- | :--- |
-| `:stopped` | `{:hall, 5}` | `:running` | `:closed` |
-| `:running` | `Arrival(F5)` | `:stopping` | `:closed` |
-| `:stopping` | `:motor_stopped` | `:stopped` | `:opening` |
-| `:stopped` | `:door_open_done` | `:stopped` | `:open` |
+| Current Motor | Event | New Motor | Door | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| `:stopped` | `{:hall, 5}` | `:running` | `:closed` | `:normal` |
+| `:running` | `Arrival(F5)` | `:stopping` | `:closed` | `:normal` |
+| `:stopping` | `:motor_stopped` | `:stopped` | `:opening` | `:normal` |
+| `:stopped` | `:door_open_done` | `:stopped` | `:open` | `:normal` |
+| **`N/A`** | **`Init / Reboot`** | **`:running`** | **`:closed`** | **`:rehoming`** |
+| `:running` | `Arrival(ANY)` | `:stopping` | `:closed` | `:rehoming` |

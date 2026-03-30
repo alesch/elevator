@@ -12,7 +12,18 @@ defmodule Elevator.Supervisor do
 
   @impl true
   def init(_init_arg) do
+    # Top-level: One For One
+    # If the Hardware stack dies, we don't reboot the Vault.
     children = [
+      {Elevator.Vault, [name: Vault]},
+      {Supervisor, [strategy: :one_for_all, name: HardwareStack, children: hardware_children()]}
+    ]
+
+    Supervisor.init(children, strategy: :one_for_one)
+  end
+
+  defp hardware_children do
+    [
       # The Physical Muscle (Motor needs to know the Sensor)
       {Motor, [sensor: Sensor, name: Motor]},
 
@@ -25,8 +36,5 @@ defmodule Elevator.Supervisor do
       # The Orchestrator (The Brain - needs to know Motor and Door)
       {Controller, [current_floor: 1, name: Controller, motor: Motor, door: Door]}
     ]
-
-    # :one_for_all means if any system crashes, we reboot the entire building.
-    Supervisor.init(children, strategy: :one_for_all)
   end
 end
