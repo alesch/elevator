@@ -39,15 +39,28 @@ jobs:
           _build
         key: ${{ runner.os }}-mix-${{ hashFiles('**/mix.lock') }}
         restore-keys: ${{ runner.os }}-mix-
+
+    - name: Cache Dialyzer PLT
+      uses: actions/cache@v4
+      with:
+        path: priv/plts
+        key: ${{ runner.os }}-dialyzer-${{ hashFiles('**/mix.lock') }}
+        restore-keys: ${{ runner.os }}-dialyzer-
         
     - name: Install dependencies
       run: mix deps.get
       
     - name: Check Formatting
       run: mix format --check-formatted
-      
+
+    - name: Run Credo (Code Style)
+      run: mix credo --strict
+
     - name: Compile (Strict)
       run: mix compile --warnings-as-errors
-      
+
+    - name: Run Dialyzer (Static Analysis)
+      run: mix dialyzer --plt
+
     - name: Run tests
       run: mix test

@@ -119,12 +119,37 @@ defmodule Elevator.State do
   # ## Private Internal Logic
   # ---------------------------------------------------------------------------
 
+  @doc "Updates the heading based on current floor and requests."
   @spec update_heading(t()) :: t()
-  defp update_heading(state) do
+  def update_heading(state) do
     cond do
       any_requests_above?(state) -> %{state | heading: :up}
       any_requests_below?(state) -> %{state | heading: :down}
       true -> %{state | heading: :idle}
+    end
+  end
+
+  @doc "Processes a floor arrival with physical safety checks (Stop/Overshoot)."
+  @spec process_arrival(t(), integer()) :: t()
+  def process_arrival(state, floor) do
+    # 1. Update floor in state
+    state = %{state | current_floor: floor}
+
+    # 2. Check for mandatory safety stops
+    if should_stop_at?(state, floor) or overshooting?(state) do
+      %{state | heading: :idle}
+    else
+      # Passing through: Maintain current heading
+      state
+    end
+  end
+
+  @spec overshooting?(t()) :: boolean()
+  defp overshooting?(state) do
+    cond do
+      state.heading == :up and not any_requests_above?(state) -> true
+      state.heading == :down and not any_requests_below?(state) -> true
+      true -> false
     end
   end
 

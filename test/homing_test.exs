@@ -3,8 +3,8 @@ defmodule Elevator.HomingTest do
   Verifies the Smart Homing logic using Real Components (No manual mocks).
   """
   use ExUnit.Case, async: false
-  alias Elevator.{Vault, Controller}
-  alias Elevator.Hardware.{Motor, Sensor, Door}
+  alias Elevator.{Controller, Vault}
+  alias Elevator.Hardware.{Door, Motor, Sensor}
 
   setup do
     # Start the Vault first with a unique name

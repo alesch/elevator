@@ -6,6 +6,7 @@ defmodule Elevator.Controller do
   use GenServer
   require Logger
   alias Elevator.State
+  alias Elevator.Hardware
 
   # 5 minutes
   @default_return_to_base_ms 300_000
@@ -84,27 +85,25 @@ defmodule Elevator.Controller do
   @spec handle_continue(:homing_check, map()) :: {:noreply, map()}
   def handle_continue(:homing_check, data) do
     vault_floor = lookup_hardware(data, :vault, &Elevator.Vault.get_floor/1)
-    sensor_floor = lookup_hardware(data, :sensor, &Elevator.Hardware.Sensor.get_floor/1)
+    sensor_floor = lookup_hardware(data, :sensor, &Hardware.Sensor.get_floor/1)
 
-    cond do
+    if vault_floor == sensor_floor and vault_floor != nil do
       # CASE 1: Perfect agreement (Zero-move recovery)
-      vault_floor == sensor_floor and vault_floor != nil ->
-        Logger.info("Controller: Standard Recovery at Floor #{vault_floor}")
-        new_state = %{data.state | current_floor: vault_floor, status: :normal}
-        new_data = %{data | state: new_state}
-        broadcast_state(new_state)
-        {:noreply, new_data}
-
+      Logger.info("Controller: Standard Recovery at Floor #{vault_floor}")
+      new_state = %{data.state | current_floor: vault_floor, status: :normal}
+      new_data = %{data | state: new_state}
+      broadcast_state(new_state)
+      {:noreply, new_data}
+    else
       # CASE 2: Ambiguity or Cold Start (Perform physical homing)
-      true ->
-        Logger.info("Controller: Entering REHOMING. Moving :down at :slow speed.")
-        new_state = %{data.state | status: :rehoming}
-        # Manual move :down at :slow speed
-        lookup_hardware(data, :motor, &Elevator.Hardware.Motor.move(&1, :down, speed: :slow))
-        lookup_hardware(data, :door, &Elevator.Hardware.Door.close/1)
+      Logger.info("Controller: Entering REHOMING. Moving :down at :slow speed.")
+      new_state = %{data.state | status: :rehoming}
+      # Manual move :down at :slow speed
+      lookup_hardware(data, :motor, &Hardware.Motor.move(&1, :down, speed: :slow))
+      lookup_hardware(data, :door, &Hardware.Door.close/1)
 
-        broadcast_state(new_state)
-        {:noreply, %{data | state: new_state}}
+      broadcast_state(new_state)
+      {:noreply, %{data | state: new_state}}
     end
   end
 
@@ -129,14 +128,14 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_cast(:manual_open_door, map()) :: {:noreply, map()}
   def handle_cast(:manual_open_door, data) do
-    lookup_hardware(data, :door, &Elevator.Hardware.Door.open/1)
+    lookup_hardware(data, :door, &Hardware.Door.open/1)
     {:noreply, data}
   end
 
   @impl true
   @spec handle_cast(:manual_close_door, map()) :: {:noreply, map()}
   def handle_cast(:manual_close_door, data) do
-    lookup_hardware(data, :door, &Elevator.Hardware.Door.close/1)
+    lookup_hardware(data, :door, &Hardware.Door.close/1)
     {:noreply, data}
   end
 
@@ -148,7 +147,9 @@ defmodule Elevator.Controller do
 
     # 2. Update functional state
     new_status = if data.state.status == :rehoming, do: :normal, else: data.state.status
-    new_state = %{data.state | current_floor: floor, status: new_status}
+    new_state = 
+      %{data.state | status: new_status}
+      |> Elevator.State.process_arrival(floor)
 
     new_data =
       %{data | state: new_state}
@@ -257,12 +258,12 @@ defmodule Elevator.Controller do
   defp sync_physical_limbs(data) do
     case data.state.heading do
       :idle ->
-        lookup_hardware(data, :motor, &Elevator.Hardware.Motor.stop/1)
-        lookup_hardware(data, :door, &Elevator.Hardware.Door.open/1)
+        lookup_hardware(data, :motor, &Hardware.Motor.stop/1)
+        lookup_hardware(data, :door, &Hardware.Door.open/1)
 
       direction ->
-        lookup_hardware(data, :motor, &Elevator.Hardware.Motor.move(&1, direction))
-        lookup_hardware(data, :door, &Elevator.Hardware.Door.close/1)
+        lookup_hardware(data, :motor, &Hardware.Motor.move(&1, direction))
+        lookup_hardware(data, :door, &Hardware.Door.close/1)
     end
 
     data

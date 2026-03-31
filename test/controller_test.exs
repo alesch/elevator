@@ -117,5 +117,55 @@ defmodule Elevator.ControllerTest do
       state = Controller.get_state(pid)
       assert {:hall, 1} in state.requests
     end
+
+    test "Arrival at target floor stops the motor", %{vault: vault, sensor: sensor} do
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
+
+      _ = Controller.get_state(pid)
+
+      # 1. Request Floor 3
+      Controller.request_floor(pid, :car, 3)
+      assert_receive {:"$gen_cast", {:move, :up, []}}
+
+      # 2. Simulate arrival at Floor 3
+      send(pid, {:floor_arrival, 3})
+
+      # 3. Assert motor received stop message
+      assert_receive {:"$gen_cast", :stop_now}
+      assert_receive {:"$gen_cast", :open} # Door should open
+    end
+
+    test "Overshoot safety: passing the target floor stops the motor", %{
+      vault: vault,
+      sensor: sensor
+    } do
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
+
+      _ = Controller.get_state(pid)
+
+      # 1. Request Floor 3
+      Controller.request_floor(pid, :car, 3)
+      assert_receive {:"$gen_cast", {:move, :up, []}}
+
+      # 2. Simulate overshooting to Floor 4
+      send(pid, {:floor_arrival, 4})
+
+      # 3. Assert safety stop
+      assert_receive {:"$gen_cast", :stop_now}
+    end
   end
 end
