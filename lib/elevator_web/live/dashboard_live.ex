@@ -7,6 +7,7 @@ defmodule ElevatorWeb.DashboardLive do
   require Logger
 
   import ElevatorWeb.DashboardComponents
+  import ElevatorWeb.DashboardHelpers
 
   # ---------------------------------------------------------------------------
   # ## LiveView Callbacks
@@ -30,13 +31,14 @@ defmodule ElevatorWeb.DashboardLive do
     {:ok,
      assign(socket,
        current_floor: state.current_floor,
+       visual_floor: visual_floor(state.current_floor, state.motor_status, state.heading),
        is_moving: state.motor_status == :running,
        door_state: state.door_status,
        motor_state: state.motor_status,
        sensor_state: state.door_sensor,
        controller_state: state.status,
        activity_log: [
-         %{actor: "🧠", time: current_time(), msg: "LiveView Connected."}
+         %{actor: "🧠", id: 1, time: current_time(), msg: "LiveView Connected."}
        ]
      )}
   end
@@ -50,6 +52,7 @@ defmodule ElevatorWeb.DashboardLive do
      socket
      |> assign(
        current_floor: state.current_floor,
+       visual_floor: visual_floor(state.current_floor, state.motor_status, state.heading),
        is_moving: state.motor_status == :running,
        door_state: state.door_status,
        motor_state: state.motor_status,
@@ -136,7 +139,7 @@ defmodule ElevatorWeb.DashboardLive do
 
                 <!-- The Elevator Car -->
                 <.elevator_car
-                  floor={@current_floor}
+                  floor={@visual_floor}
                   door_state={@door_state}
                   slow={@controller_state == :rehoming}
                 />

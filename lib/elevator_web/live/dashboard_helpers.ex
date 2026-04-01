@@ -13,6 +13,13 @@ defmodule ElevatorWeb.DashboardHelpers do
   def floor_to_pixels(:unknown), do: 0
   def floor_to_pixels(floor) when is_integer(floor), do: floor * 50
 
+  @doc "Calculates the anticipatory visual floor for smooth synchronization."
+  @spec visual_floor(integer() | :unknown, atom(), atom()) :: integer() | :unknown
+  def visual_floor(:unknown, _, _), do: :unknown
+  def visual_floor(floor, :running, :up), do: floor + 1
+  def visual_floor(floor, :running, :down), do: floor - 1
+  def visual_floor(floor, _, _), do: floor
+
   @doc "Determines the industrial color code for a given component status."
   @spec state_color(atom()) :: String.t()
   # Green (Stable)
