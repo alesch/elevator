@@ -8,6 +8,8 @@ defmodule Elevator.MixProject do
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
+      aliases: aliases(),
+      preferred_cli_env: [ci: :test],
       dialyzer: [
         plt_local_path: "priv/plts",
         plt_core_path: "priv/plts"
@@ -34,6 +36,18 @@ defmodule Elevator.MixProject do
       {:bandit, "~> 1.1"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp aliases do
+    [
+      ci: [
+        "format --check-formatted",
+        "credo --strict",
+        "compile --warnings-as-errors",
+        "dialyzer",
+        "test"
+      ]
     ]
   end
 end

@@ -139,7 +139,7 @@ defmodule Elevator.Hardware.Motor do
   end
 
   @spec update_motion_state(map(), :moving | :stopped, :up | :down | nil, :normal | :slow) ::
-    map()
+          map()
   defp update_motion_state(state, status, direction, speed) do
     %{state | status: status, direction: direction, speed: speed}
   end

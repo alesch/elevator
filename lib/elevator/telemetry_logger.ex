@@ -1,7 +1,7 @@
 defmodule Elevator.TelemetryLogger do
   @moduledoc """
   The 'Voice' of the system.
-  Listens for standardized :telemetry events and translates them into 
+  Listens for standardized :telemetry events and translates them into
   professional, auditable console logs.
   """
   require Logger
@@ -28,7 +28,7 @@ defmodule Elevator.TelemetryLogger do
   end
 
   @doc """
-  Shorthand for iex. Starts a live 'trace' of all elevator events, 
+  Shorthand for iex. Starts a live 'trace' of all elevator events,
   printing raw metadata to STDOUT for high-fidelity debugging.
   """
   @spec trace() :: :ok
@@ -37,7 +37,7 @@ defmodule Elevator.TelemetryLogger do
       "iex-tracer",
       all_events(),
       fn name, _measurements, metadata, _config ->
-        IO.inspect(%{event: name, data: metadata}, label: "🔍")
+        Logger.debug("🔍: #{inspect(%{event: name, data: metadata})}")
       end,
       nil
     )
@@ -63,6 +63,7 @@ defmodule Elevator.TelemetryLogger do
       [:elevator, :controller, :arrival],
       [:elevator, :controller, :rehoming],
       [:elevator, :controller, :recovery],
+      [:elevator, :controller, :decision],
       [:elevator, :hardware, :motor, :move],
       [:elevator, :hardware, :motor, :stop],
       [:elevator, :hardware, :motor, :pulse],
@@ -76,34 +77,64 @@ defmodule Elevator.TelemetryLogger do
   def handle_event([:elevator, :controller, :request], _measurements, metadata, _config) do
     floor = Map.get(metadata, :floor, "???")
     source = Map.get(metadata, :source, :unknown)
-    log_and_broadcast("🧠", "Controller: [Request] Floor #{floor} from #{inspect(source)}")
+    log_and_broadcast("🧠", "Controller: Floor #{floor} from #{inspect(source)}")
   end
 
   def handle_event([:elevator, :controller, :arrival], _measurements, metadata, _config) do
     floor = Map.get(metadata, :floor, "???")
     suffix = if Map.get(metadata, :was_rehoming), do: " (Rehoming Complete)", else: ""
-    log_and_broadcast("🧠", "Controller: [Arrival] Detected at Floor #{floor}#{suffix}")
+    log_and_broadcast("🧠", "Controller: Arrived at Floor #{floor}#{suffix}")
   end
 
-  def handle_event([:elevator, :controller, :rehoming], _measurements, metadata, _config) do
-    direction = Map.get(metadata, :direction, :unknown)
-    speed = Map.get(metadata, :speed, :normal)
-    log_and_broadcast("🧠", "Controller: [Lifecycle] Entering REHOMING. Moving #{direction} at #{speed} speed.")
+  def handle_event([:elevator, :controller, :rehoming], _measurements, _metadata, _config) do
+    log_and_broadcast("🧠", "Controller: REHOMING")
   end
 
   def handle_event([:elevator, :controller, :recovery], _measurements, metadata, _config) do
     floor = Map.get(metadata, :floor, "???")
-    log_and_broadcast("🧠", "Controller: [Lifecycle] Standard Recovery at Floor #{floor}")
+    log_and_broadcast("🧠", "Controller: Recovery at Floor #{floor}")
+  end
+
+  def handle_event([:elevator, :controller, :decision], _measurements, metadata, _config) do
+    target = Map.get(metadata, :target, :unknown)
+    status = Map.get(metadata, :status, :unknown)
+    reason = Map.get(metadata, :reason)
+
+    msg =
+      case {target, status, reason} do
+        {:door, :closed, :waiting_for_stop} ->
+          "Controller: Holding Doors CLOSED (Waiting for Motor Stop)"
+
+        {:motor, :stopped, :waiting_for_door} ->
+          "Controller: Holding Motor STOPPED (Waiting for Doors to Close)"
+
+        {:motor, :stopping, _} ->
+          "Controller: Motor STOP requested"
+
+        {:motor, :running, _} ->
+          "Controller: Motor START requested"
+
+        {:door, :opening, _} ->
+          "Controller: Door OPEN requested"
+
+        {:door, :closing, _} ->
+          "Controller: Door CLOSE requested"
+
+        _ ->
+          "Controller: #{inspect(target)} -> #{inspect(status)}"
+      end
+
+    log_and_broadcast("🧠", msg)
   end
 
   def handle_event([:elevator, :hardware, :motor, :move], _measurements, metadata, _config) do
     direction = Map.get(metadata, :direction, :unknown)
     speed = Map.get(metadata, :speed, :normal)
-    log_and_broadcast("⚙️", "Motor: [Action] Moving #{direction} at #{speed} speed.")
+    log_and_broadcast("⚙️", "Motor: Moving #{direction} at #{speed} speed.")
   end
 
   def handle_event([:elevator, :hardware, :motor, :stop], _measurements, _metadata, _config) do
-    log_and_broadcast("⚙️", "Motor: [Action] Stopping Now.")
+    log_and_broadcast("⚙️", "Motor: Stopped.")
   end
 
   def handle_event([:elevator, :hardware, :motor, :pulse], _measurements, _metadata, _config) do
@@ -113,12 +144,12 @@ defmodule Elevator.TelemetryLogger do
 
   def handle_event([:elevator, :hardware, :safety, :door], _measurements, metadata, _config) do
     status = Map.get(metadata, :status, :unknown)
-    log_and_broadcast("🚪", "Door: [State Change] Transitioned to #{status}")
+    log_and_broadcast("🚪", "Door: #{status}")
   end
 
   def handle_event([:elevator, :hardware, :sensor, :arrival], _measurements, metadata, _config) do
     floor = Map.get(metadata, :floor, "???")
-    log_and_broadcast("👁️", "Sensor: [Box Arrival] Detected at Floor #{floor}")
+    log_and_broadcast("👁️", "Sensor: at Floor #{floor}")
   end
 
   def handle_event([:elevator, :vault, :update], _measurements, _metadata, _config) do
@@ -131,11 +162,16 @@ defmodule Elevator.TelemetryLogger do
     Logger.info(msg)
 
     # Broadcast to Visual Dashboard
-    Phoenix.PubSub.broadcast(Elevator.PubSub, "elevator:telemetry", {:telemetry_event, %{
-      actor: actor,
-      time: timestamp,
-      msg: msg
-    }})
+    Phoenix.PubSub.broadcast(
+      Elevator.PubSub,
+      "elevator:telemetry",
+      {:telemetry_event,
+       %{
+         actor: actor,
+         time: timestamp,
+         msg: msg
+       }}
+    )
   end
 
   defp current_time do

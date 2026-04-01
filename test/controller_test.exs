@@ -4,7 +4,7 @@ defmodule Elevator.ControllerTest do
   """
   use ExUnit.Case, async: false
   alias Elevator.{Controller, Vault}
-  alias Elevator.Hardware.Sensor
+  alias Elevator.Hardware.{Door, Sensor}
 
   setup do
     # Start dependencies with name: nil to allow parallel isolation
@@ -62,7 +62,7 @@ defmodule Elevator.ControllerTest do
 
       # Verify physical commands (With the new 3-element tuple for Motor)
       assert_receive {:"$gen_cast", {:move, :up, []}}
-      
+
       # NOTE: Door is already closed at Floor 1 startup, so no redundant command is sent.
       refute_receive {:"$gen_cast", :close}
     end
@@ -242,10 +242,10 @@ defmodule Elevator.ControllerTest do
       import ExUnit.CaptureLog
 
       # Prove hardware actors we control have warnings
-      {:ok, door} = Elevator.Hardware.Door.start_link(vault: vault, name: nil)
+      {:ok, door} = Door.start_link(vault: vault, name: nil)
 
       # Wait for init
-      _ = Elevator.Hardware.Door.get_state(door)
+      _ = Door.get_state(door)
 
       # Dispatch two identical opens
       log =

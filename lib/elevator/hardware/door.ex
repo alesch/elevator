@@ -120,14 +120,16 @@ defmodule Elevator.Hardware.Door do
   @spec handle_info(:fully_opened, map()) :: {:noreply, map()}
   def handle_info(:fully_opened, state) do
     notify_controller(state, :door_opened)
-    {:noreply, %{state | status: :open, timer: nil}}
+    new_state = state |> update_status(:open) |> Map.put(:timer, nil)
+    {:noreply, new_state}
   end
 
   @impl true
   @spec handle_info(:fully_closed, map()) :: {:noreply, map()}
   def handle_info(:fully_closed, state) do
     notify_controller(state, :door_closed)
-    {:noreply, %{state | status: :closed, timer: nil}}
+    new_state = state |> update_status(:closed) |> Map.put(:timer, nil)
+    {:noreply, new_state}
   end
 
   @impl true
