@@ -9,11 +9,16 @@ defmodule Elevator.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: aliases(),
-      preferred_cli_env: [ci: :test],
       dialyzer: [
         plt_local_path: "priv/plts",
         plt_core_path: "priv/plts"
       ]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [ci: :test]
     ]
   end
 
