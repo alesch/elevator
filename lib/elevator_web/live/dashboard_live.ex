@@ -62,7 +62,11 @@ defmodule ElevatorWeb.DashboardLive do
   @spec handle_info({:telemetry_event, map()}, Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:telemetry_event, entry}, socket) do
-    {:noreply, update(socket, :activity_log, fn logs -> [entry | Enum.take(logs, 19)] end)}
+    # Append to the end and keep the last 20 entries
+    {:noreply,
+     update(socket, :activity_log, fn logs ->
+       Enum.take(logs ++ [entry], -20)
+     end)}
   end
 
   # Catch-all for unexpected industrial messages
@@ -169,7 +173,7 @@ defmodule ElevatorWeb.DashboardLive do
         <!-- RIGHT PANEL (ACTIVITY LOG) -->
         <div class="right-panel">
           <h3 class="log-header">ACTIVITY LOG</h3>
-          <div id="log" class="activity-log">
+          <div id="log" class="activity-log" phx-hook="LogScroll">
             <%= for entry <- @activity_log do %>
               <div class="log-entry">
                 <span><%= entry.actor %></span> [<%= entry.time %>] <%= entry.msg %>

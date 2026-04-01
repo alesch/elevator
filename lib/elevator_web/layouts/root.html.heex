@@ -13,7 +13,19 @@
     <script>
       window.addEventListener("load", () => {
         let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-        let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+        let Hooks = {}
+        Hooks.LogScroll = {
+          updated() {
+            this.el.scrollTop = this.el.scrollHeight
+          },
+          mounted() {
+            this.el.scrollTop = this.el.scrollHeight
+          }
+        }
+        let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {
+          params: {_csrf_token: csrfToken},
+          hooks: Hooks
+        })
         liveSocket.connect()
       })
     </script>
