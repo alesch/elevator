@@ -11,6 +11,9 @@ defmodule Elevator.ControllerTest do
     vault = start_supervised!({Vault, [name: nil]})
     sensor = start_supervised!({Sensor, [vault: vault, name: nil]})
 
+    # Subscribe to status for real-time monitoring
+    Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
+
     # Pre-seed the Vault & Sensor to F1 so we start in :normal status for standard tests
     Vault.put_floor(vault, 1)
 
@@ -59,7 +62,9 @@ defmodule Elevator.ControllerTest do
 
       # Verify physical commands (With the new 3-element tuple for Motor)
       assert_receive {:"$gen_cast", {:move, :up, []}}
-      assert_receive {:"$gen_cast", :close}
+      
+      # NOTE: Door is already closed at Floor 1 startup, so no redundant command is sent.
+      refute_receive {:"$gen_cast", :close}
     end
 
     test "Handling concurrent requests (Race Condition Proof)", %{vault: vault, sensor: sensor} do
@@ -118,7 +123,10 @@ defmodule Elevator.ControllerTest do
       assert {:hall, 1} in state.requests
     end
 
-    test "Arrival at target floor stops the motor", %{vault: vault, sensor: sensor} do
+    test "Scenario 1.2/1.3: Arrival sequence triggers immediate intent signals", %{
+      vault: vault,
+      sensor: sensor
+    } do
       {:ok, pid} =
         Controller.start_link(
           motor: self(),
@@ -130,16 +138,37 @@ defmodule Elevator.ControllerTest do
 
       _ = Controller.get_state(pid)
 
-      # 1. Request Floor 3
+      # 1. Start moving to F3
       Controller.request_floor(pid, :car, 3)
+
+      # 1.1 First, it broadcasts we are moving
+      assert_receive {:elevator_state, %{motor_status: :running}}
+      # 1.2 Then, it dispatches hardware
       assert_receive {:"$gen_cast", {:move, :up, []}}
 
-      # 2. Simulate arrival at Floor 3
+      # 2. Simulate arrival pulse at F3
       send(pid, {:floor_arrival, 3})
 
-      # 3. Assert motor received stop message
+      # ASSERT 1: Physical stop command sent
       assert_receive {:"$gen_cast", :stop_now}
-      assert_receive {:"$gen_cast", :open} # Door should open
+
+      # ASSERT 2: Immediate :stopping intent
+      assert_receive {:elevator_state, %{motor_status: :stopping, current_floor: 3}}
+
+      # 3. Confirm motor is stopped
+      send(pid, :motor_stopped)
+
+      # ASSERT 3: Physical open command sent
+      assert_receive {:"$gen_cast", :open}
+
+      # ASSERT 4: Immediate :opening intent
+      assert_receive {:elevator_state, %{motor_status: :stopped, door_status: :opening}}
+
+      # 4. Confirm door is opened
+      send(pid, :door_opened)
+
+      # ASSERT 5: Final confirmed state
+      assert_receive {:elevator_state, %{door_status: :open}}
     end
 
     test "Overshoot safety: passing the target floor stops the motor", %{
@@ -166,6 +195,112 @@ defmodule Elevator.ControllerTest do
 
       # 3. Assert safety stop
       assert_receive {:"$gen_cast", :stop_now}
+    end
+
+    test "Scenario 1.8: Button Spamming is ignored SILENTLY", %{vault: vault, sensor: sensor} do
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
+
+      _ = Controller.get_state(pid)
+
+      # 1. First request for F3
+      # We use capture_log to ensure NO warnings are emitted
+      import ExUnit.CaptureLog
+
+      log =
+        capture_log(fn ->
+          Controller.request_floor(pid, :car, 3)
+          # Barrier for message processing
+          _ = Controller.get_state(pid)
+        end)
+
+      # Verify request was added
+      state = Controller.get_state(pid)
+      assert length(state.requests) == 1
+      assert log == ""
+
+      # 2. Mashing the same button
+      log2 =
+        capture_log(fn ->
+          Controller.request_floor(pid, :car, 3)
+          _ = Controller.get_state(pid)
+        end)
+
+      # Verify queue didn't grow and NO Log was emitted
+      state2 = Controller.get_state(pid)
+      assert length(state2.requests) == 1
+      assert log2 == ""
+    end
+
+    test "Scenario 1.7: Actor Redundancy triggers LOUD warnings (Hardware Layer)", %{vault: vault} do
+      import ExUnit.CaptureLog
+
+      # Prove hardware actors we control have warnings
+      {:ok, door} = Elevator.Hardware.Door.start_link(vault: vault, name: nil)
+
+      # Wait for init
+      _ = Elevator.Hardware.Door.get_state(door)
+
+      # Dispatch two identical opens
+      log =
+        capture_log(fn ->
+          GenServer.cast(door, :open)
+          GenServer.cast(door, :open)
+          # Give it a moment to process mailbox and log
+          Process.sleep(50)
+        end)
+
+      # Verify warning is captured for the redundant command
+      assert log =~ "Hardware: Redundant Door Open"
+    end
+
+    test "Scenario 2.4: Hardware Safety Interlock (The Golden Rule)", %{
+      vault: vault,
+      sensor: sensor
+    } do
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
+
+      _ = Controller.get_state(pid)
+
+      # 1. Start with doors OPEN (at Floor 1)
+      # We manually send :motor_stopped + :door_opened as if we just arrived
+      send(pid, :motor_stopped)
+      assert_receive {:"$gen_cast", :open}
+      send(pid, :door_opened)
+
+      assert_receive {:elevator_state, %{door_status: :open, motor_status: :stopped}}
+
+      # 2. Request Floor 3
+      Controller.request_floor(pid, :car, 3)
+
+      # ASSERT 1: Only Door Close is dispatched
+      assert_receive {:"$gen_cast", :close}
+
+      # ASSERT 2: Visual intent shows :closing but motor stays :stopped
+      assert_receive {:elevator_state, %{door_status: :closing, motor_status: :stopped}}
+
+      # ASSERT 3: Motor is NOT commanded to move yet
+      refute_receive {:"$gen_cast", {:move, :up, []}}, 100
+
+      # 3. Simulate Door reaching CLOSED state
+      send(pid, :door_closed)
+
+      # ASSERT 4: Finally, the motor is allowed to move
+      assert_receive {:"$gen_cast", {:move, :up, []}}
+      assert_receive {:elevator_state, %{motor_status: :running, door_status: :closed}}
     end
   end
 end

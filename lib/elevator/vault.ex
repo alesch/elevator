@@ -47,6 +47,7 @@ defmodule Elevator.Vault do
   @impl true
   @spec handle_cast({:put, integer() | nil}, any()) :: {:noreply, integer() | nil}
   def handle_cast({:put, floor}, _state) do
+    :telemetry.execute([:elevator, :vault, :update], %{}, %{floor: floor})
     {:noreply, floor}
   end
 

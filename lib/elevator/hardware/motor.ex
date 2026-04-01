@@ -51,10 +51,19 @@ defmodule Elevator.Hardware.Motor do
       {:ok, _} = Registry.register(Elevator.Registry, :motor, nil)
     end
 
-    # Keep track of the sensor if injected, otherwise fallback to discovery
+    # Keep track of dependencies if injected (Testing), else fallback to discovery (Prod)
     sensor = Keyword.get(opts, :sensor)
+    controller = Keyword.get(opts, :controller)
 
-    {:ok, %{status: :stopped, direction: nil, speed: :normal, timer: nil, sensor: sensor}}
+    {:ok,
+     %{
+       status: :stopped,
+       direction: nil,
+       speed: :normal,
+       timer: nil,
+       sensor: sensor,
+       controller: controller
+     }}
   end
 
   @impl true
@@ -62,7 +71,7 @@ defmodule Elevator.Hardware.Motor do
   def handle_cast({:move, direction, opts}, state) do
     speed = Keyword.get(opts, :speed, :normal)
 
-    :telemetry.execute([:elevator, :hardware, :motor, :move], %{
+    :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
       direction: direction,
       speed: speed
     })
@@ -78,14 +87,20 @@ defmodule Elevator.Hardware.Motor do
 
   @impl true
   @spec handle_cast(:stop_now, map()) :: {:noreply, map()}
+  def handle_cast(:stop_now, %{status: status} = state) when status in [:stopped, :stopping] do
+    Logger.warning("Hardware: Redundant Motor Stop request while already #{inspect(status)}")
+    {:noreply, state}
+  end
+
   def handle_cast(:stop_now, state) do
-    :telemetry.execute([:elevator, :hardware, :motor, :stop], %{})
+    :telemetry.execute([:elevator, :hardware, :motor, :stop], %{}, %{})
 
     state =
       state
       |> cancel_timer()
       |> update_motion_state(:stopped, nil, :normal)
 
+    notify_controller(state, :motor_stopped)
     {:noreply, state}
   end
 
@@ -98,7 +113,7 @@ defmodule Elevator.Hardware.Motor do
   @impl true
   @spec handle_info({:pulse, :up | :down}, map()) :: {:noreply, map()}
   def handle_info({:pulse, direction}, state) do
-    :telemetry.execute([:elevator, :hardware, :motor, :pulse], %{direction: direction})
+    :telemetry.execute([:elevator, :hardware, :motor, :pulse], %{}, %{direction: direction})
     notify_sensor(state, direction)
     {:noreply, start_transit_timer(state)}
   end
@@ -110,12 +125,21 @@ defmodule Elevator.Hardware.Motor do
     {:noreply, state}
   end
 
-  # ---------------------------------------------------------------------------
-  # ## Internal Logic
-  # ---------------------------------------------------------------------------
+  @spec notify_controller(map(), atom()) :: :ok
+  defp notify_controller(state, msg) do
+    target = state.controller || lookup_controller()
+    if target, do: send(target, msg), else: :ok
+  end
+
+  defp lookup_controller do
+    case Registry.lookup(Elevator.Registry, :controller) do
+      [{pid, _}] -> pid
+      _ -> nil
+    end
+  end
 
   @spec update_motion_state(map(), :moving | :stopped, :up | :down | nil, :normal | :slow) ::
-          map()
+    map()
   defp update_motion_state(state, status, direction, speed) do
     %{state | status: status, direction: direction, speed: speed}
   end

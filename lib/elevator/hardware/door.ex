@@ -69,6 +69,11 @@ defmodule Elevator.Hardware.Door do
 
   @impl true
   @spec handle_cast(:open, map()) :: {:noreply, map()}
+  def handle_cast(:open, %{status: status} = state) when status in [:open, :opening] do
+    Logger.warning("Hardware: Redundant Door Open request while already #{inspect(status)}")
+    {:noreply, state}
+  end
+
   def handle_cast(:open, state) do
     state =
       state
@@ -81,6 +86,11 @@ defmodule Elevator.Hardware.Door do
 
   @impl true
   @spec handle_cast(:close, map()) :: {:noreply, map()}
+  def handle_cast(:close, %{status: status} = state) when status in [:closed, :closing] do
+    Logger.warning("Hardware: Redundant Door Close request while already #{inspect(status)}")
+    {:noreply, state}
+  end
+
   def handle_cast(:close, state) do
     state =
       state
@@ -94,7 +104,7 @@ defmodule Elevator.Hardware.Door do
   @impl true
   @spec handle_cast(:door_obstructed, map()) :: {:noreply, map()}
   def handle_cast(:door_obstructed, state) do
-    :telemetry.execute([:elevator, :hardware, :safety, :obstruction], %{})
+    :telemetry.execute([:elevator, :hardware, :safety, :obstruction], %{}, %{})
 
     state =
       state
@@ -133,8 +143,7 @@ defmodule Elevator.Hardware.Door do
 
   @spec update_status(map(), atom()) :: map()
   defp update_status(state, status) do
-    :telemetry.execute([:elevator, :hardware, :safety, :door], %{status: status})
-    Logger.info("Door: [State Change] Transitioned to #{status}")
+    :telemetry.execute([:elevator, :hardware, :safety, :door], %{}, %{status: status})
     %{state | status: status}
   end
 

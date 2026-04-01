@@ -58,9 +58,7 @@ defmodule Elevator.Hardware.Sensor do
     # Calculate new floor based on physical direction pulse
     next_floor = calculate_next_floor(current, direction)
 
-    :telemetry.execute([:elevator, :hardware, :sensor, :arrival], %{floor: next_floor})
-
-    Logger.info("Sensor: [Box Arrival] Detected at Floor #{next_floor}")
+    :telemetry.execute([:elevator, :hardware, :sensor, :arrival], %{}, %{floor: next_floor})
 
     # Notify the Brain (Controller)
     notify_controller(state, next_floor)

@@ -17,6 +17,7 @@ defmodule ElevatorWeb.DashboardLive do
   def mount(_params, _session, socket) do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
+      Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:telemetry")
     end
 
     # Initial state from the real Controller (via Discovery Layer)
@@ -44,27 +45,24 @@ defmodule ElevatorWeb.DashboardLive do
   @spec handle_info({:elevator_state, Elevator.State.t()}, Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:elevator_state, state}, socket) do
-    new_log_entry = build_log_entry(state, socket.assigns)
+    # Visual updates only (Log is now handled by telemetry)
+    {:noreply,
+     socket
+     |> assign(
+       current_floor: state.current_floor,
+       is_moving: state.motor_status == :running,
+       door_state: state.door_status,
+       motor_state: state.motor_status,
+       sensor_state: state.door_sensor,
+       controller_state: state.status
+     )}
+  end
 
-    new_socket =
-      socket
-      |> assign(
-        current_floor: state.current_floor,
-        is_moving: state.motor_status == :running,
-        door_state: state.door_status,
-        motor_state: state.motor_status,
-        sensor_state: state.door_sensor,
-        controller_state: state.status
-      )
-      |> update(:activity_log, fn logs ->
-        case new_log_entry do
-          nil -> logs
-          # Keep last 20 (Using attribute in next refactor)
-          entry -> [entry | Enum.take(logs, 19)]
-        end
-      end)
-
-    {:noreply, new_socket}
+  @impl true
+  @spec handle_info({:telemetry_event, map()}, Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_info({:telemetry_event, entry}, socket) do
+    {:noreply, update(socket, :activity_log, fn logs -> [entry | Enum.take(logs, 19)] end)}
   end
 
   # Catch-all for unexpected industrial messages
@@ -122,6 +120,9 @@ defmodule ElevatorWeb.DashboardLive do
             </div>
 
             <div class="shaft-visualization">
+              <%= if @controller_state == :rehoming do %>
+                <div class="rehoming-banner">REHOMING</div>
+              <% end %>
               <div id="indicator" class="elevator-indicator">
                 <%= if @current_floor == :unknown, do: "--", else: @current_floor %>
               </div>
@@ -193,29 +194,8 @@ defmodule ElevatorWeb.DashboardLive do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec build_log_entry(Elevator.State.t(), map()) :: map() | nil
-  defp build_log_entry(new_state, old_assigns) do
-    cond do
-      new_state.current_floor != old_assigns.current_floor ->
-        %{actor: "👁️", time: current_time(), msg: "Arrived at Floor #{new_state.current_floor}"}
-
-      new_state.door_status != old_assigns.door_state ->
-        %{actor: "🚪", time: current_time(), msg: "Doors #{Atom.to_string(new_state.door_status)}"}
-
-      new_state.motor_status != old_assigns.motor_state ->
-        %{
-          actor: "⚙️",
-          time: current_time(),
-          msg: "Motor #{Atom.to_string(new_state.motor_status)}"
-        }
-
-      true ->
-        nil
-    end
-  end
-
   @spec current_time() :: String.t()
   defp current_time do
-    DateTime.utc_now() |> DateTime.to_time() |> Time.to_string() |> String.slice(0, 8)
+    Time.utc_now() |> Time.to_string() |> String.slice(0, 8)
   end
 end

@@ -22,6 +22,7 @@ defmodule Elevator.Application do
 
         # 2. Industrial Monitoring (Telemetry)
         {ElevatorWeb.Telemetry, []},
+        {Elevator.TelemetryLogger, []},
 
         # 3. Messaging Bridge
         {Phoenix.PubSub, [name: Elevator.PubSub]},
@@ -45,7 +46,7 @@ defmodule Elevator.Application do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec hardware_profile() :: [Supervisor.child_spec()]
+  @spec hardware_profile() :: [module() | Supervisor.child_spec()]
   defp hardware_profile do
     # We avoid Mix.env() runtime switches by defining our profile explicitly.
     # In a production environment, this could be driven by Application.get_env/2.

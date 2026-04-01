@@ -107,6 +107,9 @@ defmodule Elevator.HomingTest do
     assert state.status == :normal
     assert state.current_floor == 0
     assert Vault.get_floor(vault) == 0
+
+    # THE CRITICAL BUG: The motor MUST stop once we've reached a calibration floor
+    assert Motor.get_state(motor).status == :stopped
   end
 
   @tag :capture_log

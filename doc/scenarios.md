@@ -9,19 +9,35 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Request for F3 is received from the Hall.
   - **Then**: `heading` becomes `:up`, `requests` includes `{:hall, 3}`.
 
-- [x] **Scenario 1.2: Arrival at Floor (Braking)**
-  - **Given**: Elevator is at F3, `heading` is `:up`, `requests` includes `{:hall, 3}`.
+- [x] **Scenario 1.2: Arrival at Target Floor (Braking & Idle)**
+  - **Given**: Elevator is at F3, `heading` is `:up`, `requests` includes `{:car, 3}`.
   - **When**: Sensor confirms arrival at F3.
-  - **Then**: `motor_status` becomes `:stopping`.
+  - **Then**:
+    - `heading` stays `:idle` (Stop intent).
+    - `motor_status` becomes `:stopping` (Immediate intent).
+    - Motor receives `:stop_now`.
 
 - [x] **Scenario 1.3: Braking Complete (Door Opening)**
   - **Given**: Elevator is at F3, `motor_status` is `:stopping`.
   - **When**: Receive `:motor_stopped` confirmation.
-  - **Then**: `motor_status` becomes `:stopped`, `door_status` becomes `:opening`.
+  - **Then**:
+    - `motor_status` becomes `:stopped` (Physical confirmation).
+    - `door_status` becomes `:opening` (Immediate intent).
+    - Door receives `:open`.
 
-- [x] **Scenario 1.4: Door Transition Cycle**
-  - **When**: Doors are `:opening` -> Receive `:door_open_done`.
-  - **Then**: `door_status` becomes `:open`, start auto-close timer.
+- [x] **Scenario 1.6: Sequence Verification (Intent & Confirmation)**
+  - **When**: Triggered transition `door_status` -> `:closed`.
+  - **Then**: `door_status` first becomes `:closing` (Intent), then `:closed` (Physical).
+
+- [x] **Scenario 1.7: Actor Redundancy (Loud Warnings)**
+  - **Given**: System actor (Motor/Door) is already in state X.
+  - **When**: Receive redundant internal command to transition to state X.
+  - **Then**: Log a `Logger.warning` (Audit Trail) and do NOT re-trigger hardware timers.
+
+- [ ] **Scenario 1.8: Button Spamming (Silent Idempotency)**
+  - **Given**: The `requests` list already contains a request for Floor X.
+  - **When**: Any additional external request for Floor X is received.
+  - **Then**: The system ignores it SILENTLY. No warnings are logged.
 
 ## 2. Safety Interlocks & Sensors
 
@@ -39,6 +55,14 @@ This document defines the testable reality of our simulation. We use these scena
   - **Given**: Status is `:overload`.
   - **When**: `weight` falls below `weight_limit`.
   - **Then**: `status` becomes `:normal`.
+
+- [x] **Scenario 2.4: Hardware Safety Interlock (The Golden Rule)**
+  - **Given**: Elevator is at F0, state is `:idle`, doors are `:open`.
+  - **When**: Request for F3 is received.
+  - **Then**: 
+    - Door is commanded to `:close`.
+    - **Motor MUST stay `:stopped`** while doors are `:opening`, `:open`, or `:closing`.
+    - Motor is ONLY commanded to `:move` AFTER the `:motor_stopped` and `:door_closed` signals are confirmed.
 
 ## 3. Manual Overrides (Door Control)
 
@@ -123,14 +147,15 @@ This document defines the testable reality of our simulation. We use these scena
     - `head` is `:down`, `speed` is `:slow`.
     - Move until physical sensor confirms arrival.
 
-- [x] **Scenario 5.4: Homing Completion**
+- [ ] **Scenario 5.4: Homing Completion (Anchoring)**
   - **Given**: `status` is `:rehoming`.
-  - **When**: Controller receives `{:floor_arrival, 2}`.
+  - **When**: Controller receives its very first `{:floor_arrival, floor}` event.
   - **Then**:
-    - `status` becomes `:normal`.
-    - `motor_status` becomes `:stopping`.
-    - `Vault` is updated with `Floor 2`.
-    - Accept new requests.
+    - `status` transitions to `:normal` (Calibration complete).
+    - `heading` MUST immediately transition to `:idle` (Anchoring).
+    - `motor_status` becomes `:stopping` (Drop the anchor).
+    - `Vault` is updated with `Floor X`.
+    - Accept new requests normally.
 
 ---
 
