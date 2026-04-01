@@ -60,7 +60,7 @@ jobs:
       run: mix compile --warnings-as-errors
 
     - name: Run Dialyzer (Static Analysis)
-      run: mix dialyzer --plt
+      run: mix dialyzer
 
     - name: Run tests
       run: mix test
