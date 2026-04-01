@@ -131,9 +131,13 @@ body {
     bottom: 0px; 
     display: flex;
     overflow: hidden;
-    transition: bottom 1.5s ease-in-out;
+    transition: bottom 2s linear;
     box-shadow: 0 4px 10px rgba(0,0,0,0.4);
     z-index: 5;
+}
+
+.car-placeholder.is-slow {
+    transition: bottom 5s linear;
 }
 
 .door {

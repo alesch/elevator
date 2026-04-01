@@ -135,7 +135,11 @@ defmodule ElevatorWeb.DashboardLive do
                 <.floor_slot :for={floor <- 5..0//-1} floor={floor} active={@current_floor == floor} />
 
                 <!-- The Elevator Car -->
-                <.elevator_car floor={@current_floor} door_state={@door_state} />
+                <.elevator_car
+                  floor={@current_floor}
+                  door_state={@door_state}
+                  slow={@controller_state == :rehoming}
+                />
               </div>
             </div>
           </div>
