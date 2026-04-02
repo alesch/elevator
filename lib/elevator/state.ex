@@ -95,6 +95,18 @@ defmodule Elevator.State do
     %{state | status: :rehoming}
   end
 
+  def handle_event(%State{door_status: :closing} = state, :door_obstructed, _now) do
+    %{state | door_sensor: :blocked, door_status: :opening}
+  end
+
+  def handle_event(state, :door_obstructed, _now) do
+    %{state | door_sensor: :blocked}
+  end
+
+  def handle_event(state, :door_cleared, _now) do
+    %{state | door_sensor: :clear}
+  end
+
   def handle_event(state, event, _now) do
     Logger.warning("Unexpected event #{inspect(event)} in state: #{inspect(state)}")
     state

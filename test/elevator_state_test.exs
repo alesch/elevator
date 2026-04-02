@@ -104,4 +104,27 @@ defmodule Elevator.StateTest do
     # Assert
     assert new_state.door_status == :opening
   end
+
+  describe "Scenario 2.1 & 2.5: Door Safety Sensors" do
+    test "Scenario 2.1: door_obstructed reverses a closing door and marks sensor blocked" do
+      state = %State{door_status: :closing, door_sensor: :clear}
+
+      # Act
+      new_state = State.handle_event(state, :door_obstructed, 0)
+
+      # Assert
+      assert new_state.door_status == :opening
+      assert new_state.door_sensor == :blocked
+    end
+
+    test "Scenario 2.5: door_cleared marks sensor as clear" do
+      state = %State{door_sensor: :blocked}
+
+      # Act
+      new_state = State.handle_event(state, :door_cleared, 0)
+
+      # Assert
+      assert new_state.door_sensor == :clear
+    end
+  end
 end

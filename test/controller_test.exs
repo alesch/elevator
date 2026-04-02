@@ -302,5 +302,41 @@ defmodule Elevator.ControllerTest do
       assert_receive {:"$gen_cast", {:move, :up, []}}
       assert_receive {:elevator_state, %{motor_status: :running, door_status: :closed}}
     end
+
+    test "Scenario 2.1: Door obstruction during closing triggers reversal", %{
+      vault: vault,
+      sensor: sensor
+    } do
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
+
+      _ = Controller.get_state(pid)
+
+      # 1. Start with doors OPEN
+      send(pid, :motor_stopped)
+      # Wait for the cast :open (initial arrival)
+      assert_receive {:"$gen_cast", :open}
+      send(pid, :door_opened)
+
+      # 2. Trigger a close (by requesting another floor)
+      Controller.request_floor(pid, :car, 3)
+      assert_receive {:"$gen_cast", :close}
+      assert_receive {:elevator_state, %{door_status: :closing}}
+
+      # 3. Simulate obstruction
+      send(pid, :door_obstructed)
+
+      # ASSERT: Hardware receives OPEN command (Reversal)
+      assert_receive {:"$gen_cast", :open}
+
+      # ASSERT: State shows :opening
+      assert_receive {:elevator_state, %{door_status: :opening, door_sensor: :blocked}}
+    end
   end
 end

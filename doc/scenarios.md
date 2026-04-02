@@ -64,6 +64,11 @@ This document defines the testable reality of our simulation. We use these scena
     - **Motor MUST stay `:stopped`** while doors are `:opening`, `:open`, or `:closing`.
     - Motor is ONLY commanded to `:move` AFTER the `:motor_stopped` and `:door_closed` signals are confirmed.
 
+- [x] **Scenario 2.5: Door Sensor Cleared**
+  - **Given**: `door_sensor` is `:blocked`.
+  - **When**: Receive `:door_sensor_cleared`.
+  - **Then**: `door_sensor` becomes `:clear`.
+
 ## 3. Manual Overrides (Door Control)
 
 - [x] **Scenario 3.1: "Door Open Button Wins"**

@@ -237,9 +237,29 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_info(:door_obstructed, map()) :: {:noreply, map()}
   def handle_info(:door_obstructed, data) do
-    new_state = %{data.state | door_sensor: :blocked}
-    broadcast_state(new_state)
-    {:noreply, %{data | state: new_state}}
+    new_state = State.handle_event(data.state, :door_obstructed, nil)
+
+    new_data =
+      %{data | state: new_state}
+      |> sync_physical_limbs(data.state)
+      |> reset_inactivity_timer()
+
+    broadcast_state(new_data.state)
+    {:noreply, new_data}
+  end
+
+  @impl true
+  @spec handle_info(:door_cleared, map()) :: {:noreply, map()}
+  def handle_info(:door_cleared, data) do
+    new_state = State.handle_event(data.state, :door_cleared, nil)
+
+    new_data =
+      %{data | state: new_state}
+      |> sync_physical_limbs(data.state)
+      |> reset_inactivity_timer()
+
+    broadcast_state(new_data.state)
+    {:noreply, new_data}
   end
 
   @impl true
@@ -338,8 +358,14 @@ defmodule Elevator.Controller do
         end
 
       _direction ->
-        # Always ensure doors are closed when moving or intending to move
-        ensure_door_status(data, :closed, old_state)
+        # Always ensure doors are closed when moving or intending to move.
+        # EXCEPTION: If the Core has already triggered an opening (e.g. safety reversal),
+        # we MUST honor it and command hardware to open. CORE safety overrides SHELL intent.
+        if data.state.door_status == :opening do
+          ensure_door_status(data, :open, old_state)
+        else
+          ensure_door_status(data, :closed, old_state)
+        end
     end
   end
 
