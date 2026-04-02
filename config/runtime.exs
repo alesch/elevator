@@ -20,7 +20,7 @@ if config_env() == :prod do
   port = String.to_integer(System.get_env("PORT") || "4000")
 
   config :elevator, ElevatorWeb.Endpoint,
-    url: [host: host, port: 40],
+    url: [host: host, port: 443, scheme: "https"],
     http: [
       # Enable Bandit as the adapter
       # Bandit configuration options can be passed here
@@ -28,6 +28,10 @@ if config_env() == :prod do
       port: port
     ],
     secret_key_base: secret_key_base,
+    check_origin: [
+      "//#{host}",
+      "https://#{host}"
+    ],
     server: true
 
   # Additional configuration goes here
