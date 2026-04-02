@@ -1,0 +1,16 @@
+# fly.toml configuration file for elevator
+app = "elevator" # Note: If 'elevator' is taken, Fly will prompt you during registration.
+primary_region = "arn" # Stockholm, Sweden
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  memory = "512mb" # 512MB for a small application
+  cpu_kind = "shared"
+  cpus = 1

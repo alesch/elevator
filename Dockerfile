@@ -1,5 +1,5 @@
 # Stage 1: Build the release
-FROM hexpm/elixir:1.15.2-erlang-26.0.2-alpine-3.18.3 AS builder
+FROM elixir:1.15.8-otp-26-alpine AS builder
 
 # install build dependencies
 RUN apk add --no-cache build-base git
@@ -29,6 +29,9 @@ COPY priv priv
 
 # Compile the release
 RUN mix compile
+
+# Digestion
+RUN mix phx.digest
 
 # Changes to config/runtime.exs don't require recompiling the code
 COPY config/runtime.exs config/
