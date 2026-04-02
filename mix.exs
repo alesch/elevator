@@ -40,7 +40,9 @@ defmodule Elevator.MixProject do
       {:jason, "~> 1.4"},
       {:bandit, "~> 1.1"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
+      {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false}
     ]
   end
 
@@ -49,6 +51,8 @@ defmodule Elevator.MixProject do
       ci: [
         "format --check-formatted",
         "credo --strict",
+        "deps.audit",
+        "sobelow --config",
         "compile --warnings-as-errors",
         "dialyzer",
         "test"

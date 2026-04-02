@@ -1,0 +1,9 @@
+# Sobelow Configuration
+# This must return a Keyword List
+[
+  threshold: "medium",
+  ignore: [
+    # Add vulnerability IDs here to ignore them
+    # "Config.CSRF"
+  ]
+]
