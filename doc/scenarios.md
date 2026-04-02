@@ -120,6 +120,13 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Queued requests above are empty.
   - **Then**: `heading` MUST transition to `:idle` or `:down` (never higher).
 
+- [x] **Scenario 4.9: Request Fulfillment (Internal State Sync)**
+  - **Given**: Elevator at Floor 1, having arrived from Floor 3, with `requests` containing `{:car, 3}` and `{:car, 0}`.
+  - **When**: A new request for Floor 0 is received while stopped.
+  - **Then**:
+    - The `requests` list MUST be cleared of Floor 3 (fulfillment).
+    - The `heading` MUST become `:down` to reach Floor 0.
+
 ---
 
 ## 5. Homing & Crash Recovery

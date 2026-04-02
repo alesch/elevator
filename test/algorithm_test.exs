@@ -99,4 +99,39 @@ defmodule Elevator.AlgorithmTest do
       assert new_state.heading == :up
     end
   end
+
+  describe "Scenario 4.9: Request Fulfillment (Internal State Sync)" do
+    test "clears requests during arrival to ensure correct heading choice" do
+      # Arrange: Moving through a sequence F0 -> F3 -> F1 -> F0
+      state = %State{current_floor: 0, heading: :idle}
+
+      # Queue up requests: F0, F3, F1
+      state =
+        state
+        |> State.request_floor(:car, 0)
+        |> State.request_floor(:car, 3)
+        |> State.request_floor(:car, 1)
+
+      # Act: Simulate arrival and STOP at Floor 3
+      state = %{state | current_floor: 3, motor_status: :stopping}
+      state = State.handle_event(state, :motor_stopped, 0)
+
+      # Assert: F3 is cleared
+      refute {:car, 3} in state.requests
+
+      # Act: Simulate arrival and STOP at Floor 1
+      state = %{state | current_floor: 1, motor_status: :stopping}
+      state = State.handle_event(state, :motor_stopped, 0)
+
+      # Assert: F1 is cleared, F0 remains
+      refute {:car, 1} in state.requests
+      assert {:car, 0} in state.requests
+
+      # Act: Re-request Floor 0 while at Floor 1
+      state = State.request_floor(state, :car, 0)
+
+      # Assert: Heading is now :down (Correct behavior)
+      assert state.heading == :down
+    end
+  end
 end

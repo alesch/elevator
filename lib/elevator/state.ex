@@ -79,8 +79,20 @@ defmodule Elevator.State do
     |> confirm_stopped_at_floor()
   end
 
-  def handle_event(%State{door_status: :opening} = state, :door_open_done, now) do
+  def handle_event(%State{door_status: :opening} = state, :door_opened, now) do
     %{state | door_status: :open, last_activity_at: now}
+  end
+
+  def handle_event(%State{door_status: :closing} = state, :door_closed, _now) do
+    %{state | door_status: :closed}
+  end
+
+  def handle_event(state, :recovery_complete, floor) do
+    %{state | current_floor: floor, status: :normal}
+  end
+
+  def handle_event(state, :rehoming_started, _now) do
+    %{state | status: :rehoming}
   end
 
   def handle_event(state, event, _now) do

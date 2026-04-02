@@ -90,7 +90,7 @@ defmodule Elevator.Controller do
     if vault_floor == sensor_floor and vault_floor != nil do
       # CASE 1: Perfect agreement (Zero-move recovery)
       :telemetry.execute([:elevator, :controller, :recovery], %{}, %{floor: vault_floor})
-      new_state = %{data.state | current_floor: vault_floor, status: :normal}
+      new_state = State.handle_event(data.state, :recovery_complete, vault_floor)
       new_data = %{data | state: new_state}
       broadcast_state(new_state)
       {:noreply, new_data}
@@ -101,12 +101,12 @@ defmodule Elevator.Controller do
         speed: :slow
       })
 
-      new_state = %{data.state | status: :rehoming}
+      new_state = State.handle_event(data.state, :rehoming_started, nil)
 
       new_data =
         %{data | state: new_state}
-        |> ensure_motor_status(:running, :down, speed: :slow)
-        |> ensure_door_status(:closed)
+        |> ensure_motor_status(:running, :down, [speed: :slow], nil)
+        |> ensure_door_status(:closed, nil)
 
       broadcast_state(new_data.state)
       {:noreply, new_data}
@@ -138,7 +138,7 @@ defmodule Elevator.Controller do
       new_data =
         data
         |> update_core_state(source, floor)
-        |> sync_physical_limbs()
+        |> sync_physical_limbs(data.state)
         |> reset_inactivity_timer()
 
       broadcast_state(new_data.state)
@@ -185,7 +185,7 @@ defmodule Elevator.Controller do
     # 3. Synchronize hardware (Updates Intent States)
     new_data =
       %{data | state: new_state}
-      |> sync_physical_limbs()
+      |> sync_physical_limbs(data.state)
       |> reset_inactivity_timer()
 
     # 4. Final Broadcast (Reflects hardware intent instantly)
@@ -196,10 +196,11 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_info(:door_opened, data :: map()) :: {:noreply, map()}
   def handle_info(:door_opened, data) do
-    new_state = %{data.state | door_status: :open}
+    now = System.system_time(:millisecond)
+    new_state = State.handle_event(data.state, :door_opened, now)
     new_data = %{data | state: new_state} |> reset_inactivity_timer()
 
-    broadcast_state(new_state)
+    broadcast_state(new_data.state)
     {:noreply, new_data}
   end
 
@@ -207,11 +208,11 @@ defmodule Elevator.Controller do
   @spec handle_info(:door_closed, map()) :: {:noreply, map()}
   def handle_info(:door_closed, data) do
     # Door is finally closed. Check if we should start moving.
-    new_state = %{data.state | door_status: :closed}
+    new_state = State.handle_event(data.state, :door_closed, nil)
 
     new_data =
       %{data | state: new_state}
-      |> sync_physical_limbs()
+      |> sync_physical_limbs(data.state)
       |> reset_inactivity_timer()
 
     broadcast_state(new_data.state)
@@ -222,7 +223,7 @@ defmodule Elevator.Controller do
   @spec handle_info(:motor_stopped, map()) :: {:noreply, map()}
   def handle_info(:motor_stopped, data) do
     # Motor is finally stopped. Check if we should open doors.
-    new_state = %{data.state | motor_status: :stopped}
+    new_state = State.handle_event(data.state, :motor_stopped, nil)
 
     new_data =
       %{data | state: new_state}
@@ -247,7 +248,7 @@ defmodule Elevator.Controller do
     new_data =
       data
       |> update_core_state(:hall, 1)
-      |> sync_physical_limbs()
+      |> sync_physical_limbs(data.state)
       |> reset_inactivity_timer()
 
     broadcast_state(new_data.state)
@@ -311,20 +312,20 @@ defmodule Elevator.Controller do
     %{data | state: State.request_floor(data.state, source, floor)}
   end
 
-  @spec sync_physical_limbs(map()) :: map()
-  defp sync_physical_limbs(data) do
+  @spec sync_physical_limbs(map(), Elevator.State.t() | nil) :: map()
+  defp sync_physical_limbs(data, old_state \\ nil) do
     data
-    |> sync_door_intent()
-    |> sync_motor_intent()
+    |> sync_door_intent(old_state)
+    |> sync_motor_intent(old_state)
   end
 
-  @spec sync_door_intent(map()) :: map()
-  defp sync_door_intent(data) do
+  @spec sync_door_intent(map(), Elevator.State.t() | nil) :: map()
+  defp sync_door_intent(data, old_state) do
     case data.state.heading do
       :idle ->
         # Safety: Only open doors if motor is confirmed stopped
         if data.state.motor_status == :stopped do
-          ensure_door_status(data, :open)
+          ensure_door_status(data, :open, old_state)
         else
           # Interlock Active: Brain wants to open but must wait
           :telemetry.execute([:elevator, :controller, :decision], %{}, %{
@@ -333,25 +334,25 @@ defmodule Elevator.Controller do
             reason: :waiting_for_stop
           })
 
-          ensure_door_status(data, :closed)
+          ensure_door_status(data, :closed, old_state)
         end
 
       _direction ->
         # Always ensure doors are closed when moving or intending to move
-        ensure_door_status(data, :closed)
+        ensure_door_status(data, :closed, old_state)
     end
   end
 
-  @spec sync_motor_intent(map()) :: map()
-  defp sync_motor_intent(data) do
+  @spec sync_motor_intent(map(), Elevator.State.t() | nil) :: map()
+  defp sync_motor_intent(data, old_state) do
     case data.state.heading do
       :idle ->
-        ensure_motor_status(data, :stopped)
+        ensure_motor_status(data, :stopped, old_state)
 
       direction ->
         # "Golden Rule": Motor stays stopped unless doors are closed
         if data.state.door_status == :closed do
-          ensure_motor_status(data, :running, direction)
+          ensure_motor_status(data, :running, direction, [], old_state)
         else
           # Interlock Active: Brain wants to move but must wait for doors
           :telemetry.execute([:elevator, :controller, :decision], %{}, %{
@@ -360,7 +361,7 @@ defmodule Elevator.Controller do
             reason: :waiting_for_door
           })
 
-          ensure_motor_status(data, :stopped)
+          ensure_motor_status(data, :stopped, old_state)
         end
     end
   end
@@ -368,30 +369,40 @@ defmodule Elevator.Controller do
   # Internal Guards ensure we only dispatch hardware when a Change is needed.
   # This keeps our Controller warnings as "Safety Nets" for logic errors.
 
-  defp ensure_motor_status(data, :stopped) do
-    if data.state.motor_status == :stopped, do: data, else: sync_motor(data, :stopped)
+  defp ensure_motor_status(data, :stopped, old_state) do
+    if data.state.motor_status == :stopped,
+      do: data,
+      else: sync_motor(data, :stopped, old_state)
   end
 
-  defp ensure_motor_status(data, status, direction, opts \\ []) do
+  defp ensure_motor_status(data, status, direction, opts, old_state) do
     if data.state.motor_status == status,
       do: data,
-      else: sync_motor(data, status, direction, opts)
+      else: sync_motor(data, status, direction, opts, old_state)
   end
 
-  defp ensure_door_status(data, door_status) do
-    if data.state.door_status == door_status, do: data, else: sync_door(data, door_status)
+  defp ensure_door_status(data, door_status, old_state) do
+    if data.state.door_status == door_status,
+      do: data,
+      else: sync_door(data, door_status, old_state)
   end
 
-  defp sync_motor(data, :stopped) do
+  defp sync_motor(data, :stopped, old_state) do
     case data.state.motor_status do
       :stopped ->
-        Logger.warning(
-          "Controller: Redundant Sync Motor Stop ignored for floor #{data.state.current_floor}"
-        )
-
         data
 
       :stopping ->
+        # CHANGE DETECTION: If state just became :stopping in Core, command hardware
+        if old_state == nil or old_state.motor_status != :stopping do
+          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
+            target: :motor,
+            status: :stopping
+          })
+
+          lookup_hardware(data, :motor, &Hardware.Motor.stop/1)
+        end
+
         data
 
       _running ->
@@ -405,14 +416,9 @@ defmodule Elevator.Controller do
     end
   end
 
-  defp sync_motor(data, :running, direction, opts) do
+  defp sync_motor(data, :running, direction, opts, _old_state) do
     case data.state.motor_status do
       :running ->
-        # Verify direction matches (Simple version for MVP)
-        Logger.warning(
-          "Controller: Redundant Sync Motor Move ignored for floor #{data.state.current_floor}"
-        )
-
         data
 
       _ ->
@@ -426,16 +432,22 @@ defmodule Elevator.Controller do
     end
   end
 
-  defp sync_door(data, :open) do
+  defp sync_door(data, :open, old_state) do
     case data.state.door_status do
       :open ->
-        Logger.warning(
-          "Controller: Redundant Sync Door Open ignored for floor #{data.state.current_floor}"
-        )
-
         data
 
       :opening ->
+        # CHANGE DETECTION: If state just became :opening in Core, command hardware
+        if old_state == nil or old_state.door_status != :opening do
+          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
+            target: :door,
+            status: :opening
+          })
+
+          lookup_hardware(data, :door, &Hardware.Door.open/1)
+        end
+
         data
 
       _ ->
@@ -449,16 +461,22 @@ defmodule Elevator.Controller do
     end
   end
 
-  defp sync_door(data, :closed) do
+  defp sync_door(data, :closed, old_state) do
     case data.state.door_status do
       :closed ->
-        Logger.warning(
-          "Controller: Redundant Sync Door Close ignored for floor #{data.state.current_floor}"
-        )
-
         data
 
       :closing ->
+        # CHANGE DETECTION: If state just became :closing in Core, command hardware
+        if old_state == nil or old_state.door_status != :closing do
+          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
+            target: :door,
+            status: :closing
+          })
+
+          lookup_hardware(data, :door, &Hardware.Door.close/1)
+        end
+
         data
 
       _ ->

@@ -55,7 +55,7 @@ defmodule Elevator.StateTest do
     state = %State{door_status: :opening}
 
     # Act: Doors open at T=100
-    new_state = State.handle_event(state, :door_open_done, 100)
+    new_state = State.handle_event(state, :door_opened, 100)
 
     # Assert
     assert new_state.door_status == :open
