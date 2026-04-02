@@ -12,11 +12,11 @@ defmodule Elevator.MotorTest do
     %{motor: pid}
   end
 
-  test "starts in a stopped state", %{motor: pid} do
+  test "Scenario 6.1: starts in a stopped state", %{motor: pid} do
     assert %{status: :stopped, direction: nil, timer: nil} = Motor.get_state(pid)
   end
 
-  test "scheduling a move starts the transit timer", %{motor: pid} do
+  test "Scenario 6.1: scheduling a move starts the transit timer", %{motor: pid} do
     Motor.move(pid, :up)
 
     state = Motor.get_state(pid)

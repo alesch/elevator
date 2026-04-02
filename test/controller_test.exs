@@ -61,7 +61,7 @@ defmodule Elevator.ControllerTest do
       assert {:car, 4} in state.requests
 
       # Verify physical commands (With the new 3-element tuple for Motor)
-      assert_receive {:"$gen_cast", {:move, :up, []}}
+      assert_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}
 
       # NOTE: Door is already closed at Floor 1 startup, so no redundant command is sent.
       refute_receive {:"$gen_cast", :close}
@@ -144,7 +144,7 @@ defmodule Elevator.ControllerTest do
       # 1.1 First, it broadcasts we are moving
       assert_receive {:elevator_state, %{motor_status: :running}}
       # 1.2 Then, it dispatches hardware
-      assert_receive {:"$gen_cast", {:move, :up, []}}
+      assert_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}
 
       # 2. Simulate arrival pulse at F3
       send(pid, {:floor_arrival, 3})
@@ -188,7 +188,7 @@ defmodule Elevator.ControllerTest do
 
       # 1. Request Floor 3
       Controller.request_floor(pid, :car, 3)
-      assert_receive {:"$gen_cast", {:move, :up, []}}
+      assert_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}
 
       # 2. Simulate overshooting to Floor 4
       send(pid, {:floor_arrival, 4})
@@ -293,13 +293,13 @@ defmodule Elevator.ControllerTest do
       assert_receive {:elevator_state, %{door_status: :closing, motor_status: :stopped}}
 
       # ASSERT 3: Motor is NOT commanded to move yet
-      refute_receive {:"$gen_cast", {:move, :up, []}}, 100
+      refute_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}, 100
 
       # 3. Simulate Door reaching CLOSED state
       send(pid, :door_closed)
 
       # ASSERT 4: Finally, the motor is allowed to move
-      assert_receive {:"$gen_cast", {:move, :up, []}}
+      assert_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}
       assert_receive {:elevator_state, %{motor_status: :running, door_status: :closed}}
     end
 

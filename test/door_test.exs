@@ -12,11 +12,11 @@ defmodule Elevator.DoorTest do
     %{door: pid}
   end
 
-  test "starts in a closed state", %{door: pid} do
+  test "Scenario 6.2: starts in a closed state", %{door: pid} do
     assert Door.get_state(pid).status == :closed
   end
 
-  test "opening the door starts the opening timer", %{door: pid} do
+  test "Scenario 6.2: opening the door starts the opening timer", %{door: pid} do
     Door.open(pid)
 
     state = Door.get_state(pid)
@@ -28,7 +28,7 @@ defmodule Elevator.DoorTest do
     assert remaining > 0 and remaining <= 1000
   end
 
-  test "obstructing the door during closing instantly locks it out", %{door: pid} do
+  test "Scenario 2.1: obstructing the door during closing instantly locks it out", %{door: pid} do
     Door.open(pid)
     # Wait for casts to process
     _ = Door.get_state(pid)
@@ -48,7 +48,7 @@ defmodule Elevator.DoorTest do
     assert_receive :door_obstructed
   end
 
-  test "door notifies the Controller upon full opening", %{door: pid} do
+  test "Scenario 6.2: door notifies the Controller upon full opening", %{door: pid} do
     Door.open(pid)
 
     # Manually trigger the transition to bypass waiting 1s

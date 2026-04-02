@@ -1,14 +1,14 @@
 defmodule Elevator.AuditTest do
   use ExUnit.Case
-  alias Elevator.State
+  alias Elevator.Core
 
   @floors 1..5
   @headings [:up, :down, :idle]
   # 0kg (Normal), 950kg (Full Load - Above 900kg threshold)
   @weights [0, 950]
 
-  describe "Combinatorial State Audit" do
-    test "Total Integrity Sweep (Floors x Headings x Weights x Targets)" do
+  describe "Scenario 4.9: Combinatorial State Audit" do
+    test "Scenario 4.9: Total Integrity Sweep (Floors x Headings x Weights x Targets)" do
       # Dimension 1: Every combination of starting state
       # Dimension 2: Every possible incoming request
       combinations =
@@ -22,10 +22,10 @@ defmodule Elevator.AuditTest do
 
       # 600 unique combinations!
       Enum.each(combinations, fn {current, heading, weight, target, source} ->
-        state = %State{current_floor: current, heading: heading, weight: weight}
+        state = %Core{current_floor: current, heading: heading, weight: weight}
 
         # ACT: Receive request
-        new_state = State.request_floor(state, source, target)
+        new_state = Core.request_floor(state, source, target)
 
         # ASSERT 1: Immediate Arrival Logic
         if current == target do

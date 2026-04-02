@@ -5,8 +5,8 @@ defmodule Elevator.Controller do
   """
   use GenServer
   require Logger
+  alias Elevator.Core
   alias Elevator.Hardware
-  alias Elevator.State
 
   # 5 minutes
   @default_return_to_base_ms 300_000
@@ -41,7 +41,7 @@ defmodule Elevator.Controller do
   end
 
   @doc "Fetches the current state snapshot."
-  @spec get_state(pid() | atom()) :: Elevator.State.t()
+  @spec get_state(pid() | atom()) :: Elevator.Core.t()
   def get_state(pid \\ __MODULE__) do
     GenServer.call(pid, :get_state)
   end
@@ -90,7 +90,7 @@ defmodule Elevator.Controller do
     if vault_floor == sensor_floor and vault_floor != nil do
       # CASE 1: Perfect agreement (Zero-move recovery)
       :telemetry.execute([:elevator, :controller, :recovery], %{}, %{floor: vault_floor})
-      new_state = State.handle_event(data.state, :recovery_complete, vault_floor)
+      new_state = Core.handle_event(data.state, :recovery_complete, vault_floor)
       new_data = %{data | state: new_state}
       broadcast_state(new_state)
       {:noreply, new_data}
@@ -101,12 +101,11 @@ defmodule Elevator.Controller do
         speed: :slow
       })
 
-      new_state = State.handle_event(data.state, :rehoming_started, nil)
+      new_state = Core.handle_event(data.state, :rehoming_started, nil)
 
       new_data =
         %{data | state: new_state}
-        |> ensure_motor_status(:running, :down, [speed: :slow], nil)
-        |> ensure_door_status(:closed, nil)
+        |> sync_physical_limbs(data.state)
 
       broadcast_state(new_data.state)
       {:noreply, new_data}
@@ -177,7 +176,7 @@ defmodule Elevator.Controller do
 
     new_state =
       %{data.state | status: new_status}
-      |> Elevator.State.process_arrival(floor)
+      |> Elevator.Core.process_arrival(floor)
 
     # 2.1 CALIBRATION ANCHOR: Force a stop at the first floor we find during rehoming
     new_state = if was_rehoming?, do: %{new_state | heading: :idle}, else: new_state
@@ -197,7 +196,7 @@ defmodule Elevator.Controller do
   @spec handle_info(:door_opened, data :: map()) :: {:noreply, map()}
   def handle_info(:door_opened, data) do
     now = System.system_time(:millisecond)
-    new_state = State.handle_event(data.state, :door_opened, now)
+    new_state = Core.handle_event(data.state, :door_opened, now)
     new_data = %{data | state: new_state} |> reset_inactivity_timer()
 
     broadcast_state(new_data.state)
@@ -208,7 +207,7 @@ defmodule Elevator.Controller do
   @spec handle_info(:door_closed, map()) :: {:noreply, map()}
   def handle_info(:door_closed, data) do
     # Door is finally closed. Check if we should start moving.
-    new_state = State.handle_event(data.state, :door_closed, nil)
+    new_state = Core.handle_event(data.state, :door_closed, nil)
 
     new_data =
       %{data | state: new_state}
@@ -223,7 +222,7 @@ defmodule Elevator.Controller do
   @spec handle_info(:motor_stopped, map()) :: {:noreply, map()}
   def handle_info(:motor_stopped, data) do
     # Motor is finally stopped. Check if we should open doors.
-    new_state = State.handle_event(data.state, :motor_stopped, nil)
+    new_state = Core.handle_event(data.state, :motor_stopped, nil)
 
     new_data =
       %{data | state: new_state}
@@ -237,7 +236,7 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_info(:door_obstructed, map()) :: {:noreply, map()}
   def handle_info(:door_obstructed, data) do
-    new_state = State.handle_event(data.state, :door_obstructed, nil)
+    new_state = Core.handle_event(data.state, :door_obstructed, nil)
 
     new_data =
       %{data | state: new_state}
@@ -251,7 +250,7 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_info(:door_cleared, map()) :: {:noreply, map()}
   def handle_info(:door_cleared, data) do
-    new_state = State.handle_event(data.state, :door_cleared, nil)
+    new_state = Core.handle_event(data.state, :door_cleared, nil)
 
     new_data =
       %{data | state: new_state}
@@ -283,7 +282,7 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_call(:get_state, GenServer.from(), map()) :: {:reply, Elevator.State.t(), map()}
+  @spec handle_call(:get_state, GenServer.from(), map()) :: {:reply, Elevator.Core.t(), map()}
   def handle_call(:get_state, _from, data) do
     {:reply, data.state, data}
   end
@@ -298,27 +297,27 @@ defmodule Elevator.Controller do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec broadcast_state(Elevator.State.t()) :: :ok | {:error, term()}
+  @spec broadcast_state(Elevator.Core.t()) :: :ok | {:error, term()}
   defp broadcast_state(state) do
     Phoenix.PubSub.broadcast(Elevator.PubSub, "elevator:status", {:elevator_state, state})
   end
 
-  @spec build_initial_state(keyword()) :: Elevator.State.t()
+  @spec build_initial_state(keyword()) :: Elevator.Core.t()
   defp build_initial_state(opts) do
     opts
     |> create_base_state()
     |> position_at_provided_floor(opts)
   end
 
-  @spec create_base_state(keyword()) :: Elevator.State.t()
+  @spec create_base_state(keyword()) :: Elevator.Core.t()
   defp create_base_state(opts) do
     case Keyword.get(opts, :type, :passenger) do
-      :freight -> State.new_freight()
-      _ -> State.new_passenger()
+      :freight -> Core.new_freight()
+      _ -> Core.new_passenger()
     end
   end
 
-  @spec position_at_provided_floor(State.t(), keyword()) :: State.t()
+  @spec position_at_provided_floor(Core.t(), keyword()) :: Core.t()
   defp position_at_provided_floor(state, opts) do
     if floor = Keyword.get(opts, :current_floor) do
       %{state | current_floor: floor}
@@ -329,191 +328,87 @@ defmodule Elevator.Controller do
 
   @spec update_core_state(map(), atom(), integer()) :: map()
   defp update_core_state(data, source, floor) do
-    %{data | state: State.request_floor(data.state, source, floor)}
+    %{data | state: Core.request_floor(data.state, source, floor)}
   end
 
-  @spec sync_physical_limbs(map(), Elevator.State.t() | nil) :: map()
+  @spec sync_physical_limbs(map(), Elevator.Core.t() | nil) :: map()
   defp sync_physical_limbs(data, old_state \\ nil) do
     data
-    |> sync_door_intent(old_state)
-    |> sync_motor_intent(old_state)
+    |> sync_door_mirror(old_state)
+    |> sync_motor_mirror(old_state)
   end
 
-  @spec sync_door_intent(map(), Elevator.State.t() | nil) :: map()
-  defp sync_door_intent(data, old_state) do
-    case data.state.heading do
-      :idle ->
-        # Safety: Only open doors if motor is confirmed stopped
-        if data.state.motor_status == :stopped do
-          ensure_door_status(data, :open, old_state)
-        else
-          # Interlock Active: Brain wants to open but must wait
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :door,
-            status: :closed,
-            reason: :waiting_for_stop
-          })
+  # ---------------------------------------------------------------------------
+  # ## Hardware Servo (The Sink)
+  # ---------------------------------------------------------------------------
 
-          ensure_door_status(data, :closed, old_state)
-        end
+  defp sync_door_mirror(data, old_state) do
+    current = data.state.door_status
+    prev = if old_state, do: old_state.door_status, else: nil
 
-      _direction ->
-        # Always ensure doors are closed when moving or intending to move.
-        # EXCEPTION: If the Core has already triggered an opening (e.g. safety reversal),
-        # we MUST honor it and command hardware to open. CORE safety overrides SHELL intent.
-        if data.state.door_status == :opening do
-          ensure_door_status(data, :open, old_state)
-        else
-          ensure_door_status(data, :closed, old_state)
-        end
-    end
-  end
-
-  @spec sync_motor_intent(map(), Elevator.State.t() | nil) :: map()
-  defp sync_motor_intent(data, old_state) do
-    case data.state.heading do
-      :idle ->
-        ensure_motor_status(data, :stopped, old_state)
-
-      direction ->
-        # "Golden Rule": Motor stays stopped unless doors are closed
-        if data.state.door_status == :closed do
-          ensure_motor_status(data, :running, direction, [], old_state)
-        else
-          # Interlock Active: Brain wants to move but must wait for doors
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :motor,
-            status: :stopped,
-            reason: :waiting_for_door
-          })
-
-          ensure_motor_status(data, :stopped, old_state)
-        end
-    end
-  end
-
-  # Internal Guards ensure we only dispatch hardware when a Change is needed.
-  # This keeps our Controller warnings as "Safety Nets" for logic errors.
-
-  defp ensure_motor_status(data, :stopped, old_state) do
-    if data.state.motor_status == :stopped,
-      do: data,
-      else: sync_motor(data, :stopped, old_state)
-  end
-
-  defp ensure_motor_status(data, status, direction, opts, old_state) do
-    if data.state.motor_status == status,
-      do: data,
-      else: sync_motor(data, status, direction, opts, old_state)
-  end
-
-  defp ensure_door_status(data, door_status, old_state) do
-    if data.state.door_status == door_status,
-      do: data,
-      else: sync_door(data, door_status, old_state)
-  end
-
-  defp sync_motor(data, :stopped, old_state) do
-    case data.state.motor_status do
-      :stopped ->
-        data
-
-      :stopping ->
-        # CHANGE DETECTION: If state just became :stopping in Core, command hardware
-        if old_state == nil or old_state.motor_status != :stopping do
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :motor,
-            status: :stopping
-          })
-
-          lookup_hardware(data, :motor, &Hardware.Motor.stop/1)
-        end
-
-        data
-
-      _running ->
-        :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-          target: :motor,
-          status: :stopping
-        })
-
-        lookup_hardware(data, :motor, &Hardware.Motor.stop/1)
-        %{data | state: %{data.state | motor_status: :stopping}}
-    end
-  end
-
-  defp sync_motor(data, :running, direction, opts, _old_state) do
-    case data.state.motor_status do
-      :running ->
-        data
-
-      _ ->
-        :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-          target: :motor,
-          status: :running
-        })
-
-        lookup_hardware(data, :motor, &Hardware.Motor.move(&1, direction, opts))
-        %{data | state: %{data.state | motor_status: :running}}
-    end
-  end
-
-  defp sync_door(data, :open, old_state) do
-    case data.state.door_status do
-      :open ->
-        data
-
-      :opening ->
-        # CHANGE DETECTION: If state just became :opening in Core, command hardware
-        if old_state == nil or old_state.door_status != :opening do
+    if current != prev do
+      case current do
+        :opening ->
           :telemetry.execute([:elevator, :controller, :decision], %{}, %{
             target: :door,
             status: :opening
           })
 
           lookup_hardware(data, :door, &Hardware.Door.open/1)
-        end
 
-        data
-
-      _ ->
-        :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-          target: :door,
-          status: :opening
-        })
-
-        lookup_hardware(data, :door, &Hardware.Door.open/1)
-        %{data | state: %{data.state | door_status: :opening}}
-    end
-  end
-
-  defp sync_door(data, :closed, old_state) do
-    case data.state.door_status do
-      :closed ->
-        data
-
-      :closing ->
-        # CHANGE DETECTION: If state just became :closing in Core, command hardware
-        if old_state == nil or old_state.door_status != :closing do
+        :closing ->
           :telemetry.execute([:elevator, :controller, :decision], %{}, %{
             target: :door,
             status: :closing
           })
 
           lookup_hardware(data, :door, &Hardware.Door.close/1)
-        end
 
-        data
-
-      _ ->
-        :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-          target: :door,
-          status: :closing
-        })
-
-        lookup_hardware(data, :door, &Hardware.Door.close/1)
-        %{data | state: %{data.state | door_status: :closing}}
+        _ ->
+          :ok
+      end
     end
+
+    data
+  end
+
+  defp sync_motor_mirror(data, old_state) do
+    current = data.state.motor_status
+    prev = if old_state, do: old_state.motor_status, else: nil
+
+    if current != prev or (current == :running and old_state.heading != data.state.heading) do
+      case current do
+        :running ->
+          direction = data.state.heading
+          speed = data.state.motor_speed
+
+          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
+            target: :motor,
+            status: :running,
+            direction: direction,
+            speed: speed
+          })
+
+          lookup_hardware(data, :motor, &Hardware.Motor.move(&1, direction, speed: speed))
+
+        :stopping ->
+          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
+            target: :motor,
+            status: :stopping
+          })
+
+          lookup_hardware(data, :motor, &Hardware.Motor.stop/1)
+
+        :stopped ->
+          # Only log/telemetry if we actually transitioned to stopped
+          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
+            target: :motor,
+            status: :stopped
+          })
+      end
+    end
+
+    data
   end
 
   # Dispatch logic: Priority to explicit deps (Test Way) -> Discovery (Industrial Way)

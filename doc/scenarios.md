@@ -25,6 +25,13 @@ This document defines the testable reality of our simulation. We use these scena
     - `door_status` becomes `:opening` (Immediate intent).
     - Door receives `:open`.
 
+- [x] **Scenario 1.4: Door Open Confirmation**
+  - **Given**: `door_status` is `:opening`.
+  - **When**: Receive `:door_opened` confirmation.
+  - **Then**:
+    - `door_status` becomes `:open`.
+    - Auto-close timer is reset (`last_activity_at` updated).
+
 - [x] **Scenario 1.6: Sequence Verification (Intent & Confirmation)**
   - **When**: Triggered transition `door_status` -> `:closed`.
   - **Then**: `door_status` first becomes `:closing` (Intent), then `:closed` (Physical).
@@ -34,10 +41,15 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Receive redundant internal command to transition to state X.
   - **Then**: Log a `Logger.warning` (Audit Trail) and do NOT re-trigger hardware timers.
 
-- [ ] **Scenario 1.8: Button Spamming (Silent Idempotency)**
+- [x] **Scenario 1.8: Button Spamming (Silent Idempotency)**
   - **Given**: The `requests` list already contains a request for Floor X.
   - **When**: Any additional external request for Floor X is received.
   - **Then**: The system ignores it SILENTLY. No warnings are logged.
+
+- [x] **Scenario 1.9: Observable State Change (Broadcasting)**
+  - **Given**: Any change occurs in the `Elevator.Core` state.
+  - **When**: The `Controller` processes the change.
+  - **Then**: The new state is broadcasted over PubSub to the `"elevator:status"` topic.
 
 ## 2. Safety Interlocks & Sensors
 
@@ -125,7 +137,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Queued requests above are empty.
   - **Then**: `heading` MUST transition to `:idle` or `:down` (never higher).
 
-- [x] **Scenario 4.9: Request Fulfillment (Internal State Sync)**
+- [x] **Scenario 4.9: Request Fulfillment (Internal Core Sync)**
   - **Given**: Elevator at Floor 1, having arrived from Floor 3, with `requests` containing `{:car, 3}` and `{:car, 0}`.
   - **When**: A new request for Floor 0 is received while stopped.
   - **Then**:
@@ -159,9 +171,9 @@ This document defines the testable reality of our simulation. We use these scena
     - `head` is `:down`, `speed` is `:slow`.
     - Move until physical sensor confirms arrival.
 
-- [ ] **Scenario 5.4: Homing Completion (Anchoring)**
+- [x] **Scenario 5.4: Homing Completion (Anchoring)**
   - **Given**: `status` is `:rehoming`.
-  - **When**: Controller receives its very first `{:floor_arrival, floor}` event.
+  - **When**: Core receives its very first `{:floor_arrival, floor}` event.
   - **Then**:
     - `status` transitions to `:normal` (Calibration complete).
     - `heading` MUST immediately transition to `:idle` (Anchoring).
@@ -169,11 +181,35 @@ This document defines the testable reality of our simulation. We use these scena
     - `Vault` is updated with `Floor X`.
     - Accept new requests normally.
 
+- [x] **Scenario 5.5: Request Blocking during Rehoming**
+  - **Given**: Elevator is in `status: :rehoming`.
+  - **When**: Receive any external/internal floor request.
+  - **Then**: The request is ignored and NOT added to the queue.
+
 ---
 
-## Technical State (The State Machine)
+## 6. Hardware Protocols (Shims & Drivers)
 
-- **Door States**: `:open`, `:closing`, `:closed`, `:opening`, `:blocked`.
+- [x] **Scenario 6.1: Motor Movement Protocol**
+  - **Given**: Motor receives a `:move` command.
+  - **When**: Command includes `direction` and `speed`.
+  - **Then**: Internal hardware state accurately reflects these parameters.
+
+- [x] **Scenario 6.2: Door Operation Protocol**
+  - **Given**: Door receives an `:open` or `:close` command.
+  - **When**: Operation begins.
+  - **Then**: Door state transitions to `:opening` or `:closing`.
+
+- [x] **Scenario 6.3: Sensor Floor Tracking**
+  - **Given**: Sensor receives a physical floor pulse.
+  - **When**: Pulse is received at Floor X.
+  - **Then**: Internal hardware state correctly identifies Floor X as the current position.
+
+---
+
+## Technical Core (The Core Machine)
+
+- **Door Cores**: `:open`, `:closing`, `:closed`, `:opening`, `:blocked`.
 - **Motor Status**: `:running`, `:stopping`, `:stopped`.
 - **Elevator Status**: `:normal`, `:overload`, `:emergency`, `:rehoming`.
 - **Request Format**: `{:hall, floor}` (External), `{:car, floor}` (Internal).

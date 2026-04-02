@@ -1,6 +1,6 @@
 # Elevator System Architecture
 
-This document describes the "Memory and Recovery" architecture of the elevator system, focusing on its distributed supervision and state persistence.
+This document describes the architecture of the elevator system, focusing on its distributed supervision and state persistence.
 
 ## 1. Supervision Tree (The Firewall Strategy)
 
@@ -59,9 +59,18 @@ sequenceDiagram
     end
 ```
 
-## 3. Controller State Machine
+## 3. The FICS Pattern (Brain vs. Shell)
 
-The Controller manages the functional state based on physical inputs.
+The system follows the **Functional Core, Imperative Shell (FICS)** pattern. This separates the risky, real-world interactions from the pure, safe logic.
+
+* **The Functional Core (The Brain)**: `Elevator.Core` is a "pure" module. It does not perform any hardware I/O, network requests, or side effects. It takes a state, an event, and returns a new state.
+* **The Imperative Shell (The Servo/Interface)**: This is where all the "messy" real-world interaction happens. This includes:
+  * **`Elevator.Controller`**: Manages physical hardware (Motor, Doors).
+  * **The Web Layer (Phoenix/LiveView)**: Handles user interaction and shows the elevator's status to the world in real-time.
+
+### 3.1 Autonomous Core Pipeline (Decision Logic)
+
+All decision-making logic resides in the `Elevator.Core` module's `apply_constraints/1` pipeline, which is idempotent and side-effect free.
 
 ```mermaid
 stateDiagram-v2
@@ -69,14 +78,16 @@ stateDiagram-v2
     Init --> rehoming: Boot Mismatch
     Init --> normal: Boot Match
     
-    rehoming --> normal: floor_arrival (Physical confirmation)
-    
-    normal --> normal: request_floor / movement
-    normal --> overload: weight_threshold (Planned)
-    normal --> emergency: emergency_trigger (Planned)
-    
-    overload --> normal: weight_within_limit
-    emergency --> rehoming: reset_system
+    state "Autonomous Core (Brain)" as Core {
+        direction LR
+        apply_constraints --> start_moving
+        start_moving --> apply_constraints
+        apply_constraints --> enforce_safety
+    }
+
+    rehoming --> normal: sensor_arrival (Floor 0 confirmation)
+    normal --> Core: Event / Request
+    Core --> normal: Valid Intent
 ```
 
 ## 4. Component Responsibilities
@@ -84,7 +95,21 @@ stateDiagram-v2
 | Component | Responsibility | Failure Impact |
 | :--- | :--- | :--- |
 | **Vault** | Persistent storage of floor arrival | If wiped, system results in full homing from F0. |
-| **Sensor** | Maps motor pulses to floors | If fails, entire Hardware Stack reboots. |
-| **Controller** | Primary logic & state transitions | Manages timers and command coordination. |
-| **Motor** | Physical motion execution | Supports `:normal` and `:slow` speeds. |
-| **Door** | Cabin access safety | Most common source of process crashes (obstructions). |
+| **Core** | **The Brain**: Autonomous logic & safety interlocks | If logic fails. |
+| **Controller**| **The Servo**: Hardware mirror & change detection | If crashes, Hardware Stack reboots (Firewall). |
+| **Motor** | Physical motion execution | Supports `:normal` and `:slow` speed for REHOMING. |
+| **Door** | Cabin access safety | Source of `obstruction` events for the Core. |
+
+## 5. Safety Interlocks (Structural Safety)
+
+Following the refactoring to an Autonomous Core, safety is no longer "checked" by the Controller; it is **structurally guaranteed** by the Core's state transition pipeline.
+
+### 5.1 The Golden Rule
+
+The Core enforces a hard constraint: **The motor MUST be in the `:stopped` status unless the `door_status` is confirmed to be `:closed`.**
+
+If any event (like a manual door opening or an obstruction) violates this, the `apply_constraints/1` pipeline automatically corrects the intent by stopping the motor before the Controller can even dispatch the command to hardware.
+
+### 5.2 Obstruction Reversal
+
+If a `:door_obstructed` event occurs while the door is `:closing`, the Core immediately transitions to `:opening`. This logic is centralized in the Core, ensuring consistent behavior regardless of the elevator's current mission.

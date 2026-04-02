@@ -12,7 +12,7 @@ defmodule Elevator.HomingTest do
     %{vault: vault}
   end
 
-  test "Smart Homing: Crash on F0 (Ground) results in Zero-Move Recovery", %{vault: vault} do
+  test "Scenario 5.2: Smart Homing - Crash on F0 (Ground) results in Zero-Move Recovery", %{vault: vault} do
     # 1. Simulate Reality: Vault knows F0, and Sensor sees F0
     Vault.put_floor(vault, 0)
 
@@ -43,7 +43,7 @@ defmodule Elevator.HomingTest do
     assert Motor.get_state(motor).status == :stopped
   end
 
-  test "Smart Homing: Mid-floor crash results in Physical Homing", %{vault: vault} do
+  test "Scenario 5.3: Smart Homing - Mid-floor crash results in Physical Homing", %{vault: vault} do
     # 1. Vault knows F3
     Vault.put_floor(vault, 3)
 
@@ -75,7 +75,7 @@ defmodule Elevator.HomingTest do
     assert motor_state.speed == :slow
   end
 
-  test "Smart Homing: Cold Start (Vault empty) results in Physical Homing", %{vault: vault} do
+  test "Scenario 5.1 & 5.4: Smart Homing - Cold Start (Vault empty) results in Physical Homing and Anchoring", %{vault: vault} do
     # 1. Vault is empty (never used)
 
     motor = start_supervised!({Motor, [name: nil]})
@@ -113,7 +113,7 @@ defmodule Elevator.HomingTest do
   end
 
   @tag :capture_log
-  test "Smart Homing: Requests are ignored during rehoming", %{vault: vault} do
+  test "Scenario 5.5: Smart Homing - Requests are ignored during rehoming", %{vault: vault} do
     # 1. Force rehoming status
     motor = start_supervised!({Motor, [name: nil]})
     sensor = start_supervised!({Sensor, [vault: vault, current_floor: nil, name: nil]})

@@ -25,7 +25,7 @@ defmodule ElevatorWeb.DashboardLive do
     state =
       case Registry.lookup(Elevator.Registry, :controller) do
         [{pid, _}] -> Elevator.Controller.get_state(pid)
-        _ -> %Elevator.State{}
+        _ -> %Elevator.Core{}
       end
 
     {:ok,
@@ -44,7 +44,7 @@ defmodule ElevatorWeb.DashboardLive do
   end
 
   @impl true
-  @spec handle_info({:elevator_state, Elevator.State.t()}, Phoenix.LiveView.Socket.t()) ::
+  @spec handle_info({:elevator_state, Elevator.Core.t()}, Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:elevator_state, state}, socket) do
     # Visual updates only (Log is now handled by telemetry)
