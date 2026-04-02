@@ -12,21 +12,16 @@ This document is for future AI agents working with **Alex** on the Elixir Elevat
 ## 2. Project Philosophy
 
 * **Learning First**: Focus on Elixir's core concepts: Immutability, Pattern Matching, Concurrency.
-* **Architectural Separation**: The system is modeled as independent components:
-  * **Elevator Box**: Physical state.
-  * **Door**: Independent safety component with its own state machine.
-  * **Controller**: The "central brain" that orchestrates everything.
-  * **Motor**: Independent component with its own state machine.
-  * **Weight Sensor**: Independent component with its own state machine.
-  * **Button Panel**: Independent component with its own state machine.
-  * **Floor Sensor**: Independent component with its own state machine.
+* **Architectural Separation (Functional Core / Imperative Shell)**:
+  * **Elevator.Core**: The "Brain". Autonomous functional logic, safety interlocks, and intent arbitration. Located in `lib/elevator/core.ex`.
+  * **Elevator.Controller**: The "Servo". Physical imperative shell that mirrors the Core's status to hardware.
+  * **Hardware Components**: Independent processes (Motor, Door, Sensor) with their own state machines.
 * **TDD Methodology**: Every logic change MUST start with a failing `ExUnit` test. "Red -> Green -> Refactor" is mandatory.
-* **Functional Core, Imperative Shell**: Maintain pure logic in `lib/elevator/state.ex` before wrapping in `GenServers`.
 
 ## 3. Rules for agents (CRITICAL)
 
 * **Command Restriction**: Do NOT run commands on files outside this project directory.
-* **Documentation Sync**: Always keep `doc/controller_rules.md` and `doc/scenarios.md` updated and in 1:1 sync with the logic code. They are the "Ground Truth."
+* **Documentation Sync**: Always keep `doc/core_rules.md` and `doc/scenarios.md` updated and in 1:1 sync with the logic code and tests. They are the "Ground Truth."
 * **Note to Agent**: The brain artifacts are periodically cleaned up to reduce noise. Use the docs in `/doc/` as the single source of truth.
 
 ---
