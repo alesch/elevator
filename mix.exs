@@ -49,12 +49,19 @@ defmodule Elevator.MixProject do
   defp aliases do
     [
       ci: [
+        "cmd echo '\n\e[1;36m--- ✨ Checking Formatting --- \e[0m\e[2m(mix format --check-formatted)\e[0m'",
         "format --check-formatted",
+        "cmd echo '\n\e[1;36m--- 🔍 Running Linter (Credo) --- \e[0m\e[2m(mix credo --strict)\e[0m'",
         "credo --strict",
+        "cmd echo '\n\e[1;36m--- 🛡️  Auditing Dependencies --- \e[0m\e[2m(mix deps.audit)\e[0m'",
         "deps.audit",
+        "cmd echo '\n\e[1;36m--- 🕵️‍♂️ Running Security Scan (Sobelow) --- \e[0m\e[2m(mix sobelow --config)\e[0m'",
         "sobelow --config",
+        "cmd echo '\n\e[1;36m--- 🔨 Compiling Projct (Strict) --- \e[0m\e[2m(mix compile --warnings-as-errors)\e[0m'",
         "compile --warnings-as-errors",
+        "cmd echo '\n\e[1;36m--- 🔬 Running Static Analysis (Dialyzer) --- \e[0m\e[2m(mix dialyzer)\e[0m'",
         "dialyzer",
+        "cmd echo '\n\e[1;36m--- 🧪 Running Automated Tests --- \e[0m\e[2m(mix test)\e[0m'",
         "test"
       ]
     ]
