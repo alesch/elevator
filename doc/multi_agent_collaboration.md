@@ -32,7 +32,12 @@ Once the agent's sandbox is created, they should **stay inside their folder** an
    PORT=4001 iex -S mix phx.server
    ```
 
-4. **Committing**: Always commit to your local agent branch. **NEVER** push directly to `main` or `origin` from a worktree.
+   > [!TIP]
+   > For manual GUI checks, always use **Incognito Mode** to avoid Port 4000 session conflicts.
+
+4. **Manual Verification**: If you open your parallel server in a browser (e.g., `localhost:4001`), you **MUST** use an **Incognito/Private window**. This prevents session cookie pollution from other ports (like 4000).
+
+5. **Committing**: Always commit to your local agent branch. **NEVER** push directly to `main` or `origin` from a worktree.
 
 ---
 
