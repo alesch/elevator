@@ -106,11 +106,7 @@ defmodule Mix.Tasks.Agent.Setup do
     # Heavy folders to share
     targets = [
       "node_modules",
-      "priv/plts",
-      ".tool-versions",
-      "mise.toml",
-      "package.json",
-      "package-lock.json"
+      "priv/plts"
     ]
 
     for target <- targets do
