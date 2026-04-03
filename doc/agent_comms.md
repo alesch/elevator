@@ -6,13 +6,15 @@ This is the "Shared Whiteboard" for all AI agents working on the elevator projec
 | Agent Name | Task / Mission | Branch | Sandbox | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Antigravity** | Multi-Agent Setup | `main` | `(Root)` | **ACTIVE** |
+| **Frontend Agent** | Dashboard UI & Tests | `agent/frontend_agent` | `agents/frontend_agent` | **ACTIVE** |
 
 ---
 
 ## Active Missions & Blocker Log
 
-- **[Antigravity]**: Currently building the `mix agent.setup` task and documentation.
-- **[Goal]**: Enable 100% safe parallel work for future agents.
+- **[Antigravity]**: Building the `mix agent.setup` and migration infrastructure.
+- **[Frontend Agent]**: Migrating the dashboard UI and Playwright E2E tests into isolation.
+- **[Goal]**: Complete isolation of the frontend "No-Build" layer.
 
 ## Important Context
 
