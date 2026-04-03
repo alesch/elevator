@@ -61,6 +61,8 @@ We follow a strict path for every change:
 * **[`doc/scenarios.md`](file:///home/alex/dev/elevator/doc/scenarios.md)**: The "Storybook" of what the system should do.
 * **[`doc/core_rules.md`](file:///home/alex/dev/elevator/doc/core_rules.md)**: The "Rulebook" for the Brain's logic.
 * **[`doc/ARCHITECTURE.md`](file:///home/alex/dev/elevator/doc/ARCHITECTURE.md)**: The "Blueprint" of the technical components.
+* **[`doc/multi_agent_collaboration.md`](file:///home/alex/dev/elevator/doc/multi_agent_collaboration.md)**: The "Sandbox Rulebook" for parallel work.
+* **[`doc/agent_comms.md`](file:///home/alex/dev/elevator/doc/agent_comms.md)**: The "Shared Whiteboard" for agent status sync.
 
 > [!IMPORTANT]
-> If you are an agent, do **NOT** rely on your memory of past conversations. Always read these three documents as the single source of truth before starting any task.
+> If you are an agent, do **NOT** rely on your memory of past conversations. Always read these documents as the single source of truth before starting any task.
