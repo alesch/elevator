@@ -50,6 +50,7 @@ We simulate the real world as accurately as possible:
 
 We follow a strict path for every change:
 
+0. **Isolation First**: Before starting any task, read **[`doc/multi_agent_collaboration.md`](file:///home/alex/dev/elevator/doc/multi_agent_collaboration.md)** and run `mix agent.setup <your_name>` to create your private worktree sandbox.
 1. **Scenarios First**: Every behavior must be documented in `doc/scenarios.md` first.
 2. **Tests Second**: We use **Traceable TDD**. Every test must have a comment or name that links it to a specific Scenario ID (e.g., `Scenario 2.1`).
 3. **Code Third**: Only after the test failure is verified do we implement the logic in the Brain (`Core.ex`).
