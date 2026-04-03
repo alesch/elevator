@@ -39,7 +39,12 @@ defmodule Elevator.CoreTest do
 
   test "Scenario 1.3: Completing braking and opening doors" do
     # Arrange
-    state = %Core{current_floor: 3, motor_status: :stopping, requests: [{:car, 3}], door_status: :closed}
+    state = %Core{
+      current_floor: 3,
+      motor_status: :stopping,
+      requests: [{:car, 3}],
+      door_status: :closed
+    }
 
     # Act: Complete braking at T=0
     {new_state, actions} = Core.handle_event(state, :motor_stopped, 0)

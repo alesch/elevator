@@ -34,7 +34,10 @@ defmodule Mix.Tasks.Agent.Setup do
     IO.puts("\n\e[1;32m✅ Sandbox Ready at: #{agent_dir}\e[0m")
     IO.puts("\e[1mAgent Branch:\e[0m #{branch}")
     IO.puts("\e[1mParallel Port:\e[0m #{port}")
-    IO.puts("\e[2m(To start the agent's server, run: PORT=#{port} iex -S mix phx.server in that directory)\e[0m\n")
+
+    IO.puts(
+      "\e[2m(To start the agent's server, run: PORT=#{port} iex -S mix phx.server in that directory)\e[0m\n"
+    )
   end
 
   def run(_) do
@@ -67,18 +70,7 @@ defmodule Mix.Tasks.Agent.Setup do
     # Scan existing agents for ports to avoid collisions
     existing_ports =
       Path.wildcard("#{@agents_root}/*/.env", match_dot: true)
-      |> Enum.map(fn path ->
-        case File.read(path) do
-          {:ok, content} ->
-            case Regex.run(~r/PORT=(\d+)/, content) do
-              [_, p] -> String.to_integer(p)
-              _ -> nil
-            end
-
-          _ ->
-            nil
-        end
-      end)
+      |> Enum.map(&read_port_from_env/1)
       |> Enum.reject(&is_nil/1)
 
     port =
@@ -119,6 +111,19 @@ defmodule Mix.Tasks.Agent.Setup do
         File.rm_rf!(destination)
         File.ln_s!(source, destination)
       end
+    end
+  end
+
+  defp read_port_from_env(path) do
+    case File.read(path) do
+      {:ok, content} ->
+        case Regex.run(~r/PORT=(\d+)/, content) do
+          [_, p] -> String.to_integer(p)
+          _ -> nil
+        end
+
+      _ ->
+        nil
     end
   end
 

@@ -197,7 +197,8 @@ defmodule Elevator.Controller do
     {mid_state, _} = Core.process_arrival(%{data.state | status: new_status}, floor)
     final_heading = if was_rehoming?, do: :idle, else: mid_state.heading
 
-    {final_state, actions} = Core.process_arrival(%{data.state | status: new_status, heading: final_heading}, floor)
+    {final_state, actions} =
+      Core.process_arrival(%{data.state | status: new_status, heading: final_heading}, floor)
 
     new_data =
       %{data | state: final_state}
@@ -327,6 +328,7 @@ defmodule Elevator.Controller do
   @spec execute_actions(map(), [Core.action()]) :: map()
   defp execute_actions(data, actions) do
     if actions != [], do: Logger.info("Controller executing actions: #{inspect(actions)}")
+
     Enum.reduce(actions, data, fn action, acc ->
       case action do
         {:move_motor, dir, speed} ->

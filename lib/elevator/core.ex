@@ -371,9 +371,7 @@ defmodule Elevator.Core do
 
   defp stop_moving_logic(state), do: state
 
-  defp complete_servicing_request_logic(
-         %Core{motor_status: :stopped, door_status: d} = state
-       )
+  defp complete_servicing_request_logic(%Core{motor_status: :stopped, door_status: d} = state)
        when d in [:closed, :closing] do
     # If we are stopped at a floor that still needs service, open up.
     if should_stop_at?(state, state.current_floor) do
@@ -397,7 +395,8 @@ defmodule Elevator.Core do
       new.motor_status == :stopping and old.motor_status != :stopping ->
         actions ++ [{:stop_motor}]
 
-      new.motor_status == :running and (old.motor_status != :running or old.heading != new.heading) ->
+      new.motor_status == :running and
+          (old.motor_status != :running or old.heading != new.heading) ->
         actions ++ [{:move_motor, new.heading, new.motor_speed}]
 
       true ->
@@ -420,7 +419,8 @@ defmodule Elevator.Core do
 
   defp maybe_add_timer_action(actions, old, new) do
     cond do
-      new.door_status == :open and (old.door_status != :open or old.last_activity_at != new.last_activity_at) ->
+      new.door_status == :open and
+          (old.door_status != :open or old.last_activity_at != new.last_activity_at) ->
         actions ++ [{:set_timer, :door_timeout, @door_wait_ms}]
 
       new.door_status != :open and old.door_status == :open ->

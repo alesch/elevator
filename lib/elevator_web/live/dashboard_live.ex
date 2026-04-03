@@ -93,6 +93,16 @@ defmodule ElevatorWeb.DashboardLive do
     {:noreply, socket}
   end
 
+  def handle_event("open_door", _params, socket) do
+    Elevator.Controller.open_door()
+    {:noreply, socket}
+  end
+
+  def handle_event("close_door", _params, socket) do
+    Elevator.Controller.close_door()
+    {:noreply, socket}
+  end
+
   # Catch-all for unexpected industrial events
   def handle_event(event, params, socket) do
     Logger.warning(
@@ -128,6 +138,10 @@ defmodule ElevatorWeb.DashboardLive do
                     <%= floor %>
                   </div>
                 <% end %>
+                <div class="door-controls">
+                  <button phx-click="open_door">&lt;|&gt;</button>
+                  <button phx-click="close_door">&gt;|&lt;</button>
+                </div>
               </div>
 
               <!-- Shaft Visualization -->
