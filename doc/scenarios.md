@@ -207,9 +207,34 @@ This document defines the testable reality of our simulation. We use these scena
 
 ---
 
-## Technical Core (The Core Machine)
+## 7. Door Management & Timers (Refactor)
 
-- **Door Cores**: `:open`, `:closing`, `:closed`, `:opening`, `:blocked`.
-- **Motor Status**: `:running`, `:stopping`, `:stopped`.
-- **Elevator Status**: `:normal`, `:overload`, `:emergency`, `:rehoming`.
-- **Request Format**: `{:hall, floor}` (External), `{:car, floor}` (Internal).
+- [x] **Scenario 7.1: Door Auto-Close Timeout (5s)**
+  - **Given**: Elevator is at a floor, `door_status` is `:open`.
+  - **When**: 5 seconds (5000ms) pass without activity.
+  - **Then**: 
+    - Controller sends `{:timeout, :door_timeout}`.
+    - Brain returns `{:close_door}`.
+    - Door transition begins (`:closing`).
+
+- [x] **Scenario 7.2: Manual Close Button Override**
+  - **Given**: Elevator is at a floor, `door_status` is `:open`, pending requests exist.
+  - **When**: Pressing the `>|<` (door close) button.
+  - **Then**: 
+    - Brain immediately returns `{:close_door}` and `{:cancel_timer, :door_timeout}`.
+    - Door starts closing without waiting for the 5s timer.
+
+- [x] **Scenario 7.3: Activity Extension (Open Button)**
+  - **Given**: `door_status` is `:open`.
+  - **When**: Pressing the `<|>` (door open) button at T=1000.
+  - **Then**: 
+    - `last_activity_at` is updated to T=1000.
+    - A new `{:set_timer, :door_timeout, 5000}` is requested.
+    - Timer effectively restarts.
+
+- [x] **Scenario 7.4: Service Delay (Auto-Close Integration)**
+  - **Given**: At F1, doors open, new request for F5 received.
+  - **When**: Request is added.
+  - **Then**: 
+    - Heading becomes `:up`.
+    - Door stays open for 5s (Scenario 7.1) before starting the movement sequence.

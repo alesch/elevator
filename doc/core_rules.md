@@ -2,6 +2,14 @@
 
 This document captures the "Executive Summary" of our current Elevator implementation. It describes the high-level logic and safety constraints enforced by the **Autonomous Functional Core**.
 
+## 0. Architecture: Effects as Data
+
+* **Rule 0.1: Pure Logic Core**
+  * The `Elevator.Core` is a functional core. It MUST NEVER perform side effects (timer scheduling, hardware calls, or I/O).
+  * All state transitions return a `{new_state, actions}` tuple, where `actions` is a list of declarative tokens representing intended side effects.
+* **Rule 0.2: Imperative Shell**
+  * The `Elevator.Controller` is the imperative shell. Its ONLY responsibility is to execute the `actions` returned by the Core and route incoming hardware events back into the Core as events.
+
 ## 1. Movement & Direction Rules (The LOOK Algorithm)
 
 * **Rule 1.1: Intent vs. Action**
@@ -40,6 +48,15 @@ This document captures the "Executive Summary" of our current Elevator implement
     2. Wait for `:motor_stopped` confirmation.
     3. Transition to `motor_status: :stopped` and `door_status: :opening`.
     4. Only once the door confirms `:door_open_done`, transition to `door_status: :open`.
+    5. **Wait Phase**: Upon entering `:open`, the elevator waits for a 5-second inactivity window (Scenario 7.1) before attempting to close.
+
+* **Rule 2.4: Automatic Door Closing (Timer)**
+  * If the elevator has pending requests and the doors are `:open`, it will request a `{:set_timer, :door_timeout, 5000}` action.
+  * When the timer expires (or a `:door_timeout` event is received), the Brain transitions to `door_status: :closing`.
+
+* **Rule 2.5: Manual Door Override**
+  * A `:door_close` button press triggers an immediate `door_status: :closing` transition, bypassing any remaining time on the auto-close timer.
+  * A `:door_open` button press while doors are already open resets the "last activity" timestamp, effectively restarting the 5-second timer.
 
 * **Rule 2.3: Door Obstruction**
   * If the door is `:closing` and a `:door_sensor_blocked` message is received, it must immediately return to `:opening`.
