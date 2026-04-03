@@ -12,7 +12,9 @@ defmodule Elevator.HomingTest do
     %{vault: vault}
   end
 
-  test "Scenario 5.2: Smart Homing - Crash on F0 (Ground) results in Zero-Move Recovery", %{vault: vault} do
+  test "Scenario 5.2: Smart Homing - Crash on F0 (Ground) results in Zero-Move Recovery", %{
+    vault: vault
+  } do
     # 1. Simulate Reality: Vault knows F0, and Sensor sees F0
     Vault.put_floor(vault, 0)
 
@@ -75,7 +77,10 @@ defmodule Elevator.HomingTest do
     assert motor_state.speed == :slow
   end
 
-  test "Scenario 5.1 & 5.4: Smart Homing - Cold Start (Vault empty) results in Physical Homing and Anchoring", %{vault: vault} do
+  test "Scenario 5.1 & 5.4: Smart Homing - Cold Start (Vault empty) results in Physical Homing and Anchoring",
+       %{
+         vault: vault
+       } do
     # 1. Vault is empty (never used)
 
     motor = start_supervised!({Motor, [name: nil]})

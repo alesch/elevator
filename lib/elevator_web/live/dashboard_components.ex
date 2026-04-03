@@ -16,28 +16,21 @@ defmodule ElevatorWeb.DashboardComponents do
 
   def floor_slot(assigns) do
     ~H"""
-    <div class={["floor-slot", @active && "floor-active"]}></div>
+    <div class="floor-slot"></div>
     """
   end
 
   @doc "Renders the elevator car itself with animated doors."
-  attr :floor, :any, required: true
   attr :door_state, :atom, required: true
   attr :slow, :boolean, default: false
 
   def elevator_car(assigns) do
     ~H"""
-    <div
-      id="elevator-car"
-      class={[
-        "car-placeholder",
-        @door_state in [:open, :opening] && "doors-open",
-        @slow && "is-slow"
-      ]}
-      style={"bottom: #{floor_to_pixels(@floor)}px;"}
-    >
-      <div class="door door-left"></div>
-      <div class="door door-right"></div>
+    <div id="elevator-car" class={["elevator-car", @door_state in [:open, :opening] && "doors-open"]}>
+      <div class="car-doors">
+        <div class="car-door car-door-left"></div>
+        <div class="car-door car-door-right"></div>
+      </div>
     </div>
     """
   end

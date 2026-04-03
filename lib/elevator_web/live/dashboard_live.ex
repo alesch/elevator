@@ -17,6 +17,7 @@ defmodule ElevatorWeb.DashboardLive do
   @spec mount(map(), map(), Phoenix.LiveView.Socket.t()) :: {:ok, Phoenix.LiveView.Socket.t()}
   def mount(_params, _session, socket) do
     if connected?(socket) do
+      Logger.info("Dashboard: Connected")
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:telemetry")
     end
@@ -33,6 +34,8 @@ defmodule ElevatorWeb.DashboardLive do
        current_floor: state.current_floor,
        visual_floor: visual_floor(state.current_floor, state.motor_status, state.heading),
        is_moving: state.motor_status == :running,
+       requests: state.requests,
+       target_floor: get_target_floor(state),
        door_state: state.door_status,
        motor_state: state.motor_status,
        sensor_state: state.door_sensor,
@@ -47,13 +50,14 @@ defmodule ElevatorWeb.DashboardLive do
   @spec handle_info({:elevator_state, Elevator.Core.t()}, Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:elevator_state, state}, socket) do
-    # Visual updates only (Log is now handled by telemetry)
     {:noreply,
      socket
      |> assign(
        current_floor: state.current_floor,
        visual_floor: visual_floor(state.current_floor, state.motor_status, state.heading),
        is_moving: state.motor_status == :running,
+       requests: state.requests,
+       target_floor: get_target_floor(state),
        door_state: state.door_status,
        motor_state: state.motor_status,
        sensor_state: state.door_sensor,
@@ -65,10 +69,10 @@ defmodule ElevatorWeb.DashboardLive do
   @spec handle_info({:telemetry_event, map()}, Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:telemetry_event, entry}, socket) do
-    # Append to the end and keep the last 20 entries
+    # Append to the end and keep the last 30 entries for higher density
     {:noreply,
      update(socket, :activity_log, fn logs ->
-       Enum.take(logs ++ [entry], -20)
+       Enum.take(logs ++ [entry], -30)
      end)}
   end
 
@@ -85,18 +89,7 @@ defmodule ElevatorWeb.DashboardLive do
   @spec handle_event(String.t(), map(), Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_event("request_floor", %{"floor" => floor}, socket) do
-    # Commands find the :controller via discovery automatically in the API
     Elevator.Controller.request_floor(:car, String.to_integer(floor))
-    {:noreply, socket}
-  end
-
-  def handle_event("open_door", _params, socket) do
-    Elevator.Controller.open_door()
-    {:noreply, socket}
-  end
-
-  def handle_event("close_door", _params, socket) do
-    Elevator.Controller.close_door()
     {:noreply, socket}
   end
 
@@ -114,96 +107,105 @@ defmodule ElevatorWeb.DashboardLive do
     ~H"""
     <div class="dashboard-container">
       <div class="main-content">
-        <!-- LEFT PANEL (SHAFT & CONSOLE) -->
+        <!-- SHAFT PANEL (25%) -->
         <div class="left-panel">
           <div class="shaft-container">
-            <div class="floor-labels">
-              <div>5</div>
-              <div>4</div>
-              <div>3</div>
-              <div>2</div>
-              <div>1</div>
-              <div>0</div>
+            <!-- Digital Floor Indicator -->
+            <div class="digital-indicator">
+              <%= if @current_floor == :unknown, do: "--", else: @current_floor %>
             </div>
 
-            <div class="shaft-visualization">
-              <%= if @controller_state == :rehoming do %>
-                <div class="rehoming-banner">REHOMING</div>
-              <% end %>
-              <div id="indicator" class="elevator-indicator">
-                <%= if @current_floor == :unknown, do: "--", else: @current_floor %>
+            <div class="shaft-layout">
+              <!-- Interactive Floor Labels -->
+              <div class="floor-labels">
+                <%= for floor <- 5..0//-1 do %>
+                  <div
+                    class={["floor-label", floor_class(floor, @requests, @target_floor)]}
+                    phx-click="request_floor"
+                    phx-value-floor={floor}
+                    id={"label-#{floor}"}
+                  >
+                    <%= floor %>
+                  </div>
+                <% end %>
               </div>
-              <div class="shaft-diagram">
-                <!-- Decorative floor slots -->
-                <.floor_slot :for={floor <- 5..0//-1} floor={floor} active={@current_floor == floor} />
 
-                <!-- The Elevator Car -->
-                <.elevator_car
-                  floor={@visual_floor}
-                  door_state={@door_state}
-                  slow={@controller_state == :rehoming}
-                />
-              </div>
-            </div>
-          </div>
+              <!-- Shaft Visualization -->
+              <div class="shaft-visual">
+                <%= if @controller_state == :rehoming do %>
+                  <div class="rehoming-banner">REHOMING</div>
+                <% end %>
 
-          <div class="button-console">
-            <%= for floor <- [5, 4, 3, 2, 1, 0] do %>
-              <div
-                class="console-button"
-                phx-click="request_floor"
-                phx-value-floor={floor}
-              >
-                <%= floor %>
-              </div>
-            <% end %>
-
-            <div class="special-buttons">
-              <div
-                class="console-button"
-                style="width:40px; height:40px; font-size: 0.8rem;"
-                phx-click="open_door"
-              >
-                &lt;|&gt;
-              </div>
-              <div
-                class="console-button"
-                style="width:40px; height:40px; font-size: 0.8rem;"
-                phx-click="close_door"
-              >
-                &gt;|&lt;
+                <div class="car-container" style={"bottom: #{floor_to_pixels(@visual_floor)}px;"}>
+                  <.elevator_car door_state={@door_state} slow={@controller_state == :rehoming} />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- RIGHT PANEL (ACTIVITY LOG) -->
+        <!-- ACTIVITY LOG PANEL (75%) -->
         <div class="right-panel">
-          <h3 class="log-header">ACTIVITY LOG</h3>
+          <div class="log-header">
+            <span>ACTIVITY LOG</span>
+            <span class="text-xs opacity-50">REAL-TIME TELEMETRY</span>
+          </div>
           <div id="log" class="activity-log" phx-hook="LogScroll">
             <%= for entry <- @activity_log do %>
-              <div class="log-entry">
-                <span><%= entry.actor %></span> [<%= entry.time %>] <%= entry.msg %>
+              <div class={["log-entry", log_class(entry.actor)]}>
+                [<%= entry.time %>] <%= entry.actor %>: <%= entry.msg %>
               </div>
             <% end %>
           </div>
         </div>
       </div>
 
-      <!-- FOOTER (Live Actor Status) -->
+      <!-- HEALTH FOOTER -->
       <div class="status-footer">
-        <.status_box icon="🧠" label="Controller" state={@controller_state} />
-        <.status_box icon="⚙️" label="Motor" state={@motor_state} />
-        <.status_box icon="🚪" label="Door" state={@door_state} />
-        <.status_box icon="👁️" label="Sensor" state={@sensor_state} />
+        <.footer_item icon="🧠" label="Core" state={@controller_state} />
+        <.footer_item icon="⚙️" label="Motor" state={@motor_state} />
+        <.footer_item icon="🚪" label="Doors" state={@door_state} />
+        <.footer_item icon="👁️" label="Sensors" state={@sensor_state} />
       </div>
     </div>
     """
   end
 
-  # ---------------------------------------------------------------------------
-  # ## Internal Logic
-  # ---------------------------------------------------------------------------
+  defp footer_item(assigns) do
+    ~H"""
+    <div class="footer-item">
+      <div class="status-icon"><%= @icon %></div>
+      <div class="status-info">
+        <span class="status-label"><%= @label %></span>
+        <span class="status-value" style={"color: #{state_color(@state)}"}>
+          <%= format_status(@state) %>
+        </span>
+      </div>
+    </div>
+    """
+  end
+
+  defp get_target_floor(%{requests: [], status: :rehoming}), do: 0
+  defp get_target_floor(%{requests: []}), do: nil
+
+  defp get_target_floor(%{requests: requests, current_floor: current, heading: heading}) do
+    case heading do
+      :up ->
+        requests
+        |> Enum.map(fn {_, f} -> f end)
+        |> Enum.filter(&(&1 >= current))
+        |> Enum.min(fn -> nil end)
+
+      :down ->
+        requests
+        |> Enum.map(fn {_, f} -> f end)
+        |> Enum.filter(&(&1 <= current))
+        |> Enum.max(fn -> nil end)
+
+      _ ->
+        nil
+    end
+  end
 
   @spec current_time() :: String.t()
   defp current_time do

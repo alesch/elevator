@@ -22,21 +22,40 @@ defmodule ElevatorWeb.DashboardHelpers do
 
   @doc "Determines the industrial color code for a given component status."
   @spec state_color(atom()) :: String.t()
-  # Green (Stable)
-  def state_color(state) when state in [:idle, :stopped, :clear, :open, :normal], do: "#2ecc71"
-
-  # Blue (Running)
+  # Cyan (Running/Active)
   def state_color(state) when state in [:moving, :running, :tracking, :closed],
-    do: "#3498db"
+    do: "#00f2ff"
 
-  # Yellow/Orange (Intent & Transitions)
-  def state_color(state) when state in [:stopping, :opening, :closing, :rehoming], do: "#f39c12"
+  # Green (Stable/Ready)
+  def state_color(state) when state in [:idle, :stopped, :clear, :open, :normal],
+    do: "#39ff14"
+
+  # Amber (Intent & Transitions)
+  def state_color(state) when state in [:stopping, :opening, :closing, :rehoming],
+    do: "#ffae00"
 
   # Red (Alert / Unspecified)
-  def state_color(_), do: "#e74c3c"
+  def state_color(_), do: "#ff3131"
 
   @doc "Formats a status atom for display."
   @spec format_status(atom()) :: String.t()
   def format_status(nil), do: "---"
   def format_status(status), do: status |> Atom.to_string() |> String.upcase()
+
+  @doc "Determines CSS class for floor labels based on state."
+  @spec floor_class(integer(), list(), integer() | nil) :: String.t()
+  def floor_class(floor, requests, target) do
+    cond do
+      floor == target -> "targeting"
+      Enum.any?(requests, fn {_, f} -> f == floor end) -> "pending"
+      true -> ""
+    end
+  end
+
+  @doc "Maps telemetry actors to log styles."
+  @spec log_class(String.t()) :: String.t()
+  def log_class("🧠"), do: "system"
+  def log_class("⚙️"), do: "event"
+  def log_class("🚪"), do: "event"
+  def log_class(_), do: ""
 end
