@@ -49,7 +49,7 @@ defmodule Elevator.MixProject do
   defp aliases do
     [
       ci: [
-        "cmd echo '\n\e[1;36m--- ✨ Checking Formatting --- \e[0m\e[2m(mix format --check-formatted)\e[0m'",
+        "cmd echo '\n\e[1;36m--- ✨ Checking Formatting --- \e[0m\e[2m(mix format)\e[0m'",
         "format --check-formatted",
         "cmd echo '\n\e[1;36m--- 🔍 Running Linter (Credo) --- \e[0m\e[2m(mix credo --strict)\e[0m'",
         "credo --strict",
