@@ -106,7 +106,8 @@ defmodule Mix.Tasks.Agent.Setup do
     # Heavy folders to share
     targets = [
       "node_modules",
-      "priv/plts"
+      "priv/plts",
+      "doc/agent_comms.md"
     ]
 
     for target <- targets do
