@@ -63,10 +63,10 @@ defmodule Mix.Tasks.Agent.Setup do
     end
   end
 
-  defp assign_port(name, agent_dir) do
+  defp assign_port(_name, agent_dir) do
     # Scan existing agents for ports to avoid collisions
     existing_ports =
-      Path.wildcard("#{@agents_root}/*/.env")
+      Path.wildcard("#{@agents_root}/*/.env", match_dot: true)
       |> Enum.map(fn path ->
         case File.read(path) do
           {:ok, content} ->
