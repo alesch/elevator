@@ -41,7 +41,7 @@ defmodule Mix.Tasks.Agent.Setup do
   end
 
   def run(_) do
-    Mix.raise("Usage: mix agent.setup <agent_name>")
+    raise Mix.Error, message: "Usage: mix agent.setup <agent_name>"
   end
 
   # --- Internal Logic ---
@@ -61,8 +61,11 @@ defmodule Mix.Tasks.Agent.Setup do
 
     # Add Worktree
     case System.cmd("git", ["worktree", "add", dir, branch]) do
-      {_, 0} -> :ok
-      {msg, _} -> Mix.raise("Could not create worktree: #{msg}")
+      {_, 0} ->
+        :ok
+
+      {msg, _} ->
+        raise Mix.Error, message: "Could not create worktree: #{msg}"
     end
   end
 

@@ -11,7 +11,8 @@ defmodule Elevator.MixProject do
       aliases: aliases(),
       dialyzer: [
         plt_local_path: "priv/plts",
-        plt_core_path: "priv/plts"
+        plt_core_path: "priv/plts",
+        plt_add_apps: [:mix]
       ]
     ]
   end
