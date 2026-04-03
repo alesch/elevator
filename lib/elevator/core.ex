@@ -21,6 +21,14 @@ defmodule Elevator.Core do
             weight: 0,
             weight_limit: 1000
 
+  @type action ::
+          {:set_timer, atom(), integer()}
+          | {:cancel_timer, atom()}
+          | {:move_motor, atom(), atom()}
+          | {:stop_motor}
+          | {:open_door}
+          | {:close_door}
+
   @type t :: %__MODULE__{
           current_floor: integer() | :unknown,
           heading: :up | :down | :idle,
@@ -33,6 +41,8 @@ defmodule Elevator.Core do
           weight: integer(),
           weight_limit: integer()
         }
+
+  @door_wait_ms 5000
 
   @doc "Creates a standard passenger elevator state."
   @spec new_passenger() :: t()
@@ -49,98 +59,150 @@ defmodule Elevator.Core do
   @doc """
   Adds a floor request to the state and updates the heading.
   """
-  @spec request_floor(t(), atom(), integer()) :: t()
+  @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
-    state
-    |> add_request(source, floor)
-    |> update_heading()
-    |> process_current_floor()
-    |> apply_constraints()
+    new_state =
+      state
+      |> add_request(source, floor)
+      |> update_heading()
+      |> do_process_current_floor()
+
+    {new_state, derive_actions(state, new_state)}
+  end
+
+  defp do_process_current_floor(state) do
+    if should_stop_at?(state, state.current_floor) do
+      %{state | motor_status: :stopping}
+      |> apply_logic()
+    else
+      state
+      |> apply_logic()
+    end
   end
 
   @doc """
   Processes the current floor arrival logic.
   Initiates braking if this is a target floor.
   """
-  @spec process_current_floor(t()) :: t()
+  @spec process_current_floor(t()) :: {t(), [action()]}
   def process_current_floor(%Core{} = state) do
-    if should_stop_at?(state, state.current_floor) do
-      %{state | motor_status: :stopping}
-      |> apply_constraints()
-    else
-      state
-      |> apply_constraints()
-    end
+    new_state = do_process_current_floor(state)
+    {new_state, derive_actions(state, new_state)}
   end
 
   @doc """
   Central event handler for component confirmations.
   """
-  @spec handle_event(t(), atom(), integer() | nil) :: t()
-  def handle_event(state, :motor_stopped, _now) do
+  @spec handle_event(t(), atom(), integer() | nil) :: {t(), [action()]}
+  def handle_event(state, event, now) do
+    new_state = do_handle_event(state, event, now)
+    {new_state, derive_actions(state, new_state)}
+  end
+
+  defp do_handle_event(state, :motor_stopped, _now) do
     state
     |> fulfill_current_floor_requests()
     |> confirm_stopped_at_floor()
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_event(%Core{door_status: :opening} = state, :door_opened, now) do
+  defp do_handle_event(%Core{door_status: :opening} = state, :door_opened, now) do
     %{state | door_status: :open, last_activity_at: now}
-    |> apply_constraints()
+    |> apply_logic(now)
   end
 
-  def handle_event(%Core{door_status: :closing} = state, :door_closed, _now) do
+  defp do_handle_event(%Core{door_status: :closing} = state, :door_closed, _now) do
     %{state | door_status: :closed}
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_event(state, :recovery_complete, floor) do
+  defp do_handle_event(%Core{door_status: :open} = state, :door_timeout, _now) do
+    # When a timeout arrives, we transition to closing if there's work to do
+    if state.heading != :idle and state.status == :normal and state.door_sensor == :clear do
+      %{state | door_status: :closing}
+      |> apply_logic()
+    else
+      state
+      |> apply_logic()
+    end
+  end
+
+  defp do_handle_event(state, :tick, now) do
+    state
+    |> apply_logic(now)
+  end
+
+  defp do_handle_event(state, :recovery_complete, floor) do
     %{state | current_floor: floor, status: :normal}
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_event(state, :rehoming_started, _now) do
+  defp do_handle_event(state, :rehoming_started, _now) do
     %{state | status: :rehoming}
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_event(%Core{door_status: :closing} = state, :door_obstructed, _now) do
+  defp do_handle_event(%Core{door_status: :closing} = state, :door_obstructed, _now) do
     %{state | door_sensor: :blocked, door_status: :opening}
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_event(state, :door_obstructed, _now) do
+  defp do_handle_event(state, :door_obstructed, _now) do
     %{state | door_sensor: :blocked}
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_event(state, :door_cleared, _now) do
+  defp do_handle_event(state, :door_cleared, _now) do
     %{state | door_sensor: :clear}
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_event(state, event, _now) do
+  defp do_handle_event(state, event, _now) do
     Logger.warning("Unexpected event #{inspect(event)} in state: #{inspect(state)}")
 
     state
-    |> apply_constraints()
+    |> apply_logic()
   end
 
   @doc """
   Handles physical button presses.
   """
-  @spec handle_button_press(t(), atom(), integer()) :: t()
-  def handle_button_press(%Core{door_status: :closing} = state, :door_open, _now) do
+  @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
+  def handle_button_press(state, button, now) do
+    new_state = do_handle_button_press(state, button, now)
+    actions = derive_actions(state, new_state)
+
+    # Some button presses might cause unique side effects (like timer cancellation)
+    actions =
+      case button do
+        :door_close -> actions ++ [{:cancel_timer, :door_timeout}]
+        _ -> actions
+      end
+
+    {new_state, actions}
+  end
+
+  defp do_handle_button_press(%Core{door_status: :closed} = state, :door_open, _now) do
     %{state | door_status: :opening}
-    |> apply_constraints()
+    |> apply_logic()
   end
 
-  def handle_button_press(%Core{door_status: :open} = state, :door_open, now) do
+  defp do_handle_button_press(%Core{door_status: :closing} = state, :door_open, _now) do
+    %{state | door_status: :opening}
+    |> apply_logic()
+  end
+
+  defp do_handle_button_press(%Core{door_status: :open} = state, :door_open, now) do
     %{state | last_activity_at: now}
-    |> apply_constraints()
+    |> apply_logic(now)
   end
 
-  def handle_button_press(state, button, _now) do
+  defp do_handle_button_press(%Core{door_status: :open} = state, :door_close, _now) do
+    %{state | door_status: :closing}
+    |> apply_logic()
+  end
+
+  defp do_handle_button_press(state, button, _now) do
     Logger.warning("Unexpected button press #{inspect(button)} in state: #{inspect(state)}")
     state
   end
@@ -148,12 +210,15 @@ defmodule Elevator.Core do
   @doc """
   Updates the current weight and checks for overload.
   """
-  @spec update_weight(t(), integer()) :: t()
+  @spec update_weight(t(), integer()) :: {t(), [action()]}
   def update_weight(%Core{} = state, new_weight) do
-    state
-    |> set_weight(new_weight)
-    |> update_overload_status()
-    |> apply_constraints()
+    new_state =
+      state
+      |> set_weight(new_weight)
+      |> update_overload_status()
+      |> apply_logic()
+
+    {new_state, derive_actions(state, new_state)}
   end
 
   # ---------------------------------------------------------------------------
@@ -168,23 +233,25 @@ defmodule Elevator.Core do
       any_requests_below?(state) -> %{state | heading: :down}
       true -> %{state | heading: :idle}
     end
-    |> apply_constraints()
   end
 
   @doc "Processes a floor arrival with physical safety checks (Stop/Overshoot)."
-  @spec process_arrival(t(), integer()) :: t()
+  @spec process_arrival(t(), integer()) :: {t(), [action()]}
   def process_arrival(state, floor) do
-    # 1. Update floor in state
-    state = %{state | current_floor: floor}
+    new_state =
+      %{state | current_floor: floor}
+      |> do_process_arrival(floor)
 
-    # 2. Check for mandatory safety stops
+    {new_state, derive_actions(state, new_state)}
+  end
+
+  defp do_process_arrival(state, floor) do
     if should_stop_at?(state, floor) or overshooting?(state) do
       %{state | heading: :idle}
-      |> apply_constraints()
+      |> apply_logic()
     else
-      # Passing through: Maintain current heading
       state
-      |> apply_constraints()
+      |> apply_logic()
     end
   end
 
@@ -256,57 +323,59 @@ defmodule Elevator.Core do
   # ## Autonomous Intent & Safety Pipeline
   # ---------------------------------------------------------------------------
 
-  @spec apply_constraints(t()) :: t()
-  defp apply_constraints(state) do
+  @spec apply_logic(t(), integer() | nil) :: t()
+  defp apply_logic(state, now \\ nil) do
     state
-    |> start_rehoming()
-    |> start_servicing_request()
-    |> complete_servicing_request()
-    |> start_moving()
-    |> stop_moving()
+    |> start_rehoming_logic()
+    |> start_servicing_request_logic(now)
+    |> complete_servicing_request_logic()
+    |> start_moving_logic()
+    |> stop_moving_logic()
     |> enforce_safety_overrides()
     |> enforce_the_golden_rule()
   end
 
-  defp start_rehoming(%Core{status: :rehoming} = state) do
-    # During rehoming, we must ensure doors are closed and move down at slow speed.
-    # We do NOT auto-complete here based on floor 1, because the sensor
-    # confirmation is what actually completes rehoming.
+  defp start_rehoming_logic(%Core{status: :rehoming} = state) do
     state = if state.door_status != :closed, do: %{state | door_status: :closing}, else: state
     %{state | heading: :down, motor_status: :running, motor_speed: :slow}
   end
 
-  defp start_rehoming(state), do: state
+  defp start_rehoming_logic(state), do: state
 
-  defp start_servicing_request(
-         %Core{heading: h, door_status: :open, status: :normal, door_sensor: :clear} = state
+  defp start_servicing_request_logic(
+         %Core{heading: h, door_status: :open, status: :normal, door_sensor: :clear} = state,
+         now
        )
-       when h != :idle do
-    %{state | door_status: :closing}
+       when h != :idle and not is_nil(now) do
+    if now - state.last_activity_at >= @door_wait_ms do
+      %{state | door_status: :closing}
+    else
+      state
+    end
   end
 
-  defp start_servicing_request(state), do: state
+  defp start_servicing_request_logic(state, _now), do: state
 
-  defp start_moving(
+  defp start_moving_logic(
          %Core{heading: h, door_status: :closed, motor_status: :stopped, status: :normal} = state
        )
        when h != :idle do
     %{state | motor_status: :running, motor_speed: :normal}
   end
 
-  defp start_moving(state), do: state
+  defp start_moving_logic(state), do: state
 
-  defp stop_moving(%Core{heading: :idle, motor_status: :running} = state) do
+  defp stop_moving_logic(%Core{heading: :idle, motor_status: :running} = state) do
     %{state | motor_status: :stopping}
   end
 
-  defp stop_moving(state), do: state
+  defp stop_moving_logic(state), do: state
 
-  defp complete_servicing_request(
-         %Core{heading: :idle, motor_status: :stopped, door_status: d} = state
+  defp complete_servicing_request_logic(
+         %Core{motor_status: :stopped, door_status: d} = state
        )
        when d in [:closed, :closing] do
-    # If we are idle at a floor that still needs service (or just got a request), open up.
+    # If we are stopped at a floor that still needs service, open up.
     if should_stop_at?(state, state.current_floor) do
       %{state | door_status: :opening}
     else
@@ -314,7 +383,53 @@ defmodule Elevator.Core do
     end
   end
 
-  defp complete_servicing_request(state), do: state
+  defp complete_servicing_request_logic(state), do: state
+
+  defp derive_actions(old, new) do
+    []
+    |> maybe_add_motor_action(old, new)
+    |> maybe_add_door_action(old, new)
+    |> maybe_add_timer_action(old, new)
+  end
+
+  defp maybe_add_motor_action(actions, old, new) do
+    cond do
+      new.motor_status == :stopping and old.motor_status != :stopping ->
+        actions ++ [{:stop_motor}]
+
+      new.motor_status == :running and (old.motor_status != :running or old.heading != new.heading) ->
+        actions ++ [{:move_motor, new.heading, new.motor_speed}]
+
+      true ->
+        actions
+    end
+  end
+
+  defp maybe_add_door_action(actions, old, new) do
+    cond do
+      new.door_status == :opening and old.door_status != :opening ->
+        actions ++ [{:open_door}]
+
+      new.door_status == :closing and old.door_status != :closing ->
+        actions ++ [{:close_door}]
+
+      true ->
+        actions
+    end
+  end
+
+  defp maybe_add_timer_action(actions, old, new) do
+    cond do
+      new.door_status == :open and (old.door_status != :open or old.last_activity_at != new.last_activity_at) ->
+        actions ++ [{:set_timer, :door_timeout, @door_wait_ms}]
+
+      new.door_status != :open and old.door_status == :open ->
+        actions ++ [{:cancel_timer, :door_timeout}]
+
+      true ->
+        actions
+    end
+  end
 
   defp enforce_safety_overrides(state) do
     cond do
@@ -323,8 +438,7 @@ defmodule Elevator.Core do
         %{state | door_status: :opening}
 
       state.status == :overload ->
-        # Overload forces opening/prevents closing.
-        # If already open, stay open.
+        # Overload forces opening/prevents closing
         if state.door_status == :open do
           state
         else

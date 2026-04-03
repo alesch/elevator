@@ -25,7 +25,7 @@ defmodule Elevator.AuditTest do
         state = %Core{current_floor: current, heading: heading, weight: weight}
 
         # ACT: Receive request
-        new_state = Core.request_floor(state, source, target)
+        {new_state, _actions} = Core.request_floor(state, source, target)
 
         # ASSERT 1: Immediate Arrival Logic
         if current == target do

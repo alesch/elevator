@@ -90,9 +90,13 @@ defmodule Elevator.Controller do
     if vault_floor == sensor_floor and vault_floor != nil do
       # CASE 1: Perfect agreement (Zero-move recovery)
       :telemetry.execute([:elevator, :controller, :recovery], %{}, %{floor: vault_floor})
-      new_state = Core.handle_event(data.state, :recovery_complete, vault_floor)
-      new_data = %{data | state: new_state}
-      broadcast_state(new_state)
+      {new_state, actions} = Core.handle_event(data.state, :recovery_complete, vault_floor)
+
+      new_data =
+        %{data | state: new_state}
+        |> execute_actions(actions)
+
+      broadcast_state(new_data.state)
       {:noreply, new_data}
     else
       # CASE 2: Ambiguity or Cold Start (Perform physical homing)
@@ -101,11 +105,11 @@ defmodule Elevator.Controller do
         speed: :slow
       })
 
-      new_state = Core.handle_event(data.state, :rehoming_started, nil)
+      {new_state, actions} = Core.handle_event(data.state, :rehoming_started, nil)
 
       new_data =
         %{data | state: new_state}
-        |> sync_physical_limbs(data.state)
+        |> execute_actions(actions)
 
       broadcast_state(new_data.state)
       {:noreply, new_data}
@@ -134,13 +138,13 @@ defmodule Elevator.Controller do
     else
       :telemetry.execute([:elevator, :controller, :request], %{}, %{source: source, floor: floor})
 
-      new_data =
-        data
-        |> update_core_state(source, floor)
-        |> sync_physical_limbs(data.state)
-        |> reset_inactivity_timer()
+      {new_state, actions} = Core.request_floor(data.state, source, floor)
 
-      broadcast_state(new_data.state)
+      new_data =
+        %{data | state: new_state}
+        |> execute_actions(actions)
+        |> broadcast_and_reset_timer()
+
       {:noreply, new_data}
     end
   end
@@ -148,15 +152,29 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_cast(:manual_open_door, map()) :: {:noreply, map()}
   def handle_cast(:manual_open_door, data) do
-    lookup_hardware(data, :door, &Hardware.Door.open/1)
-    {:noreply, data}
+    now = System.system_time(:millisecond)
+    {new_state, actions} = Core.handle_button_press(data.state, :door_open, now)
+
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
+
+    {:noreply, new_data}
   end
 
   @impl true
   @spec handle_cast(:manual_close_door, map()) :: {:noreply, map()}
   def handle_cast(:manual_close_door, data) do
-    lookup_hardware(data, :door, &Hardware.Door.close/1)
-    {:noreply, data}
+    now = System.system_time(:millisecond)
+    {new_state, actions} = Core.handle_button_press(data.state, :door_close, now)
+
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
+
+    {:noreply, new_data}
   end
 
   @impl true
@@ -174,21 +192,18 @@ defmodule Elevator.Controller do
       was_rehoming: was_rehoming?
     })
 
-    new_state =
-      %{data.state | status: new_status}
-      |> Elevator.Core.process_arrival(floor)
+    # Intermediate state to handle manual rehoming logic override
+    # (In a real system, the Brain would handle this internally)
+    {mid_state, _} = Core.process_arrival(%{data.state | status: new_status}, floor)
+    final_heading = if was_rehoming?, do: :idle, else: mid_state.heading
 
-    # 2.1 CALIBRATION ANCHOR: Force a stop at the first floor we find during rehoming
-    new_state = if was_rehoming?, do: %{new_state | heading: :idle}, else: new_state
+    {final_state, actions} = Core.process_arrival(%{data.state | status: new_status, heading: final_heading}, floor)
 
-    # 3. Synchronize hardware (Updates Intent States)
     new_data =
-      %{data | state: new_state}
-      |> sync_physical_limbs(data.state)
-      |> reset_inactivity_timer()
+      %{data | state: final_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
 
-    # 4. Final Broadcast (Reflects hardware intent instantly)
-    broadcast_state(new_data.state)
     {:noreply, new_data}
   end
 
@@ -196,81 +211,93 @@ defmodule Elevator.Controller do
   @spec handle_info(:door_opened, data :: map()) :: {:noreply, map()}
   def handle_info(:door_opened, data) do
     now = System.system_time(:millisecond)
-    new_state = Core.handle_event(data.state, :door_opened, now)
-    new_data = %{data | state: new_state} |> reset_inactivity_timer()
+    {new_state, actions} = Core.handle_event(data.state, :door_opened, now)
 
-    broadcast_state(new_data.state)
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
+
     {:noreply, new_data}
   end
 
   @impl true
   @spec handle_info(:door_closed, map()) :: {:noreply, map()}
   def handle_info(:door_closed, data) do
-    # Door is finally closed. Check if we should start moving.
-    new_state = Core.handle_event(data.state, :door_closed, nil)
+    {new_state, actions} = Core.handle_event(data.state, :door_closed, nil)
 
     new_data =
       %{data | state: new_state}
-      |> sync_physical_limbs(data.state)
-      |> reset_inactivity_timer()
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
 
-    broadcast_state(new_data.state)
     {:noreply, new_data}
   end
 
   @impl true
   @spec handle_info(:motor_stopped, map()) :: {:noreply, map()}
   def handle_info(:motor_stopped, data) do
-    # Motor is finally stopped. Check if we should open doors.
-    new_state = Core.handle_event(data.state, :motor_stopped, nil)
+    {new_state, actions} = Core.handle_event(data.state, :motor_stopped, nil)
 
     new_data =
       %{data | state: new_state}
-      |> sync_physical_limbs()
-      |> reset_inactivity_timer()
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
 
-    broadcast_state(new_data.state)
     {:noreply, new_data}
   end
 
   @impl true
   @spec handle_info(:door_obstructed, map()) :: {:noreply, map()}
   def handle_info(:door_obstructed, data) do
-    new_state = Core.handle_event(data.state, :door_obstructed, nil)
+    {new_state, actions} = Core.handle_event(data.state, :door_obstructed, nil)
 
     new_data =
       %{data | state: new_state}
-      |> sync_physical_limbs(data.state)
-      |> reset_inactivity_timer()
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
 
-    broadcast_state(new_data.state)
     {:noreply, new_data}
   end
 
   @impl true
   @spec handle_info(:door_cleared, map()) :: {:noreply, map()}
   def handle_info(:door_cleared, data) do
-    new_state = Core.handle_event(data.state, :door_cleared, nil)
+    {new_state, actions} = Core.handle_event(data.state, :door_cleared, nil)
 
     new_data =
       %{data | state: new_state}
-      |> sync_physical_limbs(data.state)
-      |> reset_inactivity_timer()
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
 
-    broadcast_state(new_data.state)
+    {:noreply, new_data}
+  end
+
+  @impl true
+  @spec handle_info({:timeout, atom()}, map()) :: {:noreply, map()}
+  def handle_info({:timeout, id}, data) do
+    Logger.info("Controller: Timer expired for #{id}")
+    now = System.system_time(:millisecond)
+    {new_state, actions} = Core.handle_event(data.state, id, now)
+
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
+
     {:noreply, new_data}
   end
 
   @impl true
   @spec handle_info(:return_to_base, map()) :: {:noreply, map()}
   def handle_info(:return_to_base, data) do
-    new_data =
-      data
-      |> update_core_state(:hall, 1)
-      |> sync_physical_limbs(data.state)
-      |> reset_inactivity_timer()
+    {new_state, actions} = Core.request_floor(data.state, :hall, 1)
 
-    broadcast_state(new_data.state)
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
+
     {:noreply, new_data}
   end
 
@@ -296,6 +323,44 @@ defmodule Elevator.Controller do
   # ---------------------------------------------------------------------------
   # ## Internal Logic
   # ---------------------------------------------------------------------------
+
+  @spec execute_actions(map(), [Core.action()]) :: map()
+  defp execute_actions(data, actions) do
+    if actions != [], do: Logger.info("Controller executing actions: #{inspect(actions)}")
+    Enum.reduce(actions, data, fn action, acc ->
+      case action do
+        {:move_motor, dir, speed} ->
+          lookup_hardware(acc, :motor, &Hardware.Motor.move(&1, dir, speed: speed))
+          acc
+
+        {:stop_motor} ->
+          lookup_hardware(acc, :motor, &Hardware.Motor.stop/1)
+          acc
+
+        {:open_door} ->
+          lookup_hardware(acc, :door, &Hardware.Door.open/1)
+          acc
+
+        {:close_door} ->
+          lookup_hardware(acc, :door, &Hardware.Door.close/1)
+          acc
+
+        {:set_timer, id, ms} ->
+          Process.send_after(self(), {:timeout, id}, ms)
+          acc
+
+        {:cancel_timer, _id} ->
+          # MVP uses process mailboxes as queues; cancellation is not strictly required
+          # if the Brain is idempotent to late timeouts.
+          acc
+      end
+    end)
+  end
+
+  defp broadcast_and_reset_timer(data) do
+    broadcast_state(data.state)
+    reset_inactivity_timer(data)
+  end
 
   @spec broadcast_state(Elevator.Core.t()) :: :ok | {:error, term()}
   defp broadcast_state(state) do
@@ -324,91 +389,6 @@ defmodule Elevator.Controller do
     else
       state
     end
-  end
-
-  @spec update_core_state(map(), atom(), integer()) :: map()
-  defp update_core_state(data, source, floor) do
-    %{data | state: Core.request_floor(data.state, source, floor)}
-  end
-
-  @spec sync_physical_limbs(map(), Elevator.Core.t() | nil) :: map()
-  defp sync_physical_limbs(data, old_state \\ nil) do
-    data
-    |> sync_door_mirror(old_state)
-    |> sync_motor_mirror(old_state)
-  end
-
-  # ---------------------------------------------------------------------------
-  # ## Hardware Servo (The Sink)
-  # ---------------------------------------------------------------------------
-
-  defp sync_door_mirror(data, old_state) do
-    current = data.state.door_status
-    prev = if old_state, do: old_state.door_status, else: nil
-
-    if current != prev do
-      case current do
-        :opening ->
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :door,
-            status: :opening
-          })
-
-          lookup_hardware(data, :door, &Hardware.Door.open/1)
-
-        :closing ->
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :door,
-            status: :closing
-          })
-
-          lookup_hardware(data, :door, &Hardware.Door.close/1)
-
-        _ ->
-          :ok
-      end
-    end
-
-    data
-  end
-
-  defp sync_motor_mirror(data, old_state) do
-    current = data.state.motor_status
-    prev = if old_state, do: old_state.motor_status, else: nil
-
-    if current != prev or (current == :running and old_state.heading != data.state.heading) do
-      case current do
-        :running ->
-          direction = data.state.heading
-          speed = data.state.motor_speed
-
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :motor,
-            status: :running,
-            direction: direction,
-            speed: speed
-          })
-
-          lookup_hardware(data, :motor, &Hardware.Motor.move(&1, direction, speed: speed))
-
-        :stopping ->
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :motor,
-            status: :stopping
-          })
-
-          lookup_hardware(data, :motor, &Hardware.Motor.stop/1)
-
-        :stopped ->
-          # Only log/telemetry if we actually transitioned to stopped
-          :telemetry.execute([:elevator, :controller, :decision], %{}, %{
-            target: :motor,
-            status: :stopped
-          })
-      end
-    end
-
-    data
   end
 
   # Dispatch logic: Priority to explicit deps (Test Way) -> Discovery (Industrial Way)

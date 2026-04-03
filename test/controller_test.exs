@@ -281,21 +281,27 @@ defmodule Elevator.ControllerTest do
       assert_receive {:"$gen_cast", :open}
       send(pid, :door_opened)
 
-      assert_receive {:elevator_state, %{door_status: :open, motor_status: :stopped}}
-
       # 2. Request Floor 3
       Controller.request_floor(pid, :car, 3)
 
-      # ASSERT 1: Only Door Close is dispatched
-      assert_receive {:"$gen_cast", :close}
+      # Drain the initial :opening and :open broadcasts from startup/recovery
+      assert_receive {:elevator_state, %{door_status: :opening}}
+      assert_receive {:elevator_state, %{door_status: :open}}
 
-      # ASSERT 2: Visual intent shows :closing but motor stays :stopped
+      # ASSERT 1: Immediate visual intent shows :open but heading :up
+      assert_receive {:elevator_state, %{door_status: :open, heading: :up}}
+
+      # 3. Simulate Timeout pulse (The Core decisions happen here)
+      send(pid, {:timeout, :door_timeout})
+
+      # ASSERT 2: Only now is Door Close dispatched
+      assert_receive {:"$gen_cast", :close}
       assert_receive {:elevator_state, %{door_status: :closing, motor_status: :stopped}}
 
       # ASSERT 3: Motor is NOT commanded to move yet
       refute_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}, 100
 
-      # 3. Simulate Door reaching CLOSED state
+      # 4. Simulate Door reaching CLOSED state
       send(pid, :door_closed)
 
       # ASSERT 4: Finally, the motor is allowed to move
@@ -326,6 +332,14 @@ defmodule Elevator.ControllerTest do
 
       # 2. Trigger a close (by requesting another floor)
       Controller.request_floor(pid, :car, 3)
+
+      # Drain startup
+      assert_receive {:elevator_state, %{door_status: :opening}}
+      assert_receive {:elevator_state, %{door_status: :open}}
+
+      # Sim timeout
+      send(pid, {:timeout, :door_timeout})
+
       assert_receive {:"$gen_cast", :close}
       assert_receive {:elevator_state, %{door_status: :closing}}
 

@@ -16,7 +16,7 @@ defmodule Elevator.CoreTest do
   test "requesting a floor above the current floor sets heading and adds request" do
     state = %Core{current_floor: 1, heading: :idle}
 
-    new_state = Core.request_floor(state, :car, 4)
+    {new_state, _actions} = Core.request_floor(state, :car, 4)
 
     assert new_state.current_floor == 1
     assert new_state.heading == :up
@@ -28,24 +28,26 @@ defmodule Elevator.CoreTest do
     state = %Core{current_floor: 3, heading: :up, requests: [{:car, 3}], motor_status: :running}
 
     # Act
-    new_state = Core.process_current_floor(state)
+    {new_state, actions} = Core.process_current_floor(state)
 
     # Assert
     assert new_state.motor_status == :stopping
+    assert {:stop_motor} in actions
     # Request should NOT be removed yet (until confirmed stopped)
     assert {:car, 3} in new_state.requests
   end
 
   test "Scenario 1.3: Completing braking and opening doors" do
     # Arrange
-    state = %Core{current_floor: 3, motor_status: :stopping, requests: [{:car, 3}]}
+    state = %Core{current_floor: 3, motor_status: :stopping, requests: [{:car, 3}], door_status: :closed}
 
     # Act: Complete braking at T=0
-    new_state = Core.handle_event(state, :motor_stopped, 0)
+    {new_state, actions} = Core.handle_event(state, :motor_stopped, 0)
 
     # Assert
     assert new_state.motor_status == :stopped
     assert new_state.door_status == :opening
+    assert {:open_door} in actions
     # Now it is safe to clear the request
     assert new_state.requests == []
   end
@@ -55,11 +57,12 @@ defmodule Elevator.CoreTest do
     state = %Core{door_status: :opening}
 
     # Act: Doors open at T=100
-    new_state = Core.handle_event(state, :door_opened, 100)
+    {new_state, actions} = Core.handle_event(state, :door_opened, 100)
 
     # Assert
     assert new_state.door_status == :open
     assert new_state.last_activity_at == 100
+    assert {:set_timer, :door_timeout, 5000} in actions
   end
 
   test "Scenario 3.2: Reset Auto-Close Timer" do
@@ -67,17 +70,19 @@ defmodule Elevator.CoreTest do
     state = %Core{door_status: :open, last_activity_at: 100}
 
     # Act: Press "Open" button at T=150
-    new_state = Core.handle_button_press(state, :door_open, 150)
+    {new_state, actions} = Core.handle_button_press(state, :door_open, 150)
 
     # Assert
     assert new_state.last_activity_at == 150
+    # Timer should be reset (cancelled and set again)
+    assert {:set_timer, :door_timeout, 5000} in actions
   end
 
   test "Scenario 2.2: Weight sensor triggers overload if weight > limit" do
     state = %Core{door_status: :open, weight: 0, weight_limit: 1000}
 
     # Act
-    new_state = Core.update_weight(state, 1200)
+    {new_state, _actions} = Core.update_weight(state, 1200)
 
     # Assert
     assert new_state.status == :overload
@@ -88,7 +93,7 @@ defmodule Elevator.CoreTest do
     state = %Core{status: :overload, weight: 1200, weight_limit: 1000}
 
     # Act
-    new_state = Core.update_weight(state, 800)
+    {new_state, _actions} = Core.update_weight(state, 800)
 
     # Assert
     assert new_state.status == :normal
@@ -99,10 +104,11 @@ defmodule Elevator.CoreTest do
     state = %Core{door_status: :closing}
 
     # Act
-    new_state = Core.handle_button_press(state, :door_open, 0)
+    {new_state, actions} = Core.handle_button_press(state, :door_open, 0)
 
     # Assert
     assert new_state.door_status == :opening
+    assert {:open_door} in actions
   end
 
   describe "Scenario 2.1 & 2.5: Door Safety Sensors" do
@@ -110,18 +116,19 @@ defmodule Elevator.CoreTest do
       state = %Core{door_status: :closing, door_sensor: :clear}
 
       # Act
-      new_state = Core.handle_event(state, :door_obstructed, 0)
+      {new_state, actions} = Core.handle_event(state, :door_obstructed, 0)
 
       # Assert
       assert new_state.door_status == :opening
       assert new_state.door_sensor == :blocked
+      assert {:open_door} in actions
     end
 
     test "Scenario 2.5: door_cleared marks sensor as clear" do
       state = %Core{door_sensor: :blocked}
 
       # Act
-      new_state = Core.handle_event(state, :door_cleared, 0)
+      {new_state, _actions} = Core.handle_event(state, :door_cleared, 0)
 
       # Assert
       assert new_state.door_sensor == :clear
@@ -134,25 +141,32 @@ defmodule Elevator.CoreTest do
       state = %Core{heading: :up, door_status: :opening, motor_status: :running}
 
       # Act: Applying constraints (this is now internal to handle_event)
-      new_state = Core.handle_event(state, :door_opened, 100)
+      {new_state, actions} = Core.handle_event(state, :door_opened, 100)
 
       # Assert: Motor MUST be stopped because doors were NOT closed.
-      # And since heading is :up, the core immediately Decides to start closing (Start of Service).
       assert new_state.motor_status == :stopped
-      assert new_state.door_status == :closing
+      # Since it's only T=100 and it just opened, it stays open for 5s.
+      assert new_state.door_status == :open
+      assert {:set_timer, :door_timeout, 5000} in actions
     end
 
-    test "Start of Service: Heading :up and doors :open triggers :closing" do
-      # GIVEN: At F1, doors open, but we just got a request for F5
-      state = %Core{current_floor: 1, door_status: :open, heading: :idle}
+    test "Start of Service: Heading :up and doors :open triggers wait, then closing" do
+      # GIVEN: At F1, doors open, but we just got a request for F5 at T=100
+      state = %Core{current_floor: 1, door_status: :open, heading: :idle, last_activity_at: 100}
 
-      # ACT: Request floor 5
-      new_state = Core.request_floor(state, :car, 5)
+      # ACT: Request floor 5 at T=101
+      {new_state, _actions} = Core.request_floor(state, :car, 5)
 
-      # ASSERT: Core immediately decides we need to CLOSE doors to start service
+      # ASSERT: Heading is UP, but door stays open until timeout
       assert new_state.heading == :up
-      assert new_state.door_status == :closing
-      assert new_state.motor_status == :stopped
+      assert new_state.door_status == :open
+
+      # ACT: Tick at F=5101 (timeout)
+      {final_state, actions} = Core.handle_event(new_state, :tick, 5101)
+
+      # ASSERT: Now it's closing
+      assert final_state.door_status == :closing
+      assert {:close_door} in actions
     end
 
     test "End of Service: Arrival at floor triggers :opening when stopped" do
@@ -165,11 +179,12 @@ defmodule Elevator.CoreTest do
       }
 
       # ACT: Motor confirms stop
-      new_state = Core.handle_event(state, :motor_stopped, 100)
+      {new_state, actions} = Core.handle_event(state, :motor_stopped, 100)
 
       # ASSERT: Core immediately decides to OPEN doors
       assert new_state.motor_status == :stopped
       assert new_state.door_status == :opening
+      assert {:open_door} in actions
     end
 
     test "Safety Overload: Prevents door from closing" do
@@ -178,10 +193,24 @@ defmodule Elevator.CoreTest do
 
       # ACT: Any update that would normally trigger closure
       # Still overloaded
-      new_state = Core.update_weight(state, 1200)
+      {new_state, _actions} = Core.update_weight(state, 1200)
 
       # ASSERT: Door MUST stay open (or transition to :opening if it was :closing)
       assert new_state.door_status == :open
+    end
+
+    test "Scenario 7.2: Manual Close Button Override" do
+      # GIVEN: Doors open at F1, heading :up
+      state = %Core{current_floor: 1, door_status: :open, heading: :up, last_activity_at: 100}
+
+      # ACT: Press "Close" button
+      {new_state, actions} = Core.handle_button_press(state, :door_close, 150)
+
+      # ASSERT: Doors start closing immediately
+      assert new_state.door_status == :closing
+      assert {:close_door} in actions
+      # Note: timer cancellation is tested in the action set
+      assert {:cancel_timer, :door_timeout} in actions
     end
   end
 end
