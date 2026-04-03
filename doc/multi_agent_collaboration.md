@@ -33,7 +33,7 @@ Once the agent's sandbox is created, they should **stay inside their folder** an
    ```
 
    > [!TIP]
-   > For manual GUI checks, always use **Incognito Mode** to avoid Port 4000 session conflicts.
+   > For manual GUI checks, always use **Incognito Mode** to avoid Port 4000 session conflicts because of the cookies saved.
 
 4. **Manual Verification**: If you open your parallel server in a browser (e.g., `localhost:4001`), you **MUST** use an **Incognito/Private window**. This prevents session cookie pollution from other ports (like 4000).
 
