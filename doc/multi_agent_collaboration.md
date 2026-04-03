@@ -53,4 +53,8 @@ As the human editor-in-chief (Alex), you merge agent work into the `main` branch
 
 ## 4. Communication Rules
 
-Agents **must** use the `doc/agent_comms.md` file as their "Shared Whiteboard." Before starting any logic change, an agent must check if another agent is already working on that specific module or scenario.
+Agents **must** use the `doc/agent_comms.md` file as their "Shared Mission Log."
+
+1. **Append-Only**: Never edit or delete previous lines. Always add your entry to the **bottom** of the file.
+2. **Real-Time Sync**: Because this file is a **Symlink**, your status update is instantly visible across all other sandboxes and the project root.
+3. **Draft Mode**: While your code is in a branch, your mission log entries provide a live "Checkpoint" for other agents to see what you are currently building.
