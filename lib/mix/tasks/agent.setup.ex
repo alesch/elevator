@@ -24,7 +24,10 @@ defmodule Mix.Tasks.Agent.Setup do
     # 2. Assign Unique Port
     port = assign_port(name, agent_dir)
 
-    # 3. Symlink Heavy Dependencies (Parity and Space Protection)
+    # 3. Trust Mise configuration (Parity Protection)
+    trust_mise(agent_dir)
+
+    # 4. Symlink Heavy Dependencies (Parity and Space Protection)
     symlink_assets(agent_dir)
 
     # 4. Final Verification
@@ -87,6 +90,13 @@ defmodule Mix.Tasks.Agent.Setup do
 
     File.write!(Path.join(agent_dir, ".env"), "export PORT=#{port}\nexport PHX_HOST=localhost\n")
     port
+  end
+
+  defp trust_mise(dir) do
+    if System.find_executable("mise") do
+      IO.puts("🔐 Trusting Mise Configuration...")
+      System.cmd("mise", ["trust", dir])
+    end
   end
 
   defp symlink_assets(dir) do
