@@ -259,7 +259,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Request for F3 received.
   - **Then**: `phase` becomes `:moving`, `motor_status` becomes `:running`, `heading` becomes `:up`.
 
-- [ ] **Scenario 8.2: :moving → :arriving (Target floor reached)**
+- [x] **Scenario 8.2: :moving → :arriving (Target floor reached)**
   - **Given**: `phase: :moving`, `heading: :up`, request for F3.
   - **When**: `floor_arrival` at F3.
   - **Then**: `phase` becomes `:arriving`, `motor_status` becomes `:stopping`.

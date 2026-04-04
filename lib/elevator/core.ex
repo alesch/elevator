@@ -257,6 +257,20 @@ defmodule Elevator.Core do
     {new_state, derive_actions(state, new_state)}
   end
 
+  # Scenario 8.2: Arriving at target floor while moving — begin braking, transition to :arriving.
+  def process_arrival(%Core{phase: :moving} = state, floor) do
+    new_state = %{state | current_floor: floor}
+
+    new_state =
+      if should_stop_at?(new_state, floor) or overshooting?(new_state) do
+        %{new_state | motor_status: :stopping, phase: :arriving}
+      else
+        new_state
+      end
+
+    {new_state, derive_actions(state, new_state)}
+  end
+
   def process_arrival(state, floor) do
     new_state =
       %{state | current_floor: floor}
