@@ -199,6 +199,7 @@ This document defines the testable reality of our simulation. We use these scena
     - Brain returns `{:close_door}`.
     - Door transition begins (`:closing`).
   - **Sub-case 7.1a (Idle Heading)**: The door MUST close even when `heading` is `:idle` (e.g., after rehoming with no pending requests). The timeout closes the door unconditionally as long as `status` is `:normal` and `door_sensor` is `:clear`.
+  - **Sub-case 7.1b (Sensor Blocked)**: If `door_sensor` is `:blocked` when the timeout fires, the door MUST NOT close. The obstruction takes priority — door transitions to `:opening` instead.
 
 - [x] **Scenario 7.2: Manual Close Button Override**
   - **Given**: Elevator is at a floor, `door_status` is `:open`, pending requests exist.

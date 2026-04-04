@@ -204,6 +204,24 @@ defmodule Elevator.CoreTest do
       assert new_state.door_status == :open
     end
 
+    test "Scenario 7.1b: Door does NOT close on timeout when sensor is blocked" do
+      # GIVEN: Door open, but sensor is blocked
+      state = %Core{
+        current_floor: 1,
+        door_status: :open,
+        heading: :up,
+        door_sensor: :blocked,
+        last_activity_at: 0
+      }
+
+      # ACT: 5s timeout fires
+      {new_state, actions} = Core.handle_event(state, :door_timeout, 5000)
+
+      # ASSERT: Door must NOT close — obstruction overrides timeout
+      refute new_state.door_status == :closing
+      refute {:close_door} in actions
+    end
+
     test "Scenario 7.1a: Door closes on timeout even when heading is :idle" do
       # GIVEN: Idle elevator at F0, door open (e.g., post-rehoming), no pending requests
       state = %Core{
