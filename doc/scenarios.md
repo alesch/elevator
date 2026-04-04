@@ -62,9 +62,9 @@ This document defines the testable reality of our simulation. We use these scena
   - **Given**: Elevator is at F0, state is `:idle`, doors are `:open`.
   - **When**: Request for F3 is received.
   - **Then**: 
-    - Door is commanded to `:close`.
     - **Motor MUST stay `:stopped`** while doors are `:opening`, `:open`, or `:closing`.
     - Motor is ONLY commanded to `:move` AFTER the `:motor_stopped` and `:door_closed` signals are confirmed.
+    - *(Door closing is governed by the 5s timer — see Scenario 7.4)*
 
 - [x] **Scenario 2.5: Door Sensor Cleared**
   - **Given**: `door_sensor` is `:blocked`.
