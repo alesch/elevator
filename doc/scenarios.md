@@ -179,8 +179,15 @@ This document defines the testable reality of our simulation. We use these scena
     - `status` transitions to `:normal` (Calibration complete).
     - `heading` MUST immediately transition to `:idle` (Anchoring).
     - `motor_status` becomes `:stopping` (Drop the anchor).
+    - `door_status` stays `:closed`. No door cycle is triggered.
     - `Vault` is updated with `Floor X`.
     - Accept new requests normally.
+
+- [ ] **Scenario 5.6: No Door Cycle on Homing Arrival**
+  - **Given**: `status` is `:rehoming`, `door_status` is `:closed`.
+  - **When**: The elevator physically arrives at a floor (`:motor_stopped` received after homing arrival).
+  - **Then**: `door_status` remains `:closed`. No `:open_door` command is issued to hardware.
+  - **Rationale**: The homing move is a calibration move. No passenger requested this floor; opening the doors would be incorrect and would add an unnecessary 5s delay before the system can service real requests.
 
 - [x] **Scenario 5.5: Request Blocking during Rehoming**
   - **Given**: Elevator is in `status: :rehoming`.

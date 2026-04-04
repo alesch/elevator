@@ -105,3 +105,4 @@ This document captures the "Executive Summary" of our current Elevator implement
 | `:stopped` | `:door_open_done` | `:stopped` | `:open` | `:normal` |
 | **`N/A`** | **`Init / Reboot`** | **`:running`** | **`:closed`** | **`:rehoming`** |
 | `:running` | `Arrival(ANY)` | `:stopping` | `:closed` | `:rehoming` |
+| `:stopping` | `:motor_stopped` | `:stopped` | **`:closed`** | `:rehoming` → `:normal` |
