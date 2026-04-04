@@ -2,9 +2,9 @@ defmodule Elevator.CoreTest do
   use ExUnit.Case
   alias Elevator.Core
 
-  test "initial state has floor 1 and is idle" do
+  test "initial state has floor 0 and is idle" do
     state = %Core{}
-    assert state.current_floor == 1
+    assert state.current_floor == 0
     assert state.heading == :idle
   end
 

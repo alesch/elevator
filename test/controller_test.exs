@@ -14,8 +14,8 @@ defmodule Elevator.ControllerTest do
     # Subscribe to status for real-time monitoring
     Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
 
-    # Pre-seed the Vault & Sensor to F1 so we start in :normal status for standard tests
-    Vault.put_floor(vault, 1)
+    # Pre-seed the Vault & Sensor to F0 so we start in :normal status for standard tests
+    Vault.put_floor(vault, 0)
 
     %{vault: vault, sensor: sensor}
   end
@@ -38,7 +38,7 @@ defmodule Elevator.ControllerTest do
 
       state = Controller.get_state(pid)
       assert state.status == :normal
-      assert state.current_floor == 1
+      assert state.current_floor == 0
     end
 
     test "Requesting a floor via cast (Asynchronous)", %{vault: vault, sensor: sensor} do
@@ -80,10 +80,10 @@ defmodule Elevator.ControllerTest do
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
 
-      # Simulate parallel button presses (avoid floor 1 — elevator starts there,
+      # Simulate parallel button presses (avoid floor 0 — elevator starts there,
       # so that request is fulfilled immediately and won't appear in the queue)
       tasks =
-        for i <- 2..6 do
+        for i <- 1..5 do
           Task.async(fn -> Controller.request_floor(pid, :hall, i) end)
         end
 
@@ -93,7 +93,7 @@ defmodule Elevator.ControllerTest do
       state = Controller.get_state(pid)
 
       unique_targets = Enum.map(state.requests, fn {_, f} -> f end) |> Enum.sort()
-      assert unique_targets == [2, 3, 4, 5, 6]
+      assert unique_targets == [1, 2, 3, 4, 5]
     end
 
     test "Scenario 1.10: Return to Base (Inactivity Timeout)", %{

@@ -292,7 +292,7 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_info(:return_to_base, map()) :: {:noreply, map()}
   def handle_info(:return_to_base, data) do
-    {new_state, actions} = Core.request_floor(data.state, :hall, 1)
+    {new_state, actions} = Core.request_floor(data.state, :hall, 0)
 
     new_data =
       %{data | state: new_state}

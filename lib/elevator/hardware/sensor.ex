@@ -40,7 +40,7 @@ defmodule Elevator.Hardware.Sensor do
     vault_floor = get_initial_floor(vault)
 
     # 2. Handle final bootstrap state
-    floor = vault_floor || Keyword.get(opts, :current_floor, 1)
+    floor = vault_floor || Keyword.get(opts, :current_floor, 0)
     controller = Keyword.get(opts, :controller)
 
     {:ok, %{current_floor: floor, controller: controller}}

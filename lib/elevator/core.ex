@@ -9,7 +9,7 @@ defmodule Elevator.Core do
   # ## Data Structure & Initialization
   # ---------------------------------------------------------------------------
 
-  defstruct current_floor: 1,
+  defstruct current_floor: 0,
             heading: :idle,
             door_status: :closed,
             requests: [],

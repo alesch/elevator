@@ -2,7 +2,7 @@ defmodule Elevator.AuditTest do
   use ExUnit.Case
   alias Elevator.Core
 
-  @floors 1..5
+  @floors 0..5
   @headings [:up, :down, :idle]
   # 0kg (Normal), 950kg (Full Load - Above 900kg threshold)
   @weights [0, 950]
