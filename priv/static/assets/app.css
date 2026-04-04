@@ -219,7 +219,7 @@ body {
   height: 60px; /* Adjust based on floor count/height */
   position: absolute;
   left: 0;
-  transition: bottom 2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: bottom 2s linear;
 }
 
 .elevator-car {
