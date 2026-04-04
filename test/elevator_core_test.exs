@@ -204,6 +204,23 @@ defmodule Elevator.CoreTest do
       assert new_state.door_status == :open
     end
 
+    test "Scenario 7.1a: Door closes on timeout even when heading is :idle" do
+      # GIVEN: Idle elevator at F0, door open (e.g., post-rehoming), no pending requests
+      state = %Core{
+        current_floor: 0,
+        door_status: :open,
+        heading: :idle,
+        last_activity_at: 0
+      }
+
+      # ACT: 5s timeout fires
+      {new_state, actions} = Core.handle_event(state, :door_timeout, 5000)
+
+      # ASSERT: Door closes regardless of idle heading
+      assert new_state.door_status == :closing
+      assert {:close_door} in actions
+    end
+
     test "Scenario 7.2: Manual Close Button Override" do
       # GIVEN: Doors open at F1, heading :up
       state = %Core{current_floor: 1, door_status: :open, heading: :up, last_activity_at: 100}

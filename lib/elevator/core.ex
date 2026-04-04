@@ -117,8 +117,7 @@ defmodule Elevator.Core do
   end
 
   defp do_handle_event(%Core{door_status: :open} = state, :door_timeout, _now) do
-    # When a timeout arrives, we transition to closing if there's work to do
-    if state.heading != :idle and state.status == :normal and state.door_sensor == :clear do
+    if state.status == :normal and state.door_sensor == :clear do
       %{state | door_status: :closing}
       |> apply_logic()
     else
