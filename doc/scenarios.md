@@ -58,16 +58,6 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Receive `:door_sensor_blocked`.
   - **Then**: Immediately transition `door_status` back to `:opening`.
 
-- [x] **Scenario 2.2: Weight Sensor (Overload)**
-  - **Given**: Doors are `:open`.
-  - **When**: `weight` exceeds `weight_limit` (e.g., 1000kg).
-  - **Then**: `status` becomes `:overload`, all `command_close_door` events are ignored.
-
-- [x] **Scenario 2.3: Return to Normal from Overload**
-  - **Given**: Status is `:overload`.
-  - **When**: `weight` falls below `weight_limit`.
-  - **Then**: `status` becomes `:normal`.
-
 - [x] **Scenario 2.4: Hardware Safety Interlock (The Golden Rule)**
   - **Given**: Elevator is at F0, state is `:idle`, doors are `:open`.
   - **When**: Request for F3 is received.
@@ -107,15 +97,10 @@ This document defines the testable reality of our simulation. We use these scena
     - If requests exist below -> Change `heading` to `:down`.
     - If NO requests exist anywhere -> Change `heading` to `:idle`.
 
-- [x] **Scenario 4.3: Full Load Bypass (Hall)**
-  - **Given**: Moving `:up` from 0 to 5, `weight` is 900kg (Near limit).
-  - **When**: Receive `{:hall, 3}`.
-  - **Then**: **BYPASS** Floor 3 (do not stop) because there is no room.
-
 - [x] **Scenario 4.4: Honor Car Request (Priority)**
-  - **Given**: Moving `:up` from 0 to 5, `weight` is 900kg.
-  - **When**: Receive `{:car, 3}`.
-  - **Then**: **STOP** at Floor 3 anyway, because an internal passenger needs to exit.
+  - **Given**: Moving `:up`, a `{:car, floor}` request exists on the path.
+  - **When**: Elevator arrives at that floor.
+  - **Then**: **STOP** at that floor — car requests (passengers already inside) are always honored.
 
 - [x] **Scenario 4.5: Context-Aware Wake Up**
   - **Given**: Elevator is at F5, state is `:idle`.
@@ -126,11 +111,6 @@ This document defines the testable reality of our simulation. We use these scena
   - **Given**: Elevator at F3, state is `:idle`.
   - **When**: Receive `{:car, 3}` (or hall).
   - **Then**: `motor_status` becomes `:stopping` to immediately open doors.
-
-- [x] **Scenario 4.7: Weight Thresholds**
-  - **Given**: Elevators stop normally up to 900kg.
-  - **When**: Weight is 901kg+ (or remaining capacity < 100kg).
-  - **Then**: Bypass hall calls, but ALWAYS honor car calls.
 
 - [x] **Scenario 4.8: Boundary Reversals**
   - **Given**: Elevator at F5 (Top) heading UP.
