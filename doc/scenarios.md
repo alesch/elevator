@@ -54,9 +54,9 @@ This document defines the testable reality of our simulation. We use these scena
   - **Then**: The new state is broadcasted over PubSub to the `"elevator:status"` topic.
 
 - [x] **Scenario 1.10: Return to Base (Inactivity Timeout)**
-  - **Given**: Elevator is `:idle` with no pending requests.
+  - **Given**: Elevator is `phase: :idle` with no pending requests.
   - **When**: 5 minutes (300s) pass without any activity.
-  - **Then**: A `{:hall, 0}` request is automatically added, sending the elevator back to Floor 0 (ground floor).
+  - **Then**: A `{:car, 0}` request is automatically added, sending the elevator back to Floor 0 (ground floor).
 
 - [x] **Scenario 1.11: Concurrent Requests (Race Condition Safety)**
   - **Given**: Elevator is idle.
@@ -114,10 +114,10 @@ This document defines the testable reality of our simulation. We use these scena
     - If requests exist below -> Change `heading` to `:down`.
     - If NO requests exist anywhere -> Change `heading` to `:idle`.
 
-- [x] **Scenario 4.4: Honor Car Request (Priority)**
-  - **Given**: Moving `:up`, a `{:car, floor}` request exists on the path.
+- [x] **Scenario 4.4: Honor All Requests**
+  - **Given**: Moving `:up`, a `{:car, floor}` or `{:hall, floor}` request exists on the path.
   - **When**: Elevator arrives at that floor.
-  - **Then**: **STOP** at that floor — car requests (passengers already inside) are always honored.
+  - **Then**: **STOP** at that floor — all requests are honored.
 
 - [x] **Scenario 4.6: Same-Floor Interaction**
   - **Given**: Elevator at F3, `motor_status` is `:stopped`, state is `:idle`.
@@ -153,44 +153,45 @@ This document defines the testable reality of our simulation. We use these scena
   - **Given**: `Elevator.Vault` is empty.
   - **When**: System starts.
   - **Then**:
-    - `status` is `:rehoming`.
-    - `head` is `:down`, `speed` is `:slow`.
+    - `phase` is `:rehoming`.
+    - `heading` is `:down`, `motor_speed` is `:crawling`.
     - `current_floor` is `:unknown`.
 
 - [x] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
   - **Given**: `Elevator.Vault` stores `Floor 3` AND `Elevator.Sensor` is currently at `Floor 3`.
   - **When**: System reboots (e.g., after a crash).
   - **Then**:
-    - `status` transitions `:rehoming` -> `:normal` immediately.
+    - `phase` transitions `:rehoming` -> `:idle` immediately.
     - No motor movement is triggered.
 
 - [x] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
   - **Given**: `Elevator.Vault` says `Floor 3` but `Elevator.Sensor` is `:unknown` (or mismatches).
   - **When**: System reboots.
   - **Then**:
-    - `status` is `:rehoming`.
-    - `head` is `:down`, `speed` is `:slow`.
+    - `phase` is `:rehoming`.
+    - `heading` is `:down`, `motor_speed` is `:crawling`.
     - Move until physical sensor confirms arrival.
 
 - [x] **Scenario 5.4: Homing Completion (Anchoring)**
-  - **Given**: `status` is `:rehoming`.
+  - **Given**: `phase` is `:rehoming`.
   - **When**: Core receives its very first `{:floor_arrival, floor}` event.
   - **Then**:
-    - `status` transitions to `:normal` (Calibration complete).
     - `heading` MUST immediately transition to `:idle` (Anchoring).
     - `motor_status` becomes `:stopping` (Drop the anchor).
     - `door_status` stays `:closed`. No door cycle is triggered.
+    - `phase` stays `:rehoming` until `:motor_stopped` is confirmed.
     - `Vault` is updated with `Floor X`.
-    - Accept new requests normally.
 
-- [ ] **Scenario 5.6: No Door Cycle on Homing Arrival**
-  - **Given**: `status` is `:rehoming`, `door_status` is `:closed`.
-  - **When**: The elevator physically arrives at a floor (`:motor_stopped` received after homing arrival).
-  - **Then**: `door_status` remains `:closed`. No `:open_door` command is issued to hardware.
+- [x] **Scenario 5.6: No Door Cycle on Homing Arrival**
+  - **Given**: `phase` is `:rehoming`, `door_status` is `:closed`.
+  - **When**: `:motor_stopped` is received after homing arrival.
+  - **Then**:
+    - `phase` transitions to `:idle`.
+    - `door_status` remains `:closed`. No `:open_door` command is issued to hardware.
   - **Rationale**: The homing move is a calibration move. No passenger requested this floor; opening the doors would be incorrect and would add an unnecessary 5s delay before the system can service real requests.
 
 - [x] **Scenario 5.5: Request Blocking during Rehoming**
-  - **Given**: Elevator is in `status: :rehoming`.
+  - **Given**: Elevator is in `phase: :rehoming`.
   - **When**: Receive any external/internal floor request.
   - **Then**: The request is ignored and NOT added to the queue.
 
@@ -251,9 +252,46 @@ This document defines the testable reality of our simulation. We use these scena
 
 ---
 
-## 8. UI / End-to-End (Dashboard)
+## 8. Phase Transitions
 
-- [ ] **Scenario 8.1: Full Journey from F0 to F3 via Dashboard**
+- [ ] **Scenario 8.1: :idle → :moving (Request with closed doors)**
+  - **Given**: `phase: :idle`, `door_status: :closed`, elevator at F0.
+  - **When**: Request for F3 received.
+  - **Then**: `phase` becomes `:moving`, `motor_status` becomes `:running`, `heading` becomes `:up`.
+
+- [ ] **Scenario 8.2: :moving → :arriving (Target floor reached)**
+  - **Given**: `phase: :moving`, `heading: :up`, request for F3.
+  - **When**: `floor_arrival` at F3.
+  - **Then**: `phase` becomes `:arriving`, `motor_status` becomes `:stopping`.
+
+- [ ] **Scenario 8.3: :arriving → :docked (Doors confirm open)**
+  - **Given**: `phase: :arriving`, `motor_status: :stopped`, `door_status: :opening`.
+  - **When**: `:door_opened` received.
+  - **Then**: `phase` becomes `:docked`, `door_status` becomes `:open`, door timeout timer is set.
+
+- [ ] **Scenario 8.4: :docked → :leaving (Timeout fires)**
+  - **Given**: `phase: :docked`, `door_status: :open`, `door_sensor: :clear`.
+  - **When**: `:door_timeout` received.
+  - **Then**: `phase` becomes `:leaving`, `door_status` becomes `:closing`.
+
+- [ ] **Scenario 8.5: :leaving → :moving (Door closed, requests remain)**
+  - **Given**: `phase: :leaving`, pending requests exist.
+  - **When**: `:door_closed` received.
+  - **Then**: `phase` becomes `:moving`, `motor_status` becomes `:running`.
+
+- [ ] **Scenario 8.6: :leaving → :idle (Door closed, no requests)**
+  - **Given**: `phase: :leaving`, no pending requests.
+  - **When**: `:door_closed` received.
+  - **Then**: `phase` becomes `:idle`, `motor_status` stays `:stopped`.
+
+- [ ] **Scenario 8.7: :leaving → :docked (Obstruction during close)**
+  - **Given**: `phase: :leaving`, `door_status: :closing`.
+  - **When**: `:door_obstructed` received.
+  - **Then**: `phase` reverts to `:docked`, `door_status` becomes `:open`.
+
+## 9. UI / End-to-End (Dashboard)
+
+- [ ] **Scenario 9.1: Full Journey from F0 to F3 via Dashboard**
   - **Given**:
     - Dashboard is loaded and LiveView is connected.
     - `status` is `:normal` (rehoming is complete).
@@ -267,4 +305,4 @@ This document defines the testable reality of our simulation. We use these scena
     4. `door_status` becomes `OPEN` (before the 5s auto-close fires).
     5. `#elevator-car` receives class `doors-open`.
     6. Visual center of `#elevator-car` aligns with visual center of `#label-3` within 15px.
-  - **Precondition note**: The test must assert `current_floor = F0` before interacting. Waiting for `STOPPED` + `CLOSED` is insufficient — a prior run could leave the elevator stopped at F3, causing the car request to be fulfilled in-place (Scenario 4.6) with no travel.
+  - **Precondition note**: The test must assert `current_floor = F0` and `phase: :idle` before interacting. Waiting for `STOPPED` + `CLOSED` is insufficient — a prior run could leave the elevator stopped at F3, causing the car request to be fulfilled in-place (Scenario 4.6) with no travel.
