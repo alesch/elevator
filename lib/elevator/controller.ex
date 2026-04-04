@@ -52,6 +52,18 @@ defmodule Elevator.Controller do
     GenServer.call(pid, :get_timer_ref)
   end
 
+  @doc "Resets the elevator to a clean state: clears the vault and restarts the hardware stack, triggering a rehome to F0."
+  @spec reset() :: :ok
+  def reset do
+    Elevator.Vault.put_floor(Elevator.Vault, nil)
+
+    if pid = Process.whereis(Elevator.HardwareSupervisor) do
+      Process.exit(pid, :kill)
+    end
+
+    :ok
+  end
+
   # ---------------------------------------------------------------------------
   # ## Server Callbacks
   # ---------------------------------------------------------------------------

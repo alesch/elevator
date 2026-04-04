@@ -241,3 +241,23 @@ This document defines the testable reality of our simulation. We use these scena
   - **Then**: 
     - Heading becomes `:up`.
     - Door stays open for 5s (Scenario 7.1) before starting the movement sequence.
+
+---
+
+## 8. UI / End-to-End (Dashboard)
+
+- [ ] **Scenario 8.1: Full Journey from F0 to F3 via Dashboard**
+  - **Given**:
+    - Dashboard is loaded and LiveView is connected.
+    - `status` is `:normal` (rehoming is complete).
+    - `motor_status` is `:stopped`.
+    - `current_floor` is **F0** (elevator is confirmed at ground floor).
+  - **When**: User clicks the Floor 3 button on the car panel (`#label-3`).
+  - **Then**:
+    1. `#label-3` receives class `pending` or `targeting`.
+    2. Activity log contains `"Controller: Floor 3"`.
+    3. Digital indicator transitions to `"3"` (within 20s — 3 floors × ~2s/floor + buffer).
+    4. `door_status` becomes `OPEN` (before the 5s auto-close fires).
+    5. `#elevator-car` receives class `doors-open`.
+    6. Visual center of `#elevator-car` aligns with visual center of `#label-3` within 15px.
+  - **Precondition note**: The test must assert `current_floor = F0` before interacting. Waiting for `STOPPED` + `CLOSED` is insufficient — a prior run could leave the elevator stopped at F3, causing the car request to be fulfilled in-place (Scenario 4.6) with no travel.

@@ -2,9 +2,7 @@ defmodule Dev do
   @moduledoc "Convenience helpers for IEx development sessions."
 
   def restart do
-    Elevator.Vault.put_floor(Elevator.Vault, nil)
-    Process.whereis(Elevator.HardwareSupervisor) |> Process.exit(:kill)
-    :ok
+    Elevator.Controller.reset()
   end
 
   def floor(n), do: Elevator.Controller.request_floor(:car, n)

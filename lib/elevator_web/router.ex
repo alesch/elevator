@@ -14,9 +14,21 @@ defmodule ElevatorWeb.Router do
     }
   end
 
+  pipeline :api do
+    plug :accepts, ["json"]
+  end
+
   scope "/", ElevatorWeb do
     pipe_through :browser
 
     live "/", DashboardLive, :index
+  end
+
+  if Application.compile_env(:elevator, :e2e_routes, false) do
+    scope "/test", ElevatorWeb do
+      pipe_through :api
+
+      post "/reset", TestController, :reset
+    end
   end
 end

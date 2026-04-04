@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:4000',
+    baseURL: 'http://localhost:4002',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -18,13 +18,9 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
     },
   ],
-  // We'll assume the user starts the Phoenix server manually for now, 
-  // or we can add a webServer config if needed.
-  /*
   webServer: {
-    command: 'mix phx.server',
-    url: 'http://localhost:4000',
+    command: 'MIX_ENV=e2e mix phx.server',
+    url: 'http://localhost:4002',
     reuseExistingServer: !process.env.CI,
   },
-  */
 });
