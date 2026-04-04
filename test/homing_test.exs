@@ -102,19 +102,24 @@ defmodule Elevator.HomingTest do
     assert Controller.get_state(ctrl).phase == :rehoming
     assert Motor.get_state(motor).speed == :slow
 
-    # 3. Simulating arrival at Floor 0 to finish homing
+    # 3. Scenario 5.4: Floor arrival during rehoming — anchor (brake), phase stays :rehoming
     send(ctrl, {:floor_arrival, 0})
+    _ = Controller.get_state(ctrl)
 
-    # Give it a tiny bit to process the message
+    state = Controller.get_state(ctrl)
+    assert state.phase == :rehoming
+    assert state.current_floor == 0
+    assert state.motor_status == :stopping
+    assert Vault.get_floor(vault) == 0
+    assert Motor.get_state(motor).status == :stopped
+
+    # 4. Scenario 5.6: Motor confirms stopped — phase transitions to :idle, no door cycle
+    send(ctrl, :motor_stopped)
     _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
     assert state.phase == :idle
-    assert state.current_floor == 0
-    assert Vault.get_floor(vault) == 0
-
-    # THE CRITICAL BUG: The motor MUST stop once we've reached a calibration floor
-    assert Motor.get_state(motor).status == :stopped
+    assert state.door_status == :closed
   end
 
   @tag :capture_log

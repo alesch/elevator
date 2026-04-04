@@ -100,6 +100,11 @@ defmodule Elevator.Core do
     {new_state, derive_actions(state, new_state)}
   end
 
+  # Scenario 5.6: Rehoming complete — go idle, NO door cycle.
+  defp do_handle_event(%Core{phase: :rehoming} = state, :motor_stopped, _now) do
+    %{state | motor_status: :stopped, phase: :idle, heading: :idle}
+  end
+
   defp do_handle_event(state, :motor_stopped, _now) do
     state
     |> fulfill_current_floor_requests()
@@ -223,6 +228,12 @@ defmodule Elevator.Core do
 
   @doc "Processes a floor arrival with physical safety checks (Stop/Overshoot)."
   @spec process_arrival(t(), integer()) :: {t(), [action()]}
+  # Scenario 5.4: Homing arrival — brake and anchor. Phase stays :rehoming until :motor_stopped.
+  def process_arrival(%Core{phase: :rehoming} = state, floor) do
+    new_state = %{state | current_floor: floor, motor_status: :stopping}
+    {new_state, derive_actions(state, new_state)}
+  end
+
   def process_arrival(state, floor) do
     new_state =
       %{state | current_floor: floor}

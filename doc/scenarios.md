@@ -172,7 +172,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `heading` is `:down`, `motor_speed` is `:crawling`.
     - Move until physical sensor confirms arrival.
 
-- [ ] **Scenario 5.4: Homing Completion (Anchoring)**
+- [x] **Scenario 5.4: Homing Completion (Anchoring)**
   - **Given**: `phase` is `:rehoming`.
   - **When**: Core receives its very first `{:floor_arrival, floor}` event.
   - **Then**:
@@ -182,7 +182,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `phase` stays `:rehoming` until `:motor_stopped` is confirmed.
     - `Vault` is updated with `Floor X`.
 
-- [ ] **Scenario 5.6: No Door Cycle on Homing Arrival**
+- [x] **Scenario 5.6: No Door Cycle on Homing Arrival**
   - **Given**: `phase` is `:rehoming`, `door_status` is `:closed`.
   - **When**: `:motor_stopped` is received after homing arrival.
   - **Then**:
