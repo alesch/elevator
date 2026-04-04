@@ -140,6 +140,20 @@ defmodule Elevator.CoreTest do
     end
   end
 
+  describe "Manual Door Overrides" do
+    test "Scenario 3.0: Manual door open from closed+idle" do
+      # GIVEN: Idle elevator stopped at a floor, doors closed
+      state = %Core{door_status: :closed, heading: :idle, motor_status: :stopped}
+
+      # ACT: Passenger presses door open button
+      {new_state, actions} = Core.handle_button_press(state, :door_open, 0)
+
+      # ASSERT: Door begins opening
+      assert new_state.door_status == :opening
+      assert {:open_door} in actions
+    end
+  end
+
   describe "Autonomous Core: Intent & Safety Interlocks" do
     test "The Golden Rule: Motor MUST be stopped if doors are NOT closed" do
       # Case: Heading is :up (intent to move), but doors are :opening

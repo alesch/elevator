@@ -80,6 +80,11 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 3. Manual Overrides (Door Control)
 
+- [x] **Scenario 3.0: Manual Door Open from Closed**
+  - **Given**: Elevator is idle at a floor, `door_status` is `:closed`.
+  - **When**: Passenger presses the `<|>` (door open) button.
+  - **Then**: `door_status` transitions to `:opening` and door receives `:open` command.
+
 - [x] **Scenario 3.1: "Door Open Button Wins"**
   - **Given**: Doors are `:closing`.
   - **When**: Receive `:button_pressed, :door_open`.
