@@ -56,7 +56,12 @@ This document defines the testable reality of our simulation. We use these scena
 - [x] **Scenario 1.10: Return to Base (Inactivity Timeout)**
   - **Given**: Elevator is `:idle` with no pending requests.
   - **When**: 5 minutes (300s) pass without any activity.
-  - **Then**: A `{:hall, 1}` request is automatically added, sending the elevator back to Floor 1.
+  - **Then**: A `{:hall, 0}` request is automatically added, sending the elevator back to Floor 0 (ground floor).
+
+- [x] **Scenario 1.11: Concurrent Requests (Race Condition Safety)**
+  - **Given**: Elevator is idle.
+  - **When**: Multiple hall requests for different floors arrive simultaneously (e.g. from parallel processes).
+  - **Then**: All requests are recorded exactly once in the `requests` queue — no drops, no duplicates.
 
 ## 2. Safety Interlocks & Sensors
 
