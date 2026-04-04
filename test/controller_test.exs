@@ -80,9 +80,10 @@ defmodule Elevator.ControllerTest do
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
 
-      # Simulate parallel button presses
+      # Simulate parallel button presses (avoid floor 1 — elevator starts there,
+      # so that request is fulfilled immediately and won't appear in the queue)
       tasks =
-        for i <- 1..5 do
+        for i <- 2..6 do
           Task.async(fn -> Controller.request_floor(pid, :hall, i) end)
         end
 
@@ -92,7 +93,7 @@ defmodule Elevator.ControllerTest do
       state = Controller.get_state(pid)
 
       unique_targets = Enum.map(state.requests, fn {_, f} -> f end) |> Enum.sort()
-      assert unique_targets == [1, 2, 3, 4, 5]
+      assert unique_targets == [2, 3, 4, 5, 6]
     end
 
     test "Scenario 1.10: Return to Base (Inactivity Timeout)", %{
@@ -116,11 +117,16 @@ defmodule Elevator.ControllerTest do
       assert is_reference(timer_ref)
 
       # 2. Verify Logic (Action)
+      # Elevator starts at F1 (motor already stopped). return_to_base sends :hall 1.
+      # Since we're already at F1 with motor stopped, the request is fulfilled immediately
+      # and the door opens — no :stopping cycle needed.
       send(pid, :return_to_base)
 
       # barrier
       state = Controller.get_state(pid)
-      assert {:hall, 1} in state.requests
+      assert state.door_status == :opening
+      assert state.requests == []
+      assert_receive {:"$gen_cast", :open}
     end
 
     test "Scenario 1.2/1.3: Arrival sequence triggers immediate intent signals", %{

@@ -29,10 +29,10 @@ defmodule Elevator.AuditTest do
 
         # ASSERT 1: Immediate Arrival Logic
         if current == target do
-          # If it's a car request on our own floor, or we have capacity for hall, must halt
+          # Motor was already stopped — door opens directly, no :stopping cycle needed
           if source == :car or weight <= 900 do
-            assert new_state.motor_status == :stopping,
-                   "Failed to stop at target #{target} from floor #{current} with weight #{weight}"
+            assert new_state.door_status == :opening,
+                   "Failed to open door at target #{target} from floor #{current} with weight #{weight}"
           end
         end
 

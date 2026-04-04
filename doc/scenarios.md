@@ -115,9 +115,13 @@ This document defines the testable reality of our simulation. We use these scena
   - **Then**: **STOP** at that floor — car requests (passengers already inside) are always honored.
 
 - [x] **Scenario 4.6: Same-Floor Interaction**
-  - **Given**: Elevator at F3, state is `:idle`.
+  - **Given**: Elevator at F3, `motor_status` is `:stopped`, state is `:idle`.
   - **When**: Receive `{:car, 3}` (or hall).
-  - **Then**: `motor_status` becomes `:stopping` to immediately open doors.
+  - **Then**:
+    - The request is immediately fulfilled (removed from queue).
+    - `motor_status` stays `:stopped` (no braking cycle needed).
+    - `door_status` becomes `:opening` and door receives `:open` command.
+  - **Note**: The `:stopping` protocol only applies when the motor is actually `:running`. Sending a redundant stop to hardware that is already stopped causes a deadlock — no `:motor_stopped` confirmation is ever returned.
 
 - [x] **Scenario 4.3: Multi-Stop Sweep Ordering**
   - **Given**: Elevator at F0 heading `:up`, requests for F2, F4, and F6.

@@ -3,25 +3,28 @@ defmodule Elevator.EdgeCasesTest do
   alias Elevator.Core
 
   describe "Scenario 4.6: Same-Floor Interaction" do
-    test "Idle at F3 receives Car request for F3 -> Starts Stopping/Opening" do
-      # Arrange: Idle at Floor 3
+    test "Idle at F3 receives Car request for F3 -> Opens door immediately" do
+      # Arrange: Idle at Floor 3, motor already stopped
       state = %Core{current_floor: 3, heading: :idle, motor_status: :stopped}
 
       # Act: Passenger inside presses Floor 3
-      {new_state, _} = Core.request_floor(state, :car, 3)
+      {new_state, actions} = Core.request_floor(state, :car, 3)
 
-      # Assert: Heading is still idle (already at target), but motor status is :stopping
-      assert new_state.heading == :idle
-      assert new_state.motor_status == :stopping
-      assert {:car, 3} in new_state.requests
+      # Assert: Motor stays :stopped (no braking cycle), door opens, request fulfilled
+      assert new_state.motor_status == :stopped
+      assert new_state.door_status == :opening
+      refute {:car, 3} in new_state.requests
+      assert {:open_door} in actions
     end
 
-    test "Idle at F3 receives Hall request for F3 -> Starts Stopping/Opening" do
-      # Same as Car request, Hall calls should also trigger arrival logic
+    test "Idle at F3 receives Hall request for F3 -> Opens door immediately" do
       state = %Core{current_floor: 3, heading: :idle, motor_status: :stopped}
-      {new_state, _} = Core.request_floor(state, :hall, 3)
+      {new_state, actions} = Core.request_floor(state, :hall, 3)
 
-      assert new_state.motor_status == :stopping
+      assert new_state.motor_status == :stopped
+      assert new_state.door_status == :opening
+      refute {:hall, 3} in new_state.requests
+      assert {:open_door} in actions
     end
   end
 

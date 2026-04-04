@@ -72,8 +72,17 @@ defmodule Elevator.Core do
 
   defp do_process_current_floor(state) do
     if should_stop_at?(state, state.current_floor) do
-      %{state | motor_status: :stopping}
-      |> apply_logic()
+      if state.motor_status == :stopped do
+        # Motor already stopped — skip the :stopping protocol entirely.
+        # Sending a redundant stop to hardware causes a deadlock (no :motor_stopped reply).
+        state
+        |> fulfill_current_floor_requests()
+        |> confirm_stopped_at_floor()
+        |> apply_logic()
+      else
+        %{state | motor_status: :stopping}
+        |> apply_logic()
+      end
     else
       state
       |> apply_logic()
