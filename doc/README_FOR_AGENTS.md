@@ -1,4 +1,4 @@
-# Onboarding: The Elevator Project
+# Onboarding for AI agents
 
 Welcome to the Elevator Project. This document is the "Mental Map" for any agent working with **Alex**. It explains how the system is built, how we think about safety, and how we prove the code works.
 
@@ -6,7 +6,7 @@ Welcome to the Elevator Project. This document is the "Mental Map" for any agent
 
 ## 1. The Developer: Alex
 
-* **Background**: Deeply experienced **Java** and **Smalltalk** developer.
+* **Background**: Experienced **Java** and **Smalltalk** developer.
 
 * **Perspective**: Values the **Actor Model** (message-passing) and process isolation.
 
@@ -53,14 +53,15 @@ We simulate the real world as accurately as possible:
 
 We follow a strict path for every change:
 
-1. **Isolation First**: Before starting any task, read **[`doc/multi_agent_collaboration.md`](file:///home/alex/dev/elevator/doc/multi_agent_collaboration.md)** and run `mix agent.setup <your_name>` to create your private worktree sandbox.
+1 **Plan First**: Before making any source code or environment changes (even simple ones), you must create an **Implementation Plan** artifact. This plan must describe the "What" and "How" of your proposed changes. **NEVER** proceed until Alex has explicitly approved the plan.
 
-   * **Tip**: For manual GUI checks, always use **Incognito/Private Mode** to avoid session conflicts with the cookies between ports.
-     0.1 **Plan First**: Before making any source code changes (even simple ones), you must create an **Implementation Plan** artifact. This plan must describe the "What" and "How" of your proposed changes. **NEVER** proceed until Alex has explicitly approved the plan.
-2. **Scenarios First**: Every behavior must be documented in `doc/scenarios.md` first.
-3. **Tests Second**: We use **Traceable TDD**. Every test must have a comment or name that links it to a specific Scenario ID (e.g., `Scenario 2.1`).
-4. **Code Third**: Only after the test failure is verified do we implement the logic in the Brain (`Core.ex`).
+2. **Scenarios First**: Every behavior must be documented in `doc/scenarios.md` first.  
 
+3. **Tests Second**: We use **Traceable TDD**. Every test must have a comment or name that links it to a specific Scenario ID (e.g., `Scenario 2.1`).  
+
+4. **Code Third**: Only after the test failure is verified do we implement the logic in the Brain (`Core.ex`).  
+
+* **Tip**: For manual GUI checks, always use **Incognito/Private Mode** to avoid session conflicts becuase of cookies left from from runs on other ports.
 ***
 
 ## 5. Ground Truth Files
