@@ -53,6 +53,11 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: The `Controller` processes the change.
   - **Then**: The new state is broadcasted over PubSub to the `"elevator:status"` topic.
 
+- [x] **Scenario 1.10: Return to Base (Inactivity Timeout)**
+  - **Given**: Elevator is `:idle` with no pending requests.
+  - **When**: 5 minutes (300s) pass without any activity.
+  - **Then**: A `{:hall, 1}` request is automatically added, sending the elevator back to Floor 1.
+
 ## 2. Safety Interlocks & Sensors
 
 - [x] **Scenario 2.1: Door Obstruction**

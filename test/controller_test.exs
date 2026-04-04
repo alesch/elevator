@@ -95,7 +95,7 @@ defmodule Elevator.ControllerTest do
       assert unique_targets == [1, 2, 3, 4, 5]
     end
 
-    test "Rule 1.4: Inactivity Window (Deterministic Verification)", %{
+    test "Scenario 1.10: Return to Base (Inactivity Timeout)", %{
       vault: vault,
       sensor: sensor
     } do
