@@ -269,7 +269,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: `:door_opened` received.
   - **Then**: `phase` becomes `:docked`, `door_status` becomes `:open`, door timeout timer is set.
 
-- [ ] **Scenario 8.4: :docked → :leaving (Timeout fires)**
+- [x] **Scenario 8.4: :docked → :leaving (Timeout fires)**
   - **Given**: `phase: :docked`, `door_status: :open`, `door_sensor: :clear`.
   - **When**: `:door_timeout` received.
   - **Then**: `phase` becomes `:leaving`, `door_status` becomes `:closing`.

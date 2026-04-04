@@ -150,6 +150,11 @@ defmodule Elevator.Core do
     |> apply_logic()
   end
 
+  # Scenario 8.4: Timeout fires while docked — begin leaving.
+  defp do_handle_event(%Core{phase: :docked, door_sensor: :clear} = state, :door_timeout, _now) do
+    %{state | door_status: :closing, phase: :leaving}
+  end
+
   defp do_handle_event(%Core{door_status: :open} = state, :door_timeout, _now) do
     if state.phase != :rehoming and state.door_sensor == :clear do
       %{state | door_status: :closing}

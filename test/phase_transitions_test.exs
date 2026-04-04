@@ -35,4 +35,15 @@ defmodule Elevator.PhaseTransitionsTest do
     assert new_state.door_status == :open
     assert {:set_timer, :door_timeout, 5000} in actions
   end
+
+  # Scenario 8.4
+  test "Scenario 8.4: :docked → :leaving when door timeout fires" do
+    state = %Core{phase: :docked, door_status: :open, door_sensor: :clear}
+
+    {new_state, actions} = Core.handle_event(state, :door_timeout, 5000)
+
+    assert new_state.phase == :leaving
+    assert new_state.door_status == :closing
+    assert {:close_door} in actions
+  end
 end
