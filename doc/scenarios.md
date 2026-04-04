@@ -149,7 +149,7 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 5. Homing & Crash Recovery
 
-- [ ] **Scenario 5.1: Cold Start (No Persistence)**
+- [x] **Scenario 5.1: Cold Start (No Persistence)**
   - **Given**: `Elevator.Vault` is empty.
   - **When**: System starts.
   - **Then**:
@@ -157,14 +157,14 @@ This document defines the testable reality of our simulation. We use these scena
     - `heading` is `:down`, `motor_speed` is `:crawling`.
     - `current_floor` is `:unknown`.
 
-- [ ] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
+- [x] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
   - **Given**: `Elevator.Vault` stores `Floor 3` AND `Elevator.Sensor` is currently at `Floor 3`.
   - **When**: System reboots (e.g., after a crash).
   - **Then**:
     - `phase` transitions `:rehoming` -> `:idle` immediately.
     - No motor movement is triggered.
 
-- [ ] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
+- [x] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
   - **Given**: `Elevator.Vault` says `Floor 3` but `Elevator.Sensor` is `:unknown` (or mismatches).
   - **When**: System reboots.
   - **Then**:
@@ -190,7 +190,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `door_status` remains `:closed`. No `:open_door` command is issued to hardware.
   - **Rationale**: The homing move is a calibration move. No passenger requested this floor; opening the doors would be incorrect and would add an unnecessary 5s delay before the system can service real requests.
 
-- [ ] **Scenario 5.5: Request Blocking during Rehoming**
+- [x] **Scenario 5.5: Request Blocking during Rehoming**
   - **Given**: Elevator is in `phase: :rehoming`.
   - **When**: Receive any external/internal floor request.
   - **Then**: The request is ignored and NOT added to the queue.
