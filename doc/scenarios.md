@@ -119,6 +119,11 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Receive `{:car, 3}` (or hall).
   - **Then**: `motor_status` becomes `:stopping` to immediately open doors.
 
+- [x] **Scenario 4.3: Multi-Stop Sweep Ordering**
+  - **Given**: Elevator at F0 heading `:up`, requests for F2, F4, and F6.
+  - **When**: Elevator moves upward through each floor.
+  - **Then**: Stops are made in ascending order — F2 first, then F4, then F6. No floor is skipped or served out of order.
+
 - [x] **Scenario 4.8: Boundary Reversals**
   - **Given**: Elevator at F5 (Top) heading UP.
   - **When**: Queued requests above are empty.

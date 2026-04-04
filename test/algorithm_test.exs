@@ -91,6 +91,46 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
+  describe "Scenario 4.3: Multi-Stop Sweep Ordering" do
+    test "Elevator stops at each floor in ascending order when heading up" do
+      # GIVEN: At F0, requests for F2, F4, F6
+      state = %Core{current_floor: 0, heading: :idle}
+      {state, _} = Core.request_floor(state, :car, 2)
+      {state, _} = Core.request_floor(state, :car, 4)
+      {state, _} = Core.request_floor(state, :car, 6)
+
+      assert state.heading == :up
+
+      # ACT + ASSERT: Arrive at F2 — must stop
+      state = %{state | current_floor: 2}
+      {state, _} = Core.process_current_floor(state)
+      assert state.motor_status == :stopping
+
+      # Clear F2, continue
+      {state, _} = Core.handle_event(state, :motor_stopped, 0)
+      refute {:car, 2} in state.requests
+
+      # ACT + ASSERT: Arrive at F4 — must stop
+      state = %{state | current_floor: 4, motor_status: :running}
+      {state, _} = Core.process_current_floor(state)
+      assert state.motor_status == :stopping
+
+      # Clear F4, continue
+      {state, _} = Core.handle_event(state, :motor_stopped, 0)
+      refute {:car, 4} in state.requests
+
+      # ACT + ASSERT: Arrive at F6 — must stop
+      state = %{state | current_floor: 6, motor_status: :running}
+      {state, _} = Core.process_current_floor(state)
+      assert state.motor_status == :stopping
+
+      # All requests fulfilled
+      {final_state, _} = Core.handle_event(state, :motor_stopped, 0)
+      assert final_state.requests == []
+      assert final_state.heading == :up
+    end
+  end
+
   describe "Scenario 4.9: Request Fulfillment (Internal State Sync)" do
     test "clears requests during arrival to ensure correct heading choice" do
       # Arrange: Moving through a sequence F0 -> F3 -> F1 -> F0
