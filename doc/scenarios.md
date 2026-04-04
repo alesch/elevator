@@ -264,7 +264,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: `floor_arrival` at F3.
   - **Then**: `phase` becomes `:arriving`, `motor_status` becomes `:stopping`.
 
-- [ ] **Scenario 8.3: :arriving → :docked (Doors confirm open)**
+- [x] **Scenario 8.3: :arriving → :docked (Doors confirm open)**
   - **Given**: `phase: :arriving`, `motor_status: :stopped`, `door_status: :opening`.
   - **When**: `:door_opened` received.
   - **Then**: `phase` becomes `:docked`, `door_status` becomes `:open`, door timeout timer is set.

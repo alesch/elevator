@@ -135,6 +135,11 @@ defmodule Elevator.Core do
     |> apply_logic()
   end
 
+  # Scenario 8.3: Doors confirm open while arriving — transition to :docked.
+  defp do_handle_event(%Core{phase: :arriving} = state, :door_opened, now) do
+    %{state | door_status: :open, phase: :docked, last_activity_at: now}
+  end
+
   defp do_handle_event(%Core{door_status: :opening} = state, :door_opened, now) do
     %{state | door_status: :open, last_activity_at: now}
     |> apply_logic(now)
