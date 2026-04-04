@@ -4,10 +4,12 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 1. The "Happy Path" (Standard Movement)
 
-- [x] **Scenario 1.1: Request from IDLE**
-  - **Given**: Elevator is at F0, state is `:idle`, doors are `:closed`.
-  - **When**: Request for F3 is received from the Hall.
-  - **Then**: `heading` becomes `:up`, `requests` includes `{:hall, 3}`.
+- [x] **Scenario 1.1: Context-Aware Wake Up (Request from IDLE)**
+  - **Given**: Elevator is `:idle`, doors are `:closed`.
+  - **When**: A request is received.
+  - **Then**: `requests` includes the new request, and heading is chosen based on position:
+    - **Sub-case 1.1a (Request above)**: Elevator at F0, request for F3 → `heading: :up`.
+    - **Sub-case 1.1b (Request below)**: Elevator at F5, request for F1 → `heading: :down`.
 
 - [x] **Scenario 1.2: Arrival at Target Floor (Braking & Idle)**
   - **Given**: Elevator is at F3, `heading` is `:up`, `requests` includes `{:car, 3}`.
@@ -101,11 +103,6 @@ This document defines the testable reality of our simulation. We use these scena
   - **Given**: Moving `:up`, a `{:car, floor}` request exists on the path.
   - **When**: Elevator arrives at that floor.
   - **Then**: **STOP** at that floor — car requests (passengers already inside) are always honored.
-
-- [x] **Scenario 4.5: Context-Aware Wake Up**
-  - **Given**: Elevator is at F5, state is `:idle`.
-  - **When**: Request for F1 is received.
-  - **Then**: `heading` becomes `:down` (correctly identifying the request is below).
 
 - [x] **Scenario 4.6: Same-Floor Interaction**
   - **Given**: Elevator at F3, state is `:idle`.
