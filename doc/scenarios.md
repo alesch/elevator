@@ -274,12 +274,12 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: `:door_timeout` received.
   - **Then**: `phase` becomes `:leaving`, `door_status` becomes `:closing`.
 
-- [ ] **Scenario 8.5: :leaving → :moving (Door closed, requests remain)**
+- [x] **Scenario 8.5: :leaving → :moving (Door closed, requests remain)**
   - **Given**: `phase: :leaving`, pending requests exist.
   - **When**: `:door_closed` received.
   - **Then**: `phase` becomes `:moving`, `motor_status` becomes `:running`.
 
-- [ ] **Scenario 8.6: :leaving → :idle (Door closed, no requests)**
+- [x] **Scenario 8.6: :leaving → :idle (Door closed, no requests)**
   - **Given**: `phase: :leaving`, no pending requests.
   - **When**: `:door_closed` received.
   - **Then**: `phase` becomes `:idle`, `motor_status` stays `:stopped`.

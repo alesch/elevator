@@ -46,4 +46,37 @@ defmodule Elevator.PhaseTransitionsTest do
     assert new_state.door_status == :closing
     assert {:close_door} in actions
   end
+
+  # Scenario 8.5
+  test "Scenario 8.5: :leaving → :moving when door closes and requests remain" do
+    state = %Core{
+      phase: :leaving,
+      door_status: :closing,
+      heading: :up,
+      requests: [{:car, 5}],
+      current_floor: 3
+    }
+
+    {new_state, actions} = Core.handle_event(state, :door_closed, nil)
+
+    assert new_state.phase == :moving
+    assert new_state.motor_status == :running
+    assert {:move_motor, :up, :normal} in actions
+  end
+
+  # Scenario 8.6
+  test "Scenario 8.6: :leaving → :idle when door closes and no requests remain" do
+    state = %Core{
+      phase: :leaving,
+      door_status: :closing,
+      heading: :idle,
+      requests: [],
+      motor_status: :stopped
+    }
+
+    {new_state, _actions} = Core.handle_event(state, :door_closed, nil)
+
+    assert new_state.phase == :idle
+    assert new_state.motor_status == :stopped
+  end
 end

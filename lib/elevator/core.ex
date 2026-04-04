@@ -145,6 +145,17 @@ defmodule Elevator.Core do
     |> apply_logic(now)
   end
 
+  # Scenario 8.5 / 8.6: Door closed after leaving — go to :moving or :idle.
+  defp do_handle_event(%Core{phase: :leaving} = state, :door_closed, _now) do
+    state = %{state | door_status: :closed}
+
+    if state.heading != :idle do
+      %{state | phase: :moving, motor_status: :running, motor_speed: :normal}
+    else
+      %{state | phase: :idle}
+    end
+  end
+
   defp do_handle_event(%Core{door_status: :closing} = state, :door_closed, _now) do
     %{state | door_status: :closed}
     |> apply_logic()
