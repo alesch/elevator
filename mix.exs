@@ -49,6 +49,7 @@ defmodule Elevator.MixProject do
 
   defp aliases do
     [
+      "test-gui": ["cmd npx playwright test"],
       ci: [
         "cmd echo '\n\e[1;36m--- ✨ Checking Formatting --- \e[0m\e[2m(mix format)\e[0m'",
         "format --check-formatted",

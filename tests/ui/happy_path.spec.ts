@@ -31,12 +31,19 @@ test.describe('Elevator Dashboard Happy Path', () => {
     // The simulation takes time (2s per floor), so we increase timeout.
     await expect(indicator).toHaveText('3', { timeout: 20000 });
 
-    // 7. Verify doors are OPEN in the footer
+    // 7. Verify doors are OPEN — check immediately after arrival, before the 5s auto-close fires
     const doorStatus = page.locator('.footer-item', { hasText: 'Doors' }).locator('.status-value');
-    await expect(doorStatus).toHaveText('OPEN', { timeout: 10000 });
+    await expect(doorStatus).toHaveText('OPEN', { timeout: 3000 });
 
     // 8. Verify car class shows doors-open
     const car = page.locator('#elevator-car');
     await expect(car).toHaveClass(/doors-open/);
+
+    // 9. Verify car vertical position aligns with Floor 3 label
+    const carBox = await car.boundingBox();
+    const label3Box = await page.locator('#label-3').boundingBox();
+    const carCenterY = carBox!.y + carBox!.height / 2;
+    const label3CenterY = label3Box!.y + label3Box!.height / 2;
+    expect(Math.abs(carCenterY - label3CenterY)).toBeLessThan(15);
   });
 });

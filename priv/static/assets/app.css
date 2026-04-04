@@ -14,6 +14,7 @@
   /* Layout */
   --shaft-width: 280px;
   --border-radius: 12px;
+  --floor-height: 60px;
 }
 
 * {
@@ -110,7 +111,7 @@ body {
 }
 
 .shaft-layout {
-  flex: 1;
+  height: calc(6 * var(--floor-height));
   display: flex;
   gap: 20px;
   position: relative;
@@ -120,9 +121,14 @@ body {
 .floor-labels {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 10px 0;
   width: 50px;
+}
+
+.floor-slot {
+  height: var(--floor-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .floor-label {
@@ -170,8 +176,8 @@ body {
 .door-controls {
   display: flex;
   gap: 6px;
-  justify-content: center;
-  padding-top: 10px;
+  justify-content: flex-start;
+  padding-top: 12px;
 }
 
 .door-controls button {

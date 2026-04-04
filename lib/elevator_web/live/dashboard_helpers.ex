@@ -11,7 +11,7 @@ defmodule ElevatorWeb.DashboardHelpers do
   @doc "Maps a floor number to its vertical pixel offset in the shaft visualization."
   @spec floor_to_pixels(integer() | :unknown) :: integer()
   def floor_to_pixels(:unknown), do: 0
-  def floor_to_pixels(floor) when is_integer(floor), do: floor * 50
+  def floor_to_pixels(floor) when is_integer(floor), do: floor * 60
 
   @doc "Calculates the anticipatory visual floor for smooth synchronization."
   @spec visual_floor(integer() | :unknown, atom(), atom()) :: integer() | :unknown

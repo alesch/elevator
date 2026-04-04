@@ -127,17 +127,21 @@ defmodule ElevatorWeb.DashboardLive do
 
             <div class="shaft-layout">
               <!-- Interactive Floor Labels -->
-              <div class="floor-labels">
-                <%= for floor <- 5..0//-1 do %>
-                  <div
-                    class={["floor-label", floor_class(floor, @requests, @target_floor)]}
-                    phx-click="request_floor"
-                    phx-value-floor={floor}
-                    id={"label-#{floor}"}
-                  >
-                    <%= floor %>
-                  </div>
-                <% end %>
+              <div>
+                <div class="floor-labels">
+                  <%= for floor <- 5..0//-1 do %>
+                    <div class="floor-slot">
+                      <div
+                        class={["floor-label", floor_class(floor, @requests, @target_floor)]}
+                        phx-click="request_floor"
+                        phx-value-floor={floor}
+                        id={"label-#{floor}"}
+                      >
+                        <%= floor %>
+                      </div>
+                    </div>
+                  <% end %>
+                </div>
                 <div class="door-controls">
                   <button phx-click="open_door">&lt;|&gt;</button>
                   <button phx-click="close_door">&gt;|&lt;</button>
