@@ -254,7 +254,7 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 8. Phase Transitions
 
-- [ ] **Scenario 8.1: :idle → :moving (Request with closed doors)**
+- [x] **Scenario 8.1: :idle → :moving (Request with closed doors)**
   - **Given**: `phase: :idle`, `door_status: :closed`, elevator at F0.
   - **When**: Request for F3 received.
   - **Then**: `phase` becomes `:moving`, `motor_status` becomes `:running`, `heading` becomes `:up`.

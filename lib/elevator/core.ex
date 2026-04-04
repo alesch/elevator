@@ -52,6 +52,29 @@ defmodule Elevator.Core do
   Adds a floor request to the state and updates the heading.
   """
   @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
+  # Scenario 8.1 (different floor) / Scenario 4.6 (same floor)
+  # Only fires when doors are confirmed closed — prevents motor start with open doors.
+  def request_floor(%Core{phase: :idle, door_status: :closed} = state, source, floor)
+      when is_integer(floor) do
+    state = add_request(state, source, floor)
+
+    new_state =
+      if floor == state.current_floor do
+        # Same floor — open door immediately, no motor cycle needed (Scenario 4.6)
+        state
+        |> fulfill_current_floor_requests()
+        |> update_heading()
+        |> Map.merge(%{door_status: :opening, phase: :arriving})
+      else
+        # Different floor — start moving (Scenario 8.1)
+        state
+        |> update_heading()
+        |> Map.merge(%{phase: :moving, motor_status: :running, motor_speed: :normal})
+      end
+
+    {new_state, derive_actions(state, new_state)}
+  end
+
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
     new_state =
       state
