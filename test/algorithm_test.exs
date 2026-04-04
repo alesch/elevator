@@ -39,34 +39,6 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
-  describe "Full Load Bypass (Scenarios 4.3 & 4.4)" do
-    test "Scenario 4.3: Bypass Hall request when near weight limit" do
-      # Arrange: Moving UP to 5, Weight 901kg (Limit 1000kg)
-      state = %Core{current_floor: 1, heading: :up, requests: [{:car, 5}], weight: 901}
-      {state, _} = Core.request_floor(state, :hall, 3)
-
-      # Act: Move to 3
-      state = %{state | current_floor: 3, motor_status: :running}
-      {new_state, _} = Core.process_current_floor(state)
-
-      # Assert: It should NOT stop (stays :running since it's bypassing)
-      assert new_state.motor_status == :running
-    end
-
-    test "Scenario 4.4: Honor Car request even when near weight limit" do
-      # Arrange: Moving UP to 5, Weight 900kg
-      state = %Core{current_floor: 1, heading: :up, requests: [{:car, 5}], weight: 900}
-      {state, _} = Core.request_floor(state, :car, 3)
-
-      # Act: Move to 3
-      state = %{state | current_floor: 3}
-      {new_state, _} = Core.process_current_floor(state)
-
-      # Assert: It MUST stop because it's a Car request
-      assert new_state.motor_status == :stopping
-    end
-  end
-
   describe "Wake Up Logic (Scenario 4.5)" do
     test "Scenario 4.5: Context-Aware Wake Up (Idle at F5 heads DOWN for F1)" do
       # Arrange: Elevator is idle at Floor 5

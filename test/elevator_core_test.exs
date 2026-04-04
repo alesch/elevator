@@ -83,28 +83,6 @@ defmodule Elevator.CoreTest do
     assert {:set_timer, :door_timeout, 5000} in actions
   end
 
-  test "Scenario 2.2: Weight sensor triggers overload if weight > limit" do
-    state = %Core{door_status: :open, weight: 0, weight_limit: 1000}
-
-    # Act
-    {new_state, _actions} = Core.update_weight(state, 1200)
-
-    # Assert
-    assert new_state.status == :overload
-    assert new_state.weight == 1200
-  end
-
-  test "Scenario 2.3: Return to normal from overload when weight decreases" do
-    state = %Core{status: :overload, weight: 1200, weight_limit: 1000}
-
-    # Act
-    {new_state, _actions} = Core.update_weight(state, 800)
-
-    # Assert
-    assert new_state.status == :normal
-    assert new_state.weight == 800
-  end
-
   test "Scenario 3.1: Door Open button reverses a closing door" do
     state = %Core{door_status: :closing}
 
@@ -204,18 +182,6 @@ defmodule Elevator.CoreTest do
       assert new_state.motor_status == :stopped
       assert new_state.door_status == :opening
       assert {:open_door} in actions
-    end
-
-    test "Safety Overload: Prevents door from closing" do
-      # GIVEN: Overloaded at F1, doors open, heading :up
-      state = %Core{current_floor: 1, door_status: :open, heading: :up, status: :overload}
-
-      # ACT: Any update that would normally trigger closure
-      # Still overloaded
-      {new_state, _actions} = Core.update_weight(state, 1200)
-
-      # ASSERT: Door MUST stay open (or transition to :opening if it was :closing)
-      assert new_state.door_status == :open
     end
 
     test "Scenario 7.1b: Door does NOT close on timeout when sensor is blocked" do

@@ -389,12 +389,7 @@ defmodule Elevator.Controller do
   end
 
   @spec create_base_state(keyword()) :: Elevator.Core.t()
-  defp create_base_state(opts) do
-    case Keyword.get(opts, :type, :passenger) do
-      :freight -> Core.new_freight()
-      _ -> Core.new_passenger()
-    end
-  end
+  defp create_base_state(_opts), do: Core.new_passenger()
 
   @spec position_at_provided_floor(Core.t(), keyword()) :: Core.t()
   defp position_at_provided_floor(state, opts) do

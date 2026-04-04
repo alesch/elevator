@@ -18,9 +18,7 @@ defmodule Elevator.Core do
             phase: :idle,
             door_sensor: :clear,
             motor_status: :stopped,
-            motor_speed: :normal,
-            weight: 0,
-            weight_limit: 1000
+            motor_speed: :normal
 
   @type action ::
           {:set_timer, atom(), integer()}
@@ -36,23 +34,17 @@ defmodule Elevator.Core do
           door_status: :open | :closed | :opening | :closing,
           requests: list({atom(), integer()}),
           last_activity_at: integer(),
-          status: :normal | :overload | :emergency | :rehoming,
+          status: :normal | :emergency | :rehoming,
           phase: :rehoming | :moving | :arriving | :docked | :leaving | :idle,
           door_sensor: :clear | :blocked,
-          motor_status: :running | :stopping | :stopped,
-          weight: integer(),
-          weight_limit: integer()
+          motor_status: :running | :stopping | :stopped
         }
 
   @door_wait_ms 5000
 
   @doc "Creates a standard passenger elevator state."
   @spec new_passenger() :: t()
-  def new_passenger, do: %Core{weight_limit: 1000}
-
-  @doc "Creates a heavy-duty freight elevator state."
-  @spec new_freight() :: t()
-  def new_freight, do: %Core{weight_limit: 5000}
+  def new_passenger, do: %Core{}
 
   # ---------------------------------------------------------------------------
   # ## Public State Transitions
@@ -217,20 +209,6 @@ defmodule Elevator.Core do
     state
   end
 
-  @doc """
-  Updates the current weight and checks for overload.
-  """
-  @spec update_weight(t(), integer()) :: {t(), [action()]}
-  def update_weight(%Core{} = state, new_weight) do
-    new_state =
-      state
-      |> set_weight(new_weight)
-      |> update_overload_status()
-      |> apply_logic()
-
-    {new_state, derive_actions(state, new_state)}
-  end
-
   # ---------------------------------------------------------------------------
   # ## Private Internal Logic
   # ---------------------------------------------------------------------------
@@ -284,11 +262,9 @@ defmodule Elevator.Core do
 
   @spec should_stop_at?(t(), integer()) :: boolean()
   defp should_stop_at?(state, floor) do
-    # 1. Always stop for Car requests
-    # 2. Stop for Hall requests only if capacity > 100kg
     Enum.any?(state.requests, fn
       {:car, ^floor} -> true
-      {:hall, ^floor} -> remaining_capacity(state) >= 100
+      {:hall, ^floor} -> true
       _ -> false
     end)
   end
@@ -297,18 +273,6 @@ defmodule Elevator.Core do
   defp confirm_stopped_at_floor(state) do
     %{state | motor_status: :stopped, door_status: :opening}
   end
-
-  @spec set_weight(t(), integer()) :: t()
-  defp set_weight(state, weight), do: %{state | weight: weight}
-
-  @spec update_overload_status(t()) :: t()
-  defp update_overload_status(state) do
-    new_status = if state.weight > state.weight_limit, do: :overload, else: :normal
-    %{state | status: new_status}
-  end
-
-  @spec remaining_capacity(t()) :: integer()
-  defp remaining_capacity(state), do: state.weight_limit - state.weight
 
   @spec any_requests_above?(t()) :: boolean()
   defp any_requests_above?(state) do
@@ -442,21 +406,10 @@ defmodule Elevator.Core do
   end
 
   defp enforce_safety_overrides(state) do
-    cond do
-      state.door_sensor == :blocked ->
-        # Obstruction forces opening
-        %{state | door_status: :opening}
-
-      state.status == :overload ->
-        # Overload forces opening/prevents closing
-        if state.door_status == :open do
-          state
-        else
-          %{state | door_status: :opening}
-        end
-
-      true ->
-        state
+    if state.door_sensor == :blocked do
+      %{state | door_status: :opening}
+    else
+      state
     end
   end
 
