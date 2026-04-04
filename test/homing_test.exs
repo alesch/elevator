@@ -38,7 +38,7 @@ defmodule Elevator.HomingTest do
     _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
-    assert state.status == :normal
+    assert state.phase == :idle
     assert state.current_floor == 0
 
     # Motor should still be stopped
@@ -68,7 +68,7 @@ defmodule Elevator.HomingTest do
 
     # Controller should be :rehoming
     state = Controller.get_state(ctrl)
-    assert state.status == :rehoming
+    assert state.phase == :rehoming
 
     # Motor should be moving :down at :slow speed
     motor_state = Motor.get_state(motor)
@@ -99,7 +99,7 @@ defmodule Elevator.HomingTest do
 
     # 2. Verification
     _ = Controller.get_state(ctrl)
-    assert Controller.get_state(ctrl).status == :rehoming
+    assert Controller.get_state(ctrl).phase == :rehoming
     assert Motor.get_state(motor).speed == :slow
 
     # 3. Simulating arrival at Floor 0 to finish homing
@@ -109,7 +109,7 @@ defmodule Elevator.HomingTest do
     _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
-    assert state.status == :normal
+    assert state.phase == :idle
     assert state.current_floor == 0
     assert Vault.get_floor(vault) == 0
 
@@ -134,7 +134,7 @@ defmodule Elevator.HomingTest do
       )
 
     _ = Controller.get_state(ctrl)
-    assert Controller.get_state(ctrl).status == :rehoming
+    assert Controller.get_state(ctrl).phase == :rehoming
 
     # 2. Send a request
     Controller.request_floor(ctrl, :car, 2)
@@ -142,6 +142,6 @@ defmodule Elevator.HomingTest do
     # 3. Verify it was ignored
     state = Controller.get_state(ctrl)
     assert state.requests == []
-    assert state.status == :rehoming
+    assert state.phase == :rehoming
   end
 end

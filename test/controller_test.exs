@@ -37,7 +37,7 @@ defmodule Elevator.ControllerTest do
       _ = Controller.get_state(pid)
 
       state = Controller.get_state(pid)
-      assert state.status == :normal
+      assert state.phase == :idle
       assert state.current_floor == 0
     end
 

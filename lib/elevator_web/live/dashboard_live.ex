@@ -39,7 +39,7 @@ defmodule ElevatorWeb.DashboardLive do
        door_state: state.door_status,
        motor_state: state.motor_status,
        sensor_state: state.door_sensor,
-       controller_state: state.status,
+       controller_state: state.phase,
        activity_log: [
          %{actor: "🧠", id: 1, time: current_time(), msg: "LiveView Connected."}
        ]
@@ -61,7 +61,7 @@ defmodule ElevatorWeb.DashboardLive do
        door_state: state.door_status,
        motor_state: state.motor_status,
        sensor_state: state.door_sensor,
-       controller_state: state.status
+       controller_state: state.phase
      )}
   end
 
@@ -203,7 +203,7 @@ defmodule ElevatorWeb.DashboardLive do
     """
   end
 
-  defp get_target_floor(%{requests: [], status: :rehoming}), do: 0
+  defp get_target_floor(%{requests: [], phase: :rehoming}), do: 0
   defp get_target_floor(%{requests: []}), do: nil
 
   defp get_target_floor(%{requests: requests, current_floor: current, heading: heading}) do

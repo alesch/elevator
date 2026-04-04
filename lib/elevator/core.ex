@@ -14,7 +14,6 @@ defmodule Elevator.Core do
             door_status: :closed,
             requests: [],
             last_activity_at: 0,
-            status: :normal,
             phase: :idle,
             door_sensor: :clear,
             motor_status: :stopped,
@@ -34,7 +33,6 @@ defmodule Elevator.Core do
           door_status: :open | :closed | :opening | :closing,
           requests: list({atom(), integer()}),
           last_activity_at: integer(),
-          status: :normal | :emergency | :rehoming,
           phase: :rehoming | :moving | :arriving | :docked | :leaving | :idle,
           door_sensor: :clear | :blocked,
           motor_status: :running | :stopping | :stopped
@@ -120,7 +118,7 @@ defmodule Elevator.Core do
   end
 
   defp do_handle_event(%Core{door_status: :open} = state, :door_timeout, _now) do
-    if state.status == :normal and state.door_sensor == :clear do
+    if state.phase != :rehoming and state.door_sensor == :clear do
       %{state | door_status: :closing}
       |> apply_logic()
     else
@@ -135,12 +133,12 @@ defmodule Elevator.Core do
   end
 
   defp do_handle_event(state, :recovery_complete, floor) do
-    %{state | current_floor: floor, status: :normal}
+    %{state | current_floor: floor, phase: :idle}
     |> apply_logic()
   end
 
   defp do_handle_event(state, :rehoming_started, _now) do
-    %{state | status: :rehoming}
+    %{state | phase: :rehoming}
     |> apply_logic()
   end
 
@@ -309,7 +307,7 @@ defmodule Elevator.Core do
     |> enforce_the_golden_rule()
   end
 
-  defp start_rehoming_logic(%Core{status: :rehoming} = state) do
+  defp start_rehoming_logic(%Core{phase: :rehoming} = state) do
     state = if state.door_status != :closed, do: %{state | door_status: :closing}, else: state
     %{state | heading: :down, motor_status: :running, motor_speed: :slow}
   end
@@ -317,7 +315,7 @@ defmodule Elevator.Core do
   defp start_rehoming_logic(state), do: state
 
   defp start_servicing_request_logic(
-         %Core{heading: h, door_status: :open, status: :normal, door_sensor: :clear} = state,
+         %Core{heading: h, door_status: :open, door_sensor: :clear} = state,
          now
        )
        when h != :idle and not is_nil(now) do
@@ -331,7 +329,7 @@ defmodule Elevator.Core do
   defp start_servicing_request_logic(state, _now), do: state
 
   defp start_moving_logic(
-         %Core{heading: h, door_status: :closed, motor_status: :stopped, status: :normal} = state
+         %Core{heading: h, door_status: :closed, motor_status: :stopped} = state
        )
        when h != :idle do
     %{state | motor_status: :running, motor_speed: :normal}

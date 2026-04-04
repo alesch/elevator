@@ -4,14 +4,14 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 1. The "Happy Path" (Standard Movement)
 
-- [x] **Scenario 1.1: Context-Aware Wake Up (Request from IDLE)**
+- [ ] **Scenario 1.1: Context-Aware Wake Up (Request from IDLE)**
   - **Given**: Elevator is `:idle`, doors are `:closed`.
   - **When**: A request is received.
   - **Then**: `requests` includes the new request, and heading is chosen based on position:
     - **Sub-case 1.1a (Request above)**: Elevator at F0, request for F3 → `heading: :up`.
     - **Sub-case 1.1b (Request below)**: Elevator at F5, request for F1 → `heading: :down`.
 
-- [x] **Scenario 1.2: Arrival at Target Floor (Braking & Idle)**
+- [ ] **Scenario 1.2: Arrival at Target Floor (Braking & Idle)**
   - **Given**: Elevator is at F3, `heading` is `:up`, `requests` includes `{:car, 3}`.
   - **When**: Sensor confirms arrival at F3.
   - **Then**:
@@ -19,7 +19,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `motor_status` becomes `:stopping` (Immediate intent).
     - Motor receives `:stop_now`.
 
-- [x] **Scenario 1.3: Braking Complete (Door Opening)**
+- [ ] **Scenario 1.3: Braking Complete (Door Opening)**
   - **Given**: Elevator is at F3, `motor_status` is `:stopping`.
   - **When**: Receive `:motor_stopped` confirmation.
   - **Then**:
@@ -27,50 +27,50 @@ This document defines the testable reality of our simulation. We use these scena
     - `door_status` becomes `:opening` (Immediate intent).
     - Door receives `:open`.
 
-- [x] **Scenario 1.4: Door Open Confirmation**
+- [ ] **Scenario 1.4: Door Open Confirmation**
   - **Given**: `door_status` is `:opening`.
   - **When**: Receive `:door_opened` confirmation.
   - **Then**:
     - `door_status` becomes `:open`.
     - Auto-close timer is reset (`last_activity_at` updated).
 
-- [x] **Scenario 1.6: Sequence Verification (Intent & Confirmation)**
+- [ ] **Scenario 1.6: Sequence Verification (Intent & Confirmation)**
   - **When**: Triggered transition `door_status` -> `:closed`.
   - **Then**: `door_status` first becomes `:closing` (Intent), then `:closed` (Physical).
 
-- [x] **Scenario 1.7: Actor Redundancy (Loud Warnings)**
+- [ ] **Scenario 1.7: Actor Redundancy (Loud Warnings)**
   - **Given**: System actor (Motor/Door) is already in state X.
   - **When**: Receive redundant internal command to transition to state X.
   - **Then**: Log a `Logger.warning` (Audit Trail) and do NOT re-trigger hardware timers.
 
-- [x] **Scenario 1.8: Button Spamming (Silent Idempotency)**
+- [ ] **Scenario 1.8: Button Spamming (Silent Idempotency)**
   - **Given**: The `requests` list already contains a request for Floor X.
   - **When**: Any additional external request for Floor X is received.
   - **Then**: The system ignores it SILENTLY. No warnings are logged.
 
-- [x] **Scenario 1.9: Observable State Change (Broadcasting)**
+- [ ] **Scenario 1.9: Observable State Change (Broadcasting)**
   - **Given**: Any change occurs in the `Elevator.Core` state.
   - **When**: The `Controller` processes the change.
   - **Then**: The new state is broadcasted over PubSub to the `"elevator:status"` topic.
 
-- [x] **Scenario 1.10: Return to Base (Inactivity Timeout)**
+- [ ] **Scenario 1.10: Return to Base (Inactivity Timeout)**
   - **Given**: Elevator is `phase: :idle` with no pending requests.
   - **When**: 5 minutes (300s) pass without any activity.
   - **Then**: A `{:car, 0}` request is automatically added, sending the elevator back to Floor 0 (ground floor).
 
-- [x] **Scenario 1.11: Concurrent Requests (Race Condition Safety)**
+- [ ] **Scenario 1.11: Concurrent Requests (Race Condition Safety)**
   - **Given**: Elevator is idle.
   - **When**: Multiple hall requests for different floors arrive simultaneously (e.g. from parallel processes).
   - **Then**: All requests are recorded exactly once in the `requests` queue — no drops, no duplicates.
 
 ## 2. Safety Interlocks & Sensors
 
-- [x] **Scenario 2.1: Door Obstruction**
+- [ ] **Scenario 2.1: Door Obstruction**
   - **Given**: Doors are `:closing`.
   - **When**: Receive `:door_sensor_blocked`.
   - **Then**: Immediately transition `door_status` back to `:opening`.
 
-- [x] **Scenario 2.4: Hardware Safety Interlock (The Golden Rule)**
+- [ ] **Scenario 2.4: Hardware Safety Interlock (The Golden Rule)**
   - **Given**: Elevator is at F0, state is `:idle`, doors are `:open`.
   - **When**: Request for F3 is received.
   - **Then**: 
@@ -78,48 +78,48 @@ This document defines the testable reality of our simulation. We use these scena
     - Motor is ONLY commanded to `:move` AFTER the `:motor_stopped` and `:door_closed` signals are confirmed.
     - *(Door closing is governed by the 5s timer — see Scenario 7.4)*
 
-- [x] **Scenario 2.5: Door Sensor Cleared**
+- [ ] **Scenario 2.5: Door Sensor Cleared**
   - **Given**: `door_sensor` is `:blocked`.
   - **When**: Receive `:door_sensor_cleared`.
   - **Then**: `door_sensor` becomes `:clear`.
 
 ## 3. Manual Overrides (Door Control)
 
-- [x] **Scenario 3.0: Manual Door Open from Closed**
+- [ ] **Scenario 3.0: Manual Door Open from Closed**
   - **Given**: Elevator is idle at a floor, `door_status` is `:closed`.
   - **When**: Passenger presses the `<|>` (door open) button.
   - **Then**: `door_status` transitions to `:opening` and door receives `:open` command.
 
-- [x] **Scenario 3.1: "Door Open Button Wins"**
+- [ ] **Scenario 3.1: "Door Open Button Wins"**
   - **Given**: Doors are `:closing`.
   - **When**: Receive `:button_pressed, :door_open`.
   - **Then**: Discard the closing attempt, transition back to `:opening`.
 
-- [x] **Scenario 3.2: Reset Auto-Close Timer**
+- [ ] **Scenario 3.2: Reset Auto-Close Timer**
   - **Given**: Doors are `:open`.
   - **When**: Receive `:button_pressed, :door_open`.
   - **Then**: The "Auto-Close" timer is reset (simulated by resetting the `last_activity_at` timestamp).
 
 ## 4. Directional Bias & Priority (The LOOK Algorithm)
 
-- [x] **Scenario 4.1: Pick-up on the Way (Sweep)**
+- [ ] **Scenario 4.1: Pick-up on the Way (Sweep)**
   - **Given**: Moving `:up` from 0 to 5.
   - **When**: Receive `{:hall, 3}`.
   - **Then**: The elevator must stop at 3 because it is in the current heading.
 
-- [x] **Scenario 4.2: Reverse or Retire**
+- [ ] **Scenario 4.2: Reverse or Retire**
   - **Given**: Moving `:up` from 0 to 3, with no more requests above.
   - **When**: All requests at 3 are satisfied.
   - **Then**:
     - If requests exist below -> Change `heading` to `:down`.
     - If NO requests exist anywhere -> Change `heading` to `:idle`.
 
-- [x] **Scenario 4.4: Honor All Requests**
+- [ ] **Scenario 4.4: Honor All Requests**
   - **Given**: Moving `:up`, a `{:car, floor}` or `{:hall, floor}` request exists on the path.
   - **When**: Elevator arrives at that floor.
   - **Then**: **STOP** at that floor — all requests are honored.
 
-- [x] **Scenario 4.6: Same-Floor Interaction**
+- [ ] **Scenario 4.6: Same-Floor Interaction**
   - **Given**: Elevator at F3, `motor_status` is `:stopped`, state is `:idle`.
   - **When**: Receive `{:car, 3}` (or hall).
   - **Then**:
@@ -128,17 +128,17 @@ This document defines the testable reality of our simulation. We use these scena
     - `door_status` becomes `:opening` and door receives `:open` command.
   - **Note**: The `:stopping` protocol only applies when the motor is actually `:running`. Sending a redundant stop to hardware that is already stopped causes a deadlock — no `:motor_stopped` confirmation is ever returned.
 
-- [x] **Scenario 4.3: Multi-Stop Sweep Ordering**
+- [ ] **Scenario 4.3: Multi-Stop Sweep Ordering**
   - **Given**: Elevator at F0 heading `:up`, requests for F2, F4, and F6.
   - **When**: Elevator moves upward through each floor.
   - **Then**: Stops are made in ascending order — F2 first, then F4, then F6. No floor is skipped or served out of order.
 
-- [x] **Scenario 4.8: Boundary Reversals**
+- [ ] **Scenario 4.8: Boundary Reversals**
   - **Given**: Elevator at F5 (Top) heading UP.
   - **When**: Queued requests above are empty.
   - **Then**: `heading` MUST transition to `:idle` or `:down` (never higher).
 
-- [x] **Scenario 4.9: Request Fulfillment (Internal Core Sync)**
+- [ ] **Scenario 4.9: Request Fulfillment (Internal Core Sync)**
   - **Given**: Elevator at Floor 1, having arrived from Floor 3, with `requests` containing `{:car, 3}` and `{:car, 0}`.
   - **When**: A new request for Floor 0 is received while stopped.
   - **Then**:
@@ -149,7 +149,7 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 5. Homing & Crash Recovery
 
-- [x] **Scenario 5.1: Cold Start (No Persistence)**
+- [ ] **Scenario 5.1: Cold Start (No Persistence)**
   - **Given**: `Elevator.Vault` is empty.
   - **When**: System starts.
   - **Then**:
@@ -157,14 +157,14 @@ This document defines the testable reality of our simulation. We use these scena
     - `heading` is `:down`, `motor_speed` is `:crawling`.
     - `current_floor` is `:unknown`.
 
-- [x] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
+- [ ] **Scenario 5.2: Mid-Floor Recovery (Zero-Move)**
   - **Given**: `Elevator.Vault` stores `Floor 3` AND `Elevator.Sensor` is currently at `Floor 3`.
   - **When**: System reboots (e.g., after a crash).
   - **Then**:
     - `phase` transitions `:rehoming` -> `:idle` immediately.
     - No motor movement is triggered.
 
-- [x] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
+- [ ] **Scenario 5.3: Recovery between floors (Move-to-Physical)**
   - **Given**: `Elevator.Vault` says `Floor 3` but `Elevator.Sensor` is `:unknown` (or mismatches).
   - **When**: System reboots.
   - **Then**:
@@ -172,7 +172,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `heading` is `:down`, `motor_speed` is `:crawling`.
     - Move until physical sensor confirms arrival.
 
-- [x] **Scenario 5.4: Homing Completion (Anchoring)**
+- [ ] **Scenario 5.4: Homing Completion (Anchoring)**
   - **Given**: `phase` is `:rehoming`.
   - **When**: Core receives its very first `{:floor_arrival, floor}` event.
   - **Then**:
@@ -182,7 +182,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `phase` stays `:rehoming` until `:motor_stopped` is confirmed.
     - `Vault` is updated with `Floor X`.
 
-- [x] **Scenario 5.6: No Door Cycle on Homing Arrival**
+- [ ] **Scenario 5.6: No Door Cycle on Homing Arrival**
   - **Given**: `phase` is `:rehoming`, `door_status` is `:closed`.
   - **When**: `:motor_stopped` is received after homing arrival.
   - **Then**:
@@ -190,7 +190,7 @@ This document defines the testable reality of our simulation. We use these scena
     - `door_status` remains `:closed`. No `:open_door` command is issued to hardware.
   - **Rationale**: The homing move is a calibration move. No passenger requested this floor; opening the doors would be incorrect and would add an unnecessary 5s delay before the system can service real requests.
 
-- [x] **Scenario 5.5: Request Blocking during Rehoming**
+- [ ] **Scenario 5.5: Request Blocking during Rehoming**
   - **Given**: Elevator is in `phase: :rehoming`.
   - **When**: Receive any external/internal floor request.
   - **Then**: The request is ignored and NOT added to the queue.
@@ -199,17 +199,17 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 6. Hardware Protocols (Shims & Drivers)
 
-- [x] **Scenario 6.1: Motor Movement Protocol**
+- [ ] **Scenario 6.1: Motor Movement Protocol**
   - **Given**: Motor receives a `:move` command.
   - **When**: Command includes `direction` and `speed`.
   - **Then**: Internal hardware state accurately reflects these parameters.
 
-- [x] **Scenario 6.2: Door Operation Protocol**
+- [ ] **Scenario 6.2: Door Operation Protocol**
   - **Given**: Door receives an `:open` or `:close` command.
   - **When**: Operation begins.
   - **Then**: Door state transitions to `:opening` or `:closing`.
 
-- [x] **Scenario 6.3: Sensor Floor Tracking**
+- [ ] **Scenario 6.3: Sensor Floor Tracking**
   - **Given**: Sensor receives a physical floor pulse.
   - **When**: Pulse is received at Floor X.
   - **Then**: Internal hardware state correctly identifies Floor X as the current position.
@@ -218,7 +218,7 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 7. Door Management & Timers (Refactor)
 
-- [x] **Scenario 7.1: Door Auto-Close Timeout (5s)**
+- [ ] **Scenario 7.1: Door Auto-Close Timeout (5s)**
   - **Given**: Elevator is at a floor, `door_status` is `:open`.
   - **When**: 5 seconds (5000ms) pass without activity.
   - **Then**: 
@@ -228,14 +228,14 @@ This document defines the testable reality of our simulation. We use these scena
   - **Sub-case 7.1a (Idle Heading)**: The door MUST close even when `heading` is `:idle` (e.g., after rehoming with no pending requests). The timeout closes the door unconditionally as long as `status` is `:normal` and `door_sensor` is `:clear`.
   - **Sub-case 7.1b (Sensor Blocked)**: If `door_sensor` is `:blocked` when the timeout fires, the door MUST NOT close. The obstruction takes priority — door transitions to `:opening` instead.
 
-- [x] **Scenario 7.2: Manual Close Button Override**
+- [ ] **Scenario 7.2: Manual Close Button Override**
   - **Given**: Elevator is at a floor, `door_status` is `:open`, pending requests exist.
   - **When**: Pressing the `>|<` (door close) button.
   - **Then**: 
     - Brain immediately returns `{:close_door}` and `{:cancel_timer, :door_timeout}`.
     - Door starts closing without waiting for the 5s timer.
 
-- [x] **Scenario 7.3: Activity Extension (Open Button)**
+- [ ] **Scenario 7.3: Activity Extension (Open Button)**
   - **Given**: `door_status` is `:open`.
   - **When**: Pressing the `<|>` (door open) button at T=1000.
   - **Then**: 
@@ -243,7 +243,7 @@ This document defines the testable reality of our simulation. We use these scena
     - A new `{:set_timer, :door_timeout, 5000}` is requested.
     - Timer effectively restarts.
 
-- [x] **Scenario 7.4: Service Delay (Auto-Close Integration)**
+- [ ] **Scenario 7.4: Service Delay (Auto-Close Integration)**
   - **Given**: At F1, doors open, new request for F5 received.
   - **When**: Request is added.
   - **Then**: 

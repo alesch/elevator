@@ -130,7 +130,7 @@ defmodule Elevator.Controller do
 
   @impl true
   @spec handle_cast({:request_floor, atom(), integer()}, map()) :: {:noreply, map()}
-  def handle_cast({:request_floor, source, floor}, %{state: %{status: :rehoming}} = data) do
+  def handle_cast({:request_floor, source, floor}, %{state: %{phase: :rehoming}} = data) do
     Logger.warning("Ignoring request #{inspect(source)} to floor #{floor} during REHOMING")
     {:noreply, data}
   end
@@ -196,8 +196,7 @@ defmodule Elevator.Controller do
     lookup_hardware(data, :vault, &Elevator.Vault.put_floor(&1, floor))
 
     # 2. Update functional state
-    was_rehoming? = data.state.status == :rehoming
-    new_status = if was_rehoming?, do: :normal, else: data.state.status
+    was_rehoming? = data.state.phase == :rehoming
 
     :telemetry.execute([:elevator, :controller, :arrival], %{}, %{
       floor: floor,
@@ -206,11 +205,11 @@ defmodule Elevator.Controller do
 
     # Intermediate state to handle manual rehoming logic override
     # (In a real system, the Brain would handle this internally)
-    {mid_state, _} = Core.process_arrival(%{data.state | status: new_status}, floor)
+    {mid_state, _} = Core.process_arrival(data.state, floor)
     final_heading = if was_rehoming?, do: :idle, else: mid_state.heading
 
     {final_state, actions} =
-      Core.process_arrival(%{data.state | status: new_status, heading: final_heading}, floor)
+      Core.process_arrival(%{data.state | heading: final_heading}, floor)
 
     new_data =
       %{data | state: final_state}
