@@ -41,6 +41,28 @@ defmodule Elevator.ControllerTest do
       assert state.current_floor == 0
     end
 
+    test "Scenario 1.9: Observable State Change — any state change is broadcast over PubSub", %{
+      vault: vault,
+      sensor: sensor
+    } do
+      {:ok, pid} =
+        Controller.start_link(
+          motor: self(),
+          door: self(),
+          vault: vault,
+          sensor: sensor,
+          name: nil
+        )
+
+      _ = Controller.get_state(pid)
+
+      # WHEN: A state-changing event occurs (floor request)
+      Controller.request_floor(pid, :car, 3)
+
+      # THEN: New state is broadcast on "elevator:status" — match specifically on :moving phase
+      assert_receive {:elevator_state, %{phase: :moving, heading: :up}}
+    end
+
     test "Requesting a floor via cast (Asynchronous)", %{vault: vault, sensor: sensor} do
       {:ok, pid} =
         Controller.start_link(

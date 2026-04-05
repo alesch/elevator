@@ -55,7 +55,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Any additional external request for Floor X is received.
   - **Then**: The system ignores it SILENTLY. No warnings are logged.
 
-- [ ] **Scenario 1.9: Observable State Change (Broadcasting)**
+- [x] **Scenario 1.9: Observable State Change (Broadcasting)**
   - **Given**: Any change occurs in the `Elevator.Core` state.
   - **When**: The `Controller` processes the change.
   - **Then**: The new state is broadcasted over PubSub to the `"elevator:status"` topic.
