@@ -208,8 +208,11 @@ body {
 .door-controls {
     display: flex;
     gap: 6px;
-    justify-content: flex-start;
+    justify-content: space-evenly;
     padding-top: 12px;
+    margin-left: calc(
+        50px + 20px
+    ); /* align with .shaft-visual: labels(50px) + gap(20px) */
 }
 
 .door-controls button {
