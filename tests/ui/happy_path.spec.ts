@@ -10,9 +10,9 @@ test.describe('Elevator Dashboard Happy Path', () => {
     const log = page.locator('#log');
     await expect(log).toContainText(/LiveView Connected/i, { timeout: 10000 });
 
-    // Wait for rehoming to complete
+    // Wait for rehoming to complete (phase becomes :idle → displayed as "IDLE")
     const coreStatus = page.locator('.footer-item', { hasText: 'Core' }).locator('.status-value');
-    await expect(coreStatus).toHaveText('NORMAL', { timeout: 15000 });
+    await expect(coreStatus).toHaveText('IDLE', { timeout: 15000 });
 
     // Verify precondition: elevator is stopped at F0
     const motorStatus = page.locator('.footer-item', { hasText: 'Motor' }).locator('.status-value');
@@ -22,7 +22,7 @@ test.describe('Elevator Dashboard Happy Path', () => {
     await expect(indicator).toHaveText('0', { timeout: 10000 });
   });
 
-  // Scenario 8.1
+  // Scenario 9.1
   test('Full journey from F0 to F3', async ({ page }) => {
     const log = page.locator('#log');
     const indicator = page.locator('.digital-indicator');
