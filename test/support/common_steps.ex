@@ -8,6 +8,8 @@ defmodule Elevator.CommonSteps do
   def parse_state_field(field_str) do
     case String.split(field_str, ": ") do
       [field, value] -> {String.to_atom(field), parse_atom(value)}
+      # If it's a bare atom like ":idle", assume it refers to the "phase" field
+      [value] -> {:phase, parse_atom(value)}
       _ -> {String.to_atom(field_str), :unknown}
     end
   end
@@ -199,6 +201,19 @@ defmodule Elevator.CommonSteps do
     # Consolidation: Treat :opening as a valid intermediate for :open if needed, 
     # but usually we want exact matches for phase tests.
     assert actual == expected
+    {:ok, state}
+  end
+
+  defthen ~r/^the actions should include "(?<value>[^"]+)"$/, %{value: value}, state do
+    # Handle both "{:open_door}" (string from feature) and core atoms/tuples
+    expected = parse_list(value)
+
+    assert Enum.any?(state.actions, fn
+             action when action == expected -> true
+             {action, val} when action == expected or val == expected -> true
+             _ -> false
+           end)
+
     {:ok, state}
   end
 

@@ -70,11 +70,10 @@ defmodule Elevator.HomingTest do
     state = Controller.get_state(ctrl)
     assert state.phase == :rehoming
 
-    # Motor should be moving :down at :slow speed
+    # Motor should be moving :down at :crawling speed
     motor_state = Motor.get_state(motor)
-    assert motor_state.status == :moving
+    assert motor_state.status == :crawling
     assert motor_state.direction == :down
-    assert motor_state.speed == :slow
   end
 
   test "[S-HOME-COLD] & [S-HOME-ANCHOR]: Smart Homing - Cold Start (Vault empty) results in Physical Homing and Anchoring",
@@ -100,7 +99,7 @@ defmodule Elevator.HomingTest do
     # 2. Verification
     _ = Controller.get_state(ctrl)
     assert Controller.get_state(ctrl).phase == :rehoming
-    assert Motor.get_state(motor).speed == :slow
+    assert Motor.get_state(motor).status == :crawling
 
     # 3. [S-HOME-ANCHOR]: Floor arrival during rehoming — anchor (brake), phase stays :rehoming
     send(ctrl, {:floor_arrival, 0})
@@ -111,6 +110,9 @@ defmodule Elevator.HomingTest do
     assert state.current_floor == 0
     assert state.motor_status == :stopping
     assert Vault.get_floor(vault) == 0
+
+    # Wait for physical braking to complete (500ms + buffer)
+    Process.sleep(600)
     assert Motor.get_state(motor).status == :stopped
 
     # 4. [S-HOME-NO-DOOR]: Motor confirms stopped — phase transitions to :idle, no door cycle

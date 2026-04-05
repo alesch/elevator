@@ -30,7 +30,7 @@ defmodule Elevator.Core do
   @type t :: %__MODULE__{
           current_floor: integer() | :unknown,
           heading: :up | :down | :idle,
-          door_status: :open | :closed | :opening | :closing,
+          door_status: :open | :closed | :opening | :closing | :obstructed,
           requests: list({atom(), integer()}),
           last_activity_at: integer(),
           phase: :rehoming | :moving | :arriving | :docked | :leaving | :idle,
@@ -179,11 +179,11 @@ defmodule Elevator.Core do
 
   # Scenario 8.7: Obstruction while leaving — revert to :docked, re-open door.
   defp do_handle_event(%Core{phase: :leaving} = state, :door_obstructed, _now) do
-    %{state | door_sensor: :blocked, door_status: :opening, phase: :docked}
+    %{state | door_sensor: :blocked, door_status: :obstructed, phase: :docked}
   end
 
   defp do_handle_event(%Core{door_status: :closing} = state, :door_obstructed, _now) do
-    %{state | door_sensor: :blocked, door_status: :opening}
+    %{state | door_sensor: :blocked, door_status: :obstructed, phase: :docked}
   end
 
   defp do_handle_event(state, :door_obstructed, _now) do
@@ -382,7 +382,7 @@ defmodule Elevator.Core do
 
   defp maybe_add_door_action(actions, old, new) do
     cond do
-      new.door_status == :opening and old.door_status != :opening ->
+      new.door_status in [:opening, :obstructed] and old.door_status not in [:opening, :obstructed] ->
         actions ++ [{:open_door}]
 
       new.door_status == :closing and old.door_status != :closing ->

@@ -44,12 +44,18 @@ defmodule Elevator.Hardware.Door do
     GenServer.call(pid, :get_state)
   end
 
+  @type t :: %{
+          status: :open | :closed | :opening | :closing | :obstructed,
+          timer: reference() | nil,
+          controller: pid() | nil
+        }
+
   # ---------------------------------------------------------------------------
   # ## Server Callbacks
   # ---------------------------------------------------------------------------
 
   @impl true
-  @spec init(keyword()) :: {:ok, map()}
+  @spec init(keyword()) :: {:ok, t()}
   def init(opts) do
     # Register brain only if it's a named process (Supervisor/Production)
     if Keyword.get(opts, :name) != nil do
@@ -68,43 +74,31 @@ defmodule Elevator.Hardware.Door do
   end
 
   @impl true
-  @spec handle_cast(:open, map()) :: {:noreply, map()}
+  @spec handle_cast(:open, t()) :: {:noreply, t()}
   def handle_cast(:open, %{status: status} = state) when status in [:open, :opening] do
-    Logger.warning("Hardware: Redundant Door Open request while already #{inspect(status)}")
-    {:noreply, state}
+    {:noreply, handle_redundant_request(state, :open)}
   end
 
   def handle_cast(:open, state) do
-    state =
-      state
-      |> cancel_timer()
-      |> start_timer(:fully_opened, @op_ms)
-      |> update_status(:opening)
-
-    {:noreply, state}
+    :telemetry.execute([:elevator, :hardware, :door, :open], %{}, %{redundant: false})
+    {:noreply, start_transit(state, :opening, :fully_opened)}
   end
 
   @impl true
-  @spec handle_cast(:close, map()) :: {:noreply, map()}
+  @spec handle_cast(:close, t()) :: {:noreply, t()}
   def handle_cast(:close, %{status: status} = state) when status in [:closed, :closing] do
-    Logger.warning("Hardware: Redundant Door Close request while already #{inspect(status)}")
-    {:noreply, state}
+    {:noreply, handle_redundant_request(state, :close)}
   end
 
   def handle_cast(:close, state) do
-    state =
-      state
-      |> cancel_timer()
-      |> start_timer(:fully_closed, @op_ms)
-      |> update_status(:closing)
-
-    {:noreply, state}
+    :telemetry.execute([:elevator, :hardware, :door, :close], %{}, %{redundant: false})
+    {:noreply, start_transit(state, :closing, :fully_closed)}
   end
 
   @impl true
-  @spec handle_cast(:door_obstructed, map()) :: {:noreply, map()}
+  @spec handle_cast(:door_obstructed, t()) :: {:noreply, t()}
   def handle_cast(:door_obstructed, state) do
-    :telemetry.execute([:elevator, :hardware, :safety, :obstruction], %{}, %{})
+    :telemetry.execute([:elevator, :hardware, :door, :obstruction], %{}, %{})
 
     state =
       state
@@ -119,16 +113,18 @@ defmodule Elevator.Hardware.Door do
   @impl true
   @spec handle_info(:fully_opened, map()) :: {:noreply, map()}
   def handle_info(:fully_opened, state) do
+    :telemetry.execute([:elevator, :hardware, :door, :transit_complete], %{}, %{result: :open})
     notify_controller(state, :door_opened)
-    new_state = state |> update_status(:open) |> Map.put(:timer, nil)
+    new_state = %{update_status(state, :open) | timer: nil}
     {:noreply, new_state}
   end
 
   @impl true
   @spec handle_info(:fully_closed, map()) :: {:noreply, map()}
   def handle_info(:fully_closed, state) do
+    :telemetry.execute([:elevator, :hardware, :door, :transit_complete], %{}, %{result: :closed})
     notify_controller(state, :door_closed)
-    new_state = state |> update_status(:closed) |> Map.put(:timer, nil)
+    new_state = %{update_status(state, :closed) | timer: nil}
     {:noreply, new_state}
   end
 
@@ -136,6 +132,12 @@ defmodule Elevator.Hardware.Door do
   @spec handle_info(term(), map()) :: {:noreply, map()}
   def handle_info(msg, state) do
     Logger.warning("Door: Unexpected message #{inspect(msg)} in state: #{inspect(state)}")
+
+    :telemetry.execute([:elevator, :hardware, :door, :unexpected_message], %{}, %{
+      message: msg,
+      state: state
+    })
+
     {:noreply, state}
   end
 
@@ -143,19 +145,40 @@ defmodule Elevator.Hardware.Door do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec update_status(map(), atom()) :: map()
+  @spec start_transit(t(), atom(), term()) :: t()
+  defp start_transit(state, new_status, timer_msg) do
+    state
+    |> cancel_timer()
+    |> start_timer(timer_msg, @op_ms)
+    |> update_status(new_status)
+  end
+
+  @spec handle_redundant_request(t(), atom()) :: t()
+  defp handle_redundant_request(%{status: status} = state, action) do
+    action_str = action |> Atom.to_string() |> String.capitalize()
+    Logger.warning("Hardware: Redundant Door #{action_str} request while already #{inspect(status)}")
+
+    :telemetry.execute([:elevator, :hardware, :door, action], %{}, %{
+      status: status,
+      redundant: true
+    })
+
+    state
+  end
+
+  @spec update_status(t(), atom()) :: t()
   defp update_status(state, status) do
-    :telemetry.execute([:elevator, :hardware, :safety, :door], %{}, %{status: status})
+    :telemetry.execute([:elevator, :hardware, :door, :state_change], %{}, %{status: status})
     %{state | status: status}
   end
 
-  @spec start_timer(map(), term(), integer()) :: map()
+  @spec start_timer(t(), term(), integer()) :: t()
   defp start_timer(state, msg, ms) do
     timer = Process.send_after(self(), msg, ms)
     %{state | timer: timer}
   end
 
-  @spec cancel_timer(map()) :: map()
+  @spec cancel_timer(t()) :: t()
   defp cancel_timer(%{timer: nil} = state), do: state
 
   defp cancel_timer(%{timer: ref} = state) do

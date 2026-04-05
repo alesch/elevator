@@ -67,7 +67,12 @@ defmodule Elevator.TelemetryLogger do
       [:elevator, :hardware, :motor, :move],
       [:elevator, :hardware, :motor, :stop],
       [:elevator, :hardware, :motor, :pulse],
-      [:elevator, :hardware, :safety, :door],
+      [:elevator, :hardware, :door, :open],
+      [:elevator, :hardware, :door, :close],
+      [:elevator, :hardware, :door, :state_change],
+      [:elevator, :hardware, :door, :transit_complete],
+      [:elevator, :hardware, :door, :obstruction],
+      [:elevator, :hardware, :door, :unexpected_message],
       [:elevator, :hardware, :sensor, :arrival],
       [:elevator, :vault, :update]
     ]
@@ -147,9 +152,43 @@ defmodule Elevator.TelemetryLogger do
     :ok
   end
 
-  def handle_event([:elevator, :hardware, :safety, :door], _measurements, metadata, _config) do
-    status = Map.get(metadata, :status, :unknown)
-    log_and_broadcast("🚪", "Door: #{status}")
+  def handle_event([:elevator, :hardware, :door, :open], _measurements, metadata, _config) do
+    if Map.get(metadata, :redundant) do
+      status = Map.get(metadata, :status, :unknown)
+      log_and_broadcast("🚪", "Door: Redundant Open ignored (already #{status})")
+    else
+      log_and_broadcast("🚪", "Door: Opening...")
+    end
+  end
+
+  def handle_event([:elevator, :hardware, :door, :close], _measurements, metadata, _config) do
+    if Map.get(metadata, :redundant) do
+      status = Map.get(metadata, :status, :unknown)
+      log_and_broadcast("🚪", "Door: Redundant Close ignored (already #{status})")
+    else
+      log_and_broadcast("🚪", "Door: Closing...")
+    end
+  end
+
+  def handle_event([:elevator, :hardware, :door, :state_change], _measurements, metadata, _config) do
+    case Map.get(metadata, :status) do
+      :obstructed -> log_and_broadcast("🚪", "Door: OBSTRUCTED (Safety Interrupt)")
+      _ -> :ok
+    end
+  end
+
+  def handle_event([:elevator, :hardware, :door, :transit_complete], _measurements, metadata, _config) do
+    result = Map.get(metadata, :result, :unknown)
+    log_and_broadcast("🚪", "Door: Fully #{result}.")
+  end
+
+  def handle_event([:elevator, :hardware, :door, :obstruction], _measurements, _metadata, _config) do
+    log_and_broadcast("🚪", "Door: Obstruction Detected!")
+  end
+
+  def handle_event([:elevator, :hardware, :door, :unexpected_message], _measurements, metadata, _config) do
+    msg = Map.get(metadata, :message)
+    log_and_broadcast("🚪", "Door: Unexpected Message: #{inspect(msg)}")
   end
 
   def handle_event([:elevator, :hardware, :sensor, :arrival], _measurements, metadata, _config) do

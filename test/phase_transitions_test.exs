@@ -11,7 +11,7 @@ defmodule Elevator.PhaseTransitionsTest do
     assert new_state.phase == :moving
     assert new_state.motor_status == :running
     assert new_state.heading == :up
-    assert {:move_motor, :up, :normal} in actions
+    assert {:move, :up} in actions
   end
 
   # [S-PHASE-MOVE-ARRIVE]
@@ -61,7 +61,7 @@ defmodule Elevator.PhaseTransitionsTest do
 
     assert new_state.phase == :moving
     assert new_state.motor_status == :running
-    assert {:move_motor, :up, :normal} in actions
+    assert {:move, :up} in actions
   end
 
   # [S-PHASE-LEAVE-IDLE]
@@ -87,7 +87,7 @@ defmodule Elevator.PhaseTransitionsTest do
     {new_state, actions} = Core.handle_event(state, :door_obstructed, nil)
 
     assert new_state.phase == :docked
-    assert new_state.door_status == :opening
+    assert new_state.door_status == :obstructed
     assert {:open_door} in actions
   end
 end

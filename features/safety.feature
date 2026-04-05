@@ -14,9 +14,10 @@ Feature: Elevator Safety
   Scenario: Door Obstruction
     Given the elevator is in "phase: :leaving" with "door_status: :closing"
     When a ":door_obstructed" message is received
-    Then "door_status" transitions back to ":opening"
+    Then "door_status" becomes ":obstructed"
     And "door_sensor" becomes ":blocked"
-    And "phase" reverts to ":docked"
+    And "phase" becomes ":docked"
+    And the actions should include "{:open_door}"
 
   @S-SAFE-CLEARED @R-SAFE-OBSTRUCT
   Scenario: Door Sensor Cleared
@@ -45,3 +46,4 @@ Feature: Elevator Safety
     Then the "heading" should become ":up"
     And the door should stay ":open" until the 5s timer fires
     And the movement should ONLY begin after the doors are confirmed ":closed"
+

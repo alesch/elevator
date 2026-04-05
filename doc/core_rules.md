@@ -79,7 +79,11 @@ This document captures the "Executive Summary" of our current Elevator implement
   * A `:door_open` button press while doors are already open resets the "last activity" timestamp, effectively restarting the 5-second timer.
 
 * **Rule: Door Obstruction [R-SAFE-OBSTRUCT]**
-  * If the door is `:closing` (phase `:leaving`) and a `:door_sensor_blocked` message is received, phase immediately reverts to `:docked` (door back to `:open`).
+  * If the door is `:closing` (phase `:leaving`) and a `:door_sensor_blocked` message is received:
+    1. Status transitions to `door_status: :obstructed`.
+    2. Sensor transitions to `door_sensor: :blocked`.
+    3. Phase transitions back to `phase: :docked`.
+    4. An immediate `{:open_door}` action is triggered to begin recovery.
 
 ## 4. Request Tracking
 
@@ -132,7 +136,7 @@ This table maps events to rules and state changes.
 | `:docked` | `:door_close` | **[R-SAFE-MANUAL]** | `:leaving` | `:stopped` | `:closing` |
 | `:leaving` | `:door_closed` (work) | **[R-MOVE-SWEEP]** | `:moving` | `:running` | `:closed` |
 | `:leaving` | `:door_closed` (idle) | **[R-MOVE-IDLE]** | `:idle` | `:stopped` | `:closed` |
-| `:leaving` | `:door_obstructed` | **[R-SAFE-OBSTRUCT]** | `:docked` | `:stopped` | `:open` |
+| `:leaving` | `:door_obstructed` | **[R-SAFE-OBSTRUCT]** | `:docked` | `:stopped` | `:obstructed` |
 | `:rehoming` | `Init (valid floor)` | **[R-HOME-STRATEGY]** | `:idle` | `:stopped` | `:closed` |
 | `:rehoming` | `Init (unknown)` | **[R-HOME-STRATEGY]** | `:rehoming` | `:crawling` | `:closed` |
 | `:rehoming` | `Arrival(Any)` | **[R-HOME-STRATEGY]** | `:rehoming` | `:stopping` | `:closed` |

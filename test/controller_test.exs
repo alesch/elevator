@@ -377,8 +377,8 @@ defmodule Elevator.ControllerTest do
       # ASSERT: Hardware receives OPEN command (Reversal)
       assert_receive {:"$gen_cast", :open}
 
-      # ASSERT: State shows :opening
-      assert_receive {:elevator_state, %{door_status: :opening, door_sensor: :blocked}}
+      # ASSERT: State shows :obstructed
+      assert_receive {:elevator_state, %{door_status: :obstructed, door_sensor: :blocked}}
     end
   end
 end

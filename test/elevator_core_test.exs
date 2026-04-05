@@ -149,8 +149,8 @@ defmodule Elevator.CoreTest do
       # WHEN: Obstruction detected
       {new_state, actions} = Core.handle_event(state, :door_obstructed, 0)
 
-      # THEN: Door reverses, sensor flagged, phase reverts to :docked
-      assert new_state.door_status == :opening
+      # THEN: Door becomes :obstructed, sensor flagged, phase becomes :docked
+      assert new_state.door_status == :obstructed
       assert new_state.door_sensor == :blocked
       assert new_state.phase == :docked
       assert {:open_door} in actions
