@@ -207,17 +207,17 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 6. Hardware Protocols (Shims & Drivers)
 
-- [ ] **Scenario 6.1: Motor Movement Protocol**
+- [x] **Scenario 6.1: Motor Movement Protocol**
   - **Given**: Motor receives a `:move` command.
   - **When**: Command includes `direction` and `speed`.
   - **Then**: Internal hardware state accurately reflects these parameters.
 
-- [ ] **Scenario 6.2: Door Operation Protocol**
+- [x] **Scenario 6.2: Door Operation Protocol**
   - **Given**: Door receives an `:open` or `:close` command.
   - **When**: Operation begins.
   - **Then**: Door state transitions to `:opening` or `:closing`.
 
-- [ ] **Scenario 6.3: Sensor Floor Tracking**
+- [x] **Scenario 6.3: Sensor Floor Tracking**
   - **Given**: Sensor receives a physical floor pulse.
   - **When**: Pulse is received at Floor X.
   - **Then**: Internal hardware state correctly identifies Floor X as the current position.
