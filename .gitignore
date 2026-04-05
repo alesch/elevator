@@ -3,10 +3,10 @@
 /*.dump
 /*.log
 /*.txt
-/tmp
+/tmp/
 /agents/
 /node_modules/
 /playwright-report/
 /test-results/
 /.env
-priv/plts/
+/priv/plts/
