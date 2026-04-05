@@ -28,7 +28,7 @@ stateDiagram-v2
         apply_constraints --> enforce_safety
     }
 
-    rehoming --> normal: sensor_arrival (Floor 0 confirmation)
+    rehoming --> normal: [S-HOME-ANCHOR] (Floor confirmation)
     normal --> Core: Event / Request
     Core --> normal: Valid Intent
 ```

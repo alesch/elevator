@@ -11,7 +11,7 @@ The fix: replace the implicit phase inference with an explicit `phase` field.
 Each event handler becomes phase-gated via pattern matching — no conditionals needed.
 Overload support is also removed entirely.
 
-The docs (`doc/core_rules.md` and `doc/scenarios.md`) have already been updated to
+The docs ([`doc/core_rules.md`](doc/core_rules.md) and the [**`features/`**](../features/) directory) have already been updated to
 reflect the new model. Read them before starting.
 
 ---
@@ -94,7 +94,7 @@ In `lib/elevator/core.ex`:
 
 In test files:
 - Delete any test case that references `weight`, `weight_limit`, or `status: :overload`
-- These map to scenarios: 1.5 (full load bypass), 4.3 weight variant — delete those tests
+- These map to old scenarios (full load bypass, weight variant) — delete those tests
 
 In `lib/elevator/controller.ex`:
 - Remove any `update_weight` calls
@@ -130,8 +130,8 @@ Commit: `Remove status field, system now uses phase`
 
 ### Chunks 5–N — One scenario at a time (RED → GREEN → commit)
 
-Work through the scenarios in `doc/scenarios.md` in order.
-When a scenario is complete, mark it `[x]` in the file as part of the commit.
+Work through the scenarios in the **[`features/`](../features/)** directory in order.
+When a scenario is complete, mark it `[x]` in your task list as part of the commit.
 
 **For each scenario:**
 1. Read the scenario
@@ -142,23 +142,23 @@ When a scenario is complete, mark it `[x]` in the file as part of the commit.
 6. Commit: `Scenario X.Y: <scenario name>`
 
 **If a test fails and has no matching scenario**: flag it — either write the missing
-scenario in `doc/scenarios.md` first, or delete the test if the behavior is obsolete.
+scenario in the `features/` directory first, or delete the test if the behavior is obsolete.
 
 #### Priority order for Chunk 5–N
 
-Start with the phase transition scenarios (Section 8 in `doc/scenarios.md`) as they
+Start with the phase transition scenarios in the [**`features/`**](../features/) directory as they
 directly drive the new handler rewrites. Then work backwards to fix any older
 scenarios that depend on the new phase logic.
 
 Suggested order:
-1. Section 5 (Homing) — these are already well-specified and cover `:rehoming` phase
-2. Section 8 (Phase Transitions) — new scenarios, drive the core rewrite
-3. Section 1 (Happy Path) — standard movement
-4. Section 2 (Safety Interlocks)
-5. Section 3 (Manual Overrides)
-6. Section 4 (LOOK Algorithm)
-7. Section 7 (Door Management & Timers)
-8. Section 9 (UI / End-to-End)
+1. Homing — these are already well-specified and cover `:rehoming` phase
+2. Phase Transitions — new scenarios, drive the core rewrite
+3. Happy Path — standard movement
+4. Safety Interlocks
+5. Manual Overrides
+6. LOOK Algorithm
+7. Door Management & Timers
+8. UI / End-to-End
 
 ---
 
@@ -272,6 +272,6 @@ end
 
 1. `mix test` — all tests pass, all scenarios marked `[x]`
 2. `mix phx.server` — start the app, open dashboard
-3. Manual journey: F0 → F3 via dashboard (Scenario 9.1)
+3. Manual journey: F0 → F3 via dashboard ([S-UI-JOURNEY])
 4. Reset via dashboard → verify rehoming completes without door cycle
 5. Confirm no `enforce_the_golden_rule` warnings appear in logs during normal operation

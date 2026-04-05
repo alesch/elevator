@@ -1,6 +1,6 @@
 # BDD Traceability Matrix
 
-This table maps every Business Rule defined in [`doc/core_rules.md`](core_rules.md) to the Scenarios in [`doc/scenarios.md`](scenarios.md) that validate it.
+This table maps every Business Rule defined in [`doc/core_rules.md`](core_rules.md) to the Scenarios in the **[`features/`](../features/)** directory that validate it.
 
 | Rule ID | Rule Name | Validating Scenarios |
 | :--- | :--- | :--- |
@@ -20,3 +20,6 @@ This table maps every Business Rule defined in [`doc/core_rules.md`](core_rules.
 | **[R-REQ-TAGS]** | Tagged Requests | `[S-REQ-SPAM]`, `[S-REQ-CONCURRENCY]`, `[S-REQ-HONOR-ALL]`, `[S-REQ-SYNC]` |
 | **[R-HOME-VAULT]** | State Persistence (Vault Backup) | `[S-HOME-ANCHOR]` |
 | **[R-HOME-STRATEGY]** | Homing Procedure (Power-On Safety) | `[S-HOME-COLD]`, `[S-HOME-ZERO]`, `[S-HOME-MOVE]`, `[S-HOME-ANCHOR]`, `[S-HOME-NO-DOOR]`, `[S-HOME-BLOCK-REQ]` |
+| **[R-HW-MOTOR]** | Motor Protocols | `[S-HW-MOTOR]` |
+| **[R-HW-DOOR]** | Door Protocols | `[S-HW-DOOR]` |
+| **[R-HW-SENSOR]** | Sensor Protocols | `[S-HW-SENSOR]` |

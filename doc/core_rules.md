@@ -24,6 +24,7 @@ This document captures the "Executive Summary" of our current Elevator implement
   | `:idle` | At floor, doors closed, no active work | `:stopped` | `:closed` |
 
   **Phase Transitions Chart:**
+
   ```
   :rehoming  --[motor_stopped]--------------------------> :idle
   :idle      --[request + heading set]------------------> :moving
@@ -101,6 +102,19 @@ This document captures the "Executive Summary" of our current Elevator implement
       * If they mismatch or indicate `:unknown` -> Move `:down` at `:crawling` speed until a floor sensor is triggered.
   * **Request Blocking**: While in `phase: :rehoming`, the Core MUST ignore all floor requests.
   * **Homing Completion**: Once position is verified, the system transitions to `phase: :idle` and updates the `Vault`. No door cycle is triggered.
+
+## 6. Hardware Layer Protocols
+
+* **Rule: Motor Movement Protocol [R-HW-MOTOR]**
+  * The physical motor driver must maintain internal state for `direction` and `speed`.
+  * It must notify the Sensor of movement progress via `:pulse` events.
+
+* **Rule: Door Operation Protocol [R-HW-DOOR]**
+  * The door driver must explicitly track `:opening`, `:open`, `:closing` and `:closed` transit states.
+
+* **Rule: Sensor Floor Tracking [R-HW-SENSOR]**
+  * The sensor driver must increment/decrement the current floor based on motor pulses.
+  * It must notify the Controller with a `{:floor_arrival, floor}` event only once a position is physically locked.
 
 ---
 
