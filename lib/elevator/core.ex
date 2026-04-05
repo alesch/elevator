@@ -194,6 +194,16 @@ defmodule Elevator.Core do
     %{state | door_sensor: :clear}
   end
 
+  defp do_handle_event(
+         %Core{phase: :idle, current_floor: floor} = state,
+         :inactivity_timeout,
+         _now
+       )
+       when floor != 0 do
+    {new_state, _} = request_floor(state, :car, 0)
+    new_state
+  end
+
   defp do_handle_event(state, event, _now) do
     Logger.warning("Unexpected event #{inspect(event)} in state: #{inspect(state)}")
     state
