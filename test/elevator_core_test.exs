@@ -197,21 +197,21 @@ defmodule Elevator.CoreTest do
       assert {:set_timer, :door_timeout, 5000} in actions
     end
 
-    test "Start of Service: Heading :up and doors :open triggers wait, then closing" do
-      # GIVEN: At F1, doors open, but we just got a request for F5 at T=100
-      state = %Core{current_floor: 1, door_status: :open, heading: :idle, last_activity_at: 100}
+    test "Scenario 7.4: Service Delay — door stays open 5s before movement begins" do
+      # GIVEN: Docked at F1, doors open, request for F5 arrives
+      state = %Core{phase: :docked, current_floor: 1, door_status: :open, heading: :idle, last_activity_at: 100}
 
-      # ACT: Request floor 5 at T=101
+      # WHEN: Request for F5 is added at T=101
       {new_state, _actions} = Core.request_floor(state, :car, 5)
 
-      # ASSERT: Heading is UP, but door stays open until timeout
+      # THEN: Heading is :up, but door stays open — 5s timer governs the close
       assert new_state.heading == :up
       assert new_state.door_status == :open
 
-      # ACT: Tick at F=5101 (timeout)
+      # WHEN: Tick fires after 5s of inactivity
       {final_state, actions} = Core.handle_event(new_state, :tick, 5101)
 
-      # ASSERT: Now it's closing
+      # THEN: Only now does the door begin closing
       assert final_state.door_status == :closing
       assert {:close_door} in actions
     end
@@ -235,8 +235,9 @@ defmodule Elevator.CoreTest do
     end
 
     test "Scenario 7.1b: Door does NOT close on timeout when sensor is blocked" do
-      # GIVEN: Door open, but sensor is blocked
+      # GIVEN: Docked, door open, but sensor is blocked
       state = %Core{
+        phase: :docked,
         current_floor: 1,
         door_status: :open,
         heading: :up,
@@ -244,42 +245,44 @@ defmodule Elevator.CoreTest do
         last_activity_at: 0
       }
 
-      # ACT: 5s timeout fires
+      # WHEN: 5s timeout fires
       {new_state, actions} = Core.handle_event(state, :door_timeout, 5000)
 
-      # ASSERT: Door must NOT close — obstruction overrides timeout
+      # THEN: Door must NOT close — obstruction overrides timeout
       refute new_state.door_status == :closing
       refute {:close_door} in actions
     end
 
     test "Scenario 7.1a: Door closes on timeout even when heading is :idle" do
-      # GIVEN: Idle elevator at F0, door open (e.g., post-rehoming), no pending requests
+      # GIVEN: Docked at F0, door open, no pending requests, sensor clear
       state = %Core{
+        phase: :docked,
         current_floor: 0,
         door_status: :open,
         heading: :idle,
+        door_sensor: :clear,
         last_activity_at: 0
       }
 
-      # ACT: 5s timeout fires
+      # WHEN: 5s timeout fires
       {new_state, actions} = Core.handle_event(state, :door_timeout, 5000)
 
-      # ASSERT: Door closes regardless of idle heading
+      # THEN: Door closes regardless of idle heading; phase transitions to :leaving
       assert new_state.door_status == :closing
+      assert new_state.phase == :leaving
       assert {:close_door} in actions
     end
 
     test "Scenario 7.2: Manual Close Button Override" do
-      # GIVEN: Doors open at F1, heading :up
-      state = %Core{current_floor: 1, door_status: :open, heading: :up, last_activity_at: 100}
+      # GIVEN: Docked, doors open, heading :up (pending work)
+      state = %Core{phase: :docked, current_floor: 1, door_status: :open, heading: :up, last_activity_at: 100}
 
-      # ACT: Press "Close" button
+      # WHEN: Passenger presses close button
       {new_state, actions} = Core.handle_button_press(state, :door_close, 150)
 
-      # ASSERT: Doors start closing immediately
+      # THEN: Doors start closing immediately, timer cancelled
       assert new_state.door_status == :closing
       assert {:close_door} in actions
-      # Note: timer cancellation is tested in the action set
       assert {:cancel_timer, :door_timeout} in actions
     end
   end
