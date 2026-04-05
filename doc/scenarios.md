@@ -92,20 +92,20 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 3. Manual Overrides (Door Control)
 
-- [ ] **Scenario 3.0: Manual Door Open from Closed**
-  - **Given**: Elevator is idle at a floor, `door_status` is `:closed`.
+- [x] **Scenario 3.0: Manual Door Open from Closed**
+  - **Given**: `phase: :idle`, `door_status: :closed`.
   - **When**: Passenger presses the `<|>` (door open) button.
   - **Then**: `door_status` transitions to `:opening` and door receives `:open` command.
 
-- [ ] **Scenario 3.1: "Door Open Button Wins"**
-  - **Given**: Doors are `:closing`.
-  - **When**: Receive `:button_pressed, :door_open`.
-  - **Then**: Discard the closing attempt, transition back to `:opening`.
+- [x] **Scenario 3.1: "Door Open Button Wins"**
+  - **Given**: `phase: :leaving`, `door_status: :closing`.
+  - **When**: Passenger presses the `<|>` (door open) button.
+  - **Then**: Discard the closing attempt, `door_status` transitions back to `:opening`.
 
-- [ ] **Scenario 3.2: Reset Auto-Close Timer**
-  - **Given**: Doors are `:open`.
-  - **When**: Receive `:button_pressed, :door_open`.
-  - **Then**: The "Auto-Close" timer is reset (simulated by resetting the `last_activity_at` timestamp).
+- [x] **Scenario 3.2: Reset Auto-Close Timer**
+  - **Given**: `phase: :docked`, `door_status: :open`.
+  - **When**: Passenger presses the `<|>` (door open) button.
+  - **Then**: `last_activity_at` is updated, auto-close timer restarted (`{:set_timer, :door_timeout, 5000}`).
 
 ## 4. Directional Bias & Priority (The LOOK Algorithm)
 

@@ -118,25 +118,25 @@ defmodule Elevator.CoreTest do
   end
 
   test "Scenario 3.2: Reset Auto-Close Timer" do
-    # Arrange: Doors are open, last activity was at T=100
-    state = %Core{door_status: :open, last_activity_at: 100}
+    # GIVEN: Docked — doors open, last activity at T=100
+    state = %Core{phase: :docked, door_status: :open, last_activity_at: 100}
 
-    # Act: Press "Open" button at T=150
+    # WHEN: Passenger presses door open button at T=150
     {new_state, actions} = Core.handle_button_press(state, :door_open, 150)
 
-    # Assert
+    # THEN: Activity timestamp updated, auto-close timer restarted
     assert new_state.last_activity_at == 150
-    # Timer should be reset (cancelled and set again)
     assert {:set_timer, :door_timeout, 5000} in actions
   end
 
   test "Scenario 3.1: Door Open button reverses a closing door" do
-    state = %Core{door_status: :closing}
+    # GIVEN: Leaving — door in the process of closing
+    state = %Core{phase: :leaving, door_status: :closing}
 
-    # Act
+    # WHEN: Passenger presses door open button
     {new_state, actions} = Core.handle_button_press(state, :door_open, 0)
 
-    # Assert
+    # THEN: Closing discarded, door reverses to opening
     assert new_state.door_status == :opening
     assert {:open_door} in actions
   end
@@ -170,13 +170,13 @@ defmodule Elevator.CoreTest do
 
   describe "Manual Door Overrides" do
     test "Scenario 3.0: Manual door open from closed+idle" do
-      # GIVEN: Idle elevator stopped at a floor, doors closed
-      state = %Core{door_status: :closed, heading: :idle, motor_status: :stopped}
+      # GIVEN: Idle at a floor, doors closed
+      state = %Core{phase: :idle, door_status: :closed, heading: :idle, motor_status: :stopped}
 
-      # ACT: Passenger presses door open button
+      # WHEN: Passenger presses door open button
       {new_state, actions} = Core.handle_button_press(state, :door_open, 0)
 
-      # ASSERT: Door begins opening
+      # THEN: Door begins opening
       assert new_state.door_status == :opening
       assert {:open_door} in actions
     end
