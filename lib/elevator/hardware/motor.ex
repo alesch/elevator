@@ -8,6 +8,10 @@ defmodule Elevator.Hardware.Motor do
 
   # 1.5 seconds between floors (Leaving 500ms for braking to reach 2s total)
   @transit_ms 1500
+
+  # 4.5 seconds between floors (Leaving 500ms for braking to reach 5s total)
+  @crawl_ms 4500
+
   # 500ms delay for physical braking
   @brake_ms 500
 
@@ -50,8 +54,17 @@ defmodule Elevator.Hardware.Motor do
   # ## Server Callbacks
   # ---------------------------------------------------------------------------
 
+  @type t :: %{
+          status: :stopped | :running | :crawling | :stopping,
+          direction: :up | :down | nil,
+          timer: reference() | nil,
+          pulse_ms: pos_integer() | nil,
+          sensor: pid() | nil,
+          controller: pid() | nil
+        }
+
   @impl true
-  @spec init(keyword()) :: {:ok, map()}
+  @spec init(keyword()) :: {:ok, t()}
   def init(opts) do
     # Only register in the global registry if a name was provided (Production/Supervisor)
     # Unit tests often start anonymous processes that should not collide.
@@ -68,6 +81,7 @@ defmodule Elevator.Hardware.Motor do
        status: :stopped,
        direction: nil,
        timer: nil,
+       pulse_ms: nil,
        sensor: sensor,
        controller: controller
      }}
@@ -76,41 +90,25 @@ defmodule Elevator.Hardware.Motor do
   @impl true
   @spec handle_cast({:move, :up | :down}, map()) :: {:noreply, map()}
   def handle_cast({:move, direction}, state) do
-    :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
-      direction: direction,
-      speed: :normal
-    })
-
-    state =
-      state
-      |> cancel_timer()
-      |> update_motion_state(:running, direction)
-      |> start_transit_timer()
-
-    {:noreply, state}
+    {:noreply, perform_move(state, direction, :running, @transit_ms)}
   end
 
   @impl true
   @spec handle_cast({:crawl, :up | :down}, map()) :: {:noreply, map()}
   def handle_cast({:crawl, direction}, state) do
-    :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
-      direction: direction,
-      speed: :slow
-    })
-
-    state =
-      state
-      |> cancel_timer()
-      |> update_motion_state(:crawling, direction)
-      |> start_transit_timer()
-
-    {:noreply, state}
+    {:noreply, perform_move(state, direction, :crawling, @crawl_ms)}
   end
 
   @impl true
   @spec handle_cast(:stop_now, map()) :: {:noreply, map()}
   def handle_cast(:stop_now, %{status: status} = state) when status in [:stopped, :stopping] do
     Logger.warning("Hardware: Redundant Motor Stop request while already #{inspect(status)}")
+
+    :telemetry.execute([:elevator, :hardware, :motor, :stop], %{}, %{
+      status: status,
+      redundant: true
+    })
+
     {:noreply, state}
   end
 
@@ -133,18 +131,18 @@ defmodule Elevator.Hardware.Motor do
   end
 
   @impl true
-  @spec handle_info(:brake_complete, map()) :: {:noreply, map()}
+  @spec handle_info(:brake_complete, t()) :: {:noreply, t()}
   def handle_info(:brake_complete, state) do
     state = %{update_motion_state(state, :stopped, nil) | timer: nil}
-    notify_controller(state, :motor_stopped)
+    notify(state, :controller, :motor_stopped)
     {:noreply, state}
   end
 
   @impl true
-  @spec handle_info({:pulse, :up | :down}, map()) :: {:noreply, map()}
+  @spec handle_info({:pulse, :up | :down}, t()) :: {:noreply, t()}
   def handle_info({:pulse, direction}, state) do
     :telemetry.execute([:elevator, :hardware, :motor, :pulse], %{}, %{direction: direction})
-    notify_sensor(state, direction)
+    notify(state, :sensor, {:motor_pulse, direction})
     {:noreply, start_transit_timer(state)}
   end
 
@@ -155,63 +153,67 @@ defmodule Elevator.Hardware.Motor do
     {:noreply, state}
   end
 
-  @spec notify_controller(map(), atom()) :: :ok
-  defp notify_controller(state, msg) do
-    target = state.controller || lookup_controller()
-    if target, do: send(target, msg), else: :ok
+  # ---------------------------------------------------------------------------
+  # ## Internal Logic
+  # ---------------------------------------------------------------------------
+
+  @spec perform_move(map(), :up | :down, :running | :crawling, pos_integer() | nil) :: map()
+  defp perform_move(state, direction, status, interval_ms) do
+    :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
+      direction: direction,
+      speed: status
+    })
+
+    state
+    |> cancel_timer()
+    |> update_motion_state(status, direction, interval_ms)
+    |> start_transit_timer()
   end
 
-  defp lookup_controller do
-    case Registry.lookup(Elevator.Registry, :controller) do
+  @spec notify(t(), atom(), term()) :: :ok
+  defp notify(state, role, msg) do
+    if target = Map.get(state, role) || lookup(role) do
+      send(target, msg)
+    else
+      :ok
+    end
+  end
+
+  defp lookup(role) do
+    case Registry.lookup(Elevator.Registry, role) do
       [{pid, _}] -> pid
       _ -> nil
     end
   end
 
-  @spec update_motion_state(map(), :running | :crawling | :stopping | :stopped, :up | :down | nil) ::
-          map()
-  defp update_motion_state(state, status, direction) do
-    %{state | status: status, direction: direction}
+  @spec update_motion_state(
+          t(),
+          :running | :crawling | :stopping | :stopped,
+          :up | :down | nil,
+          pos_integer() | nil
+        ) ::
+          t()
+  defp update_motion_state(state, status, direction, pulse_ms \\ nil) do
+    %{state | status: status, direction: direction, pulse_ms: pulse_ms}
   end
 
-  @spec start_brake_timer(map()) :: map()
+  @spec start_brake_timer(t()) :: t()
   defp start_brake_timer(state) do
     timer = Process.send_after(self(), :brake_complete, @brake_ms)
     %{state | timer: timer}
   end
 
-  @spec start_transit_timer(map()) :: map()
-  defp start_transit_timer(%{status: status, direction: direction} = state) do
-    ms =
-      case status do
-        :crawling -> 4500
-        _ -> @transit_ms
-      end
-
+  @spec start_transit_timer(t()) :: t()
+  defp start_transit_timer(%{pulse_ms: ms, direction: direction} = state) do
     timer = Process.send_after(self(), {:pulse, direction}, ms)
     %{state | timer: timer}
   end
 
-  @spec cancel_timer(map()) :: map()
+  @spec cancel_timer(t()) :: t()
   defp cancel_timer(%{timer: nil} = state), do: state
 
   defp cancel_timer(%{timer: ref} = state) do
     Process.cancel_timer(ref)
     %{state | timer: nil}
-  end
-
-  @spec notify_sensor(map(), :up | :down) :: :ok
-  defp notify_sensor(state, direction) do
-    # 1. Try injected reference first (The Test Way)
-    # 2. Falling back to logical discovery (The Industrial Way)
-    target = state.sensor || lookup_sensor()
-    if target, do: send(target, {:motor_pulse, direction}), else: :ok
-  end
-
-  defp lookup_sensor do
-    case Registry.lookup(Elevator.Registry, :sensor) do
-      [{pid, _}] -> pid
-      _ -> nil
-    end
   end
 end

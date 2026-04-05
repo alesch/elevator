@@ -27,7 +27,7 @@ defmodule ElevatorWeb.DashboardHelpers do
     do: "#00f2ff"
 
   # Green (Stable/Ready)
-  def state_color(state) when state in [:idle, :stopped, :clear, :open, :normal],
+  def state_color(state) when state in [:idle, :stopped, :clear, :open],
     do: "#39ff14"
 
   # Amber (Intent & Transitions)

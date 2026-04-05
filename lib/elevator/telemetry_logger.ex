@@ -129,12 +129,17 @@ defmodule Elevator.TelemetryLogger do
 
   def handle_event([:elevator, :hardware, :motor, :move], _measurements, metadata, _config) do
     direction = Map.get(metadata, :direction, :unknown)
-    speed = Map.get(metadata, :speed, :normal)
+    speed = Map.get(metadata, :speed, :running)
     log_and_broadcast("⚙️", "Motor: Moving #{direction} at #{speed} speed.")
   end
 
-  def handle_event([:elevator, :hardware, :motor, :stop], _measurements, _metadata, _config) do
-    log_and_broadcast("⚙️", "Motor: Stopped.")
+  def handle_event([:elevator, :hardware, :motor, :stop], _measurements, metadata, _config) do
+    if Map.get(metadata, :redundant) do
+      status = Map.get(metadata, :status, :unknown)
+      log_and_broadcast("⚙️", "Motor: Redundant Stop ignored (already #{status})")
+    else
+      log_and_broadcast("⚙️", "Motor: Stopped.")
+    end
   end
 
   def handle_event([:elevator, :hardware, :motor, :pulse], _measurements, _metadata, _config) do
