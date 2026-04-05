@@ -22,8 +22,8 @@ test.describe('Elevator Dashboard Happy Path', () => {
     await expect(indicator).toHaveText('0', { timeout: 10000 });
   });
 
-  // Scenario 9.1
-  test('Full journey from F0 to F3', async ({ page }) => {
+  // [S-UI-JOURNEY]: Full journey from F0 to F3
+  test('[S-UI-JOURNEY]: Full journey from F0 to F3', async ({ page }) => {
     const log = page.locator('#log');
     const indicator = page.locator('.digital-indicator');
     const doorStatus = page.locator('.footer-item', { hasText: 'Doors' }).locator('.status-value');

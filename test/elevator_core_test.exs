@@ -13,8 +13,8 @@ defmodule Elevator.CoreTest do
     assert state.current_floor == 3
   end
 
-  describe "Scenario 1.1: Context-Aware Wake Up (Request from IDLE)" do
-    test "Scenario 1.1a: Request above — heading becomes :up and phase becomes :moving" do
+  describe "[S-MOVE-WAKEUP]: Context-Aware Wake Up (Request from IDLE)" do
+    test "Sub-case A: Request above — heading becomes :up and phase becomes :moving" do
       # GIVEN: Idle at F1, doors closed
       state = %Core{current_floor: 1, heading: :idle, phase: :idle, door_status: :closed}
 
@@ -27,7 +27,7 @@ defmodule Elevator.CoreTest do
       assert {:move_motor, :up, :normal} in actions
     end
 
-    test "Scenario 1.1b: Request below — heading becomes :down and phase becomes :moving" do
+    test "Sub-case B: Request below — heading becomes :down and phase becomes :moving" do
       # GIVEN: Idle at F5, doors closed
       state = %Core{current_floor: 5, heading: :idle, phase: :idle, door_status: :closed}
 
@@ -41,7 +41,7 @@ defmodule Elevator.CoreTest do
     end
   end
 
-  test "Scenario 1.2: Arrival at target floor triggers braking" do
+  test "[S-MOVE-BRAKING]: Arrival at target floor triggers braking" do
     # GIVEN: Moving up, request for F3
     state = %Core{
       phase: :moving,
@@ -63,7 +63,7 @@ defmodule Elevator.CoreTest do
     assert {:car, 3} in new_state.requests
   end
 
-  test "Scenario 1.3: Braking complete — motor stops and doors begin opening" do
+  test "[S-MOVE-OPENING]: Braking complete — motor stops and doors begin opening" do
     # GIVEN: Arriving at F3 (braking in progress)
     state = %Core{
       phase: :arriving,
@@ -84,7 +84,7 @@ defmodule Elevator.CoreTest do
     assert new_state.requests == []
   end
 
-  test "Scenario 1.4: Door open confirmation — phase becomes :docked, timer set" do
+  test "[S-MOVE-DOCKED]: Door open confirmation — phase becomes :docked, timer set" do
     # GIVEN: Arriving at floor, doors opening
     state = %Core{phase: :arriving, door_status: :opening, motor_status: :stopped}
 
@@ -98,7 +98,7 @@ defmodule Elevator.CoreTest do
     assert {:set_timer, :door_timeout, 5000} in actions
   end
 
-  test "Scenario 1.6: Door closing is a two-step sequence — intent then confirmation" do
+  test "[S-MOVE-CLOSING]: Door closing is a two-step sequence — intent then confirmation" do
     # GIVEN: Docked, doors open, sensor clear — timeout fires
     state = %Core{phase: :docked, door_status: :open, door_sensor: :clear}
 
@@ -117,7 +117,7 @@ defmodule Elevator.CoreTest do
     assert closed_state.door_status == :closed
   end
 
-  test "Scenario 3.2: Reset Auto-Close Timer" do
+  test "[S-MANUAL-RESET-TIMER]: Reset Auto-Close Timer" do
     # GIVEN: Docked — doors open, last activity at T=100
     state = %Core{phase: :docked, door_status: :open, last_activity_at: 100}
 
@@ -129,7 +129,7 @@ defmodule Elevator.CoreTest do
     assert {:set_timer, :door_timeout, 5000} in actions
   end
 
-  test "Scenario 3.1: Door Open button reverses a closing door" do
+  test "[S-MANUAL-OPEN-WIN]: Door Open button reverses a closing door" do
     # GIVEN: Leaving — door in the process of closing
     state = %Core{phase: :leaving, door_status: :closing}
 
@@ -142,7 +142,7 @@ defmodule Elevator.CoreTest do
   end
 
   describe "Door Safety Sensors" do
-    test "Scenario 2.1: door_obstructed while leaving — door reverses, sensor blocked, phase reverts to :docked" do
+    test "[S-SAFE-OBSTRUCT]: door_obstructed while leaving — door reverses, sensor blocked, phase reverts to :docked" do
       # GIVEN: Leaving — door in the process of closing
       state = %Core{phase: :leaving, door_status: :closing, door_sensor: :clear}
 
@@ -156,7 +156,7 @@ defmodule Elevator.CoreTest do
       assert {:open_door} in actions
     end
 
-    test "Scenario 2.5: door_cleared marks sensor as clear" do
+    test "[S-SAFE-CLEARED]: door_cleared marks sensor as clear" do
       # GIVEN: Sensor is blocked
       state = %Core{door_sensor: :blocked}
 
@@ -169,7 +169,7 @@ defmodule Elevator.CoreTest do
   end
 
   describe "Manual Door Overrides" do
-    test "Scenario 3.0: Manual door open from closed+idle" do
+    test "[S-MANUAL-OPEN-IDLE]: Manual door open from closed+idle" do
       # GIVEN: Idle at a floor, doors closed
       state = %Core{phase: :idle, door_status: :closed, heading: :idle, motor_status: :stopped}
 
@@ -198,7 +198,7 @@ defmodule Elevator.CoreTest do
       assert {:set_timer, :door_timeout, 5000} in actions
     end
 
-    test "Scenario 7.4: Service Delay — door stays open 5s before movement begins" do
+    test "[S-SAFE-SERVICE-DELAY]: Service delay — door stays open 5s before movement begins" do
       # GIVEN: Docked at F1, doors open, request for F5 arrives
       state = %Core{phase: :docked, current_floor: 1, door_status: :open, heading: :idle, last_activity_at: 100}
 
@@ -236,7 +236,7 @@ defmodule Elevator.CoreTest do
       assert {:open_door} in actions
     end
 
-    test "Scenario 7.1b: Door does NOT close on timeout when sensor is blocked" do
+    test "[S-SAFE-TIMEOUT] Sub-case B: Door does NOT close on timeout when sensor is blocked" do
       # GIVEN: Docked, door open, but sensor is blocked
       state = %Core{
         phase: :docked,
@@ -255,7 +255,7 @@ defmodule Elevator.CoreTest do
       refute {:close_door} in actions
     end
 
-    test "Scenario 7.1a: Door closes on timeout even when heading is :idle" do
+    test "[S-SAFE-TIMEOUT] Sub-case A: Door closes on timeout even when heading is :idle" do
       # GIVEN: Docked at F0, door open, no pending requests, sensor clear
       state = %Core{
         phase: :docked,
@@ -275,7 +275,7 @@ defmodule Elevator.CoreTest do
       assert {:close_door} in actions
     end
 
-    test "Scenario 7.2: Manual Close Button Override" do
+    test "[S-MANUAL-CLOSE]: Manual Close Button Override" do
       # GIVEN: Docked, doors open, heading :up (pending work)
       state = %Core{phase: :docked, current_floor: 1, door_status: :open, heading: :up, last_activity_at: 100}
 

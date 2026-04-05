@@ -2,8 +2,8 @@ defmodule Elevator.AlgorithmTest do
   use ExUnit.Case
   alias Elevator.Core
 
-  describe "LOOK Algorithm (Scenarios 4.1 & 4.2)" do
-    test "Scenario 4.1: Pick-up on the way (Hall Request)" do
+  describe "LOOK Algorithm ([S-MOVE-SWEEP-UP] & [S-MOVE-REVERSE])" do
+    test "[S-MOVE-SWEEP-UP]: Pick-up on the way (Hall Request)" do
       # GIVEN: Moving UP to F5, hall request added for F3
       state = %Core{
         phase: :moving,
@@ -24,7 +24,7 @@ defmodule Elevator.AlgorithmTest do
       assert {:stop_motor} in actions
     end
 
-    test "Scenario 4.2 (Retire): Heading becomes :idle when no requests remain" do
+    test "[S-MOVE-REVERSE]: Retire/Reverse — Heading updates when no requests remain" do
       # GIVEN: Arriving at F3, about to confirm stop — no more work above
       state = %Core{
         phase: :arriving,
@@ -48,7 +48,7 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
-  describe "Scenario 4.4: Honor All Requests" do
+  describe "[S-REQ-HONOR-ALL]: Honor All Requests" do
     test "Car request on the path — elevator stops" do
       # GIVEN: Moving :up, car request for F3 on the path
       state = %Core{
@@ -88,8 +88,8 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
-  describe "Wake Up Logic (Scenario 4.5)" do
-    test "Scenario 4.5: Context-Aware Wake Up (Idle at F5 heads DOWN for F1)" do
+  describe "Wake Up Logic ([S-MOVE-WAKEUP])" do
+    test "[S-MOVE-WAKEUP]: Context-Aware Wake Up (Idle at F5 heads DOWN for F1)" do
       # Arrange: Elevator is idle at Floor 5
       state = %Core{current_floor: 5, heading: :idle}
 
@@ -112,7 +112,7 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
-  describe "Scenario 4.3: Multi-Stop Sweep Ordering" do
+  describe "[S-MOVE-MULTI-STOP]: Multi-Stop Sweep Ordering" do
     test "Elevator stops at each floor in ascending order when heading up" do
       # GIVEN: Idle at F0, three car requests
       state = %Core{phase: :idle, current_floor: 0, heading: :idle, door_status: :closed}
@@ -154,7 +154,7 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
-  describe "Scenario 4.9: Request Fulfillment (Internal State Sync)" do
+  describe "[S-REQ-SYNC]: Request Fulfillment (Internal State Sync)" do
     test "clears requests during arrival to ensure correct heading choice" do
       # GIVEN: Arriving at F3 (from a move up), two requests in queue
       state = %Core{

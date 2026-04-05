@@ -12,7 +12,7 @@ defmodule Elevator.HomingTest do
     %{vault: vault}
   end
 
-  test "Scenario 5.2: Smart Homing - Crash on F0 (Ground) results in Zero-Move Recovery", %{
+  test "[S-HOME-ZERO]: Smart Homing - Crash on F0 (Ground) results in Zero-Move Recovery", %{
     vault: vault
   } do
     # 1. Simulate Reality: Vault knows F0, and Sensor sees F0
@@ -45,7 +45,7 @@ defmodule Elevator.HomingTest do
     assert Motor.get_state(motor).status == :stopped
   end
 
-  test "Scenario 5.3: Smart Homing - Mid-floor crash results in Physical Homing", %{vault: vault} do
+  test "[S-HOME-MOVE]: Smart Homing - Mid-floor crash results in Physical Homing", %{vault: vault} do
     # 1. Vault knows F3
     Vault.put_floor(vault, 3)
 
@@ -77,7 +77,7 @@ defmodule Elevator.HomingTest do
     assert motor_state.speed == :slow
   end
 
-  test "Scenario 5.1 & 5.4: Smart Homing - Cold Start (Vault empty) results in Physical Homing and Anchoring",
+  test "[S-HOME-COLD] & [S-HOME-ANCHOR]: Smart Homing - Cold Start (Vault empty) results in Physical Homing and Anchoring",
        %{
          vault: vault
        } do
@@ -102,7 +102,7 @@ defmodule Elevator.HomingTest do
     assert Controller.get_state(ctrl).phase == :rehoming
     assert Motor.get_state(motor).speed == :slow
 
-    # 3. Scenario 5.4: Floor arrival during rehoming — anchor (brake), phase stays :rehoming
+    # 3. [S-HOME-ANCHOR]: Floor arrival during rehoming — anchor (brake), phase stays :rehoming
     send(ctrl, {:floor_arrival, 0})
     _ = Controller.get_state(ctrl)
 
@@ -113,7 +113,7 @@ defmodule Elevator.HomingTest do
     assert Vault.get_floor(vault) == 0
     assert Motor.get_state(motor).status == :stopped
 
-    # 4. Scenario 5.6: Motor confirms stopped — phase transitions to :idle, no door cycle
+    # 4. [S-HOME-NO-DOOR]: Motor confirms stopped — phase transitions to :idle, no door cycle
     send(ctrl, :motor_stopped)
     _ = Controller.get_state(ctrl)
 
@@ -123,7 +123,7 @@ defmodule Elevator.HomingTest do
   end
 
   @tag :capture_log
-  test "Scenario 5.5: Smart Homing - Requests are ignored during rehoming", %{vault: vault} do
+  test "[S-HOME-BLOCK-REQ]: Smart Homing - Requests are ignored during rehoming", %{vault: vault} do
     # 1. Force rehoming status
     motor = start_supervised!({Motor, [name: nil]})
     sensor = start_supervised!({Sensor, [vault: vault, current_floor: nil, name: nil]})

@@ -41,7 +41,7 @@ defmodule Elevator.ControllerTest do
       assert state.current_floor == 0
     end
 
-    test "Scenario 1.9: Observable State Change — any state change is broadcast over PubSub", %{
+    test "[S-SYS-PUBSUB]: Observable State Change — any state change is broadcast over PubSub", %{
       vault: vault,
       sensor: sensor
     } do
@@ -118,7 +118,7 @@ defmodule Elevator.ControllerTest do
       assert unique_targets == [1, 2, 3, 4, 5]
     end
 
-    test "Scenario 1.10: Return to Base (Inactivity Timeout)", %{
+    test "[S-MOVE-BASE]: Return to Base (Inactivity Timeout)", %{
       vault: vault,
       sensor: sensor
     } do
@@ -151,7 +151,7 @@ defmodule Elevator.ControllerTest do
       assert_receive {:"$gen_cast", :open}
     end
 
-    test "Scenario 1.2/1.3: Arrival sequence triggers immediate intent signals", %{
+    test "[S-MOVE-BRAKING]/[S-MOVE-OPENING]: Arrival sequence triggers immediate intent signals", %{
       vault: vault,
       sensor: sensor
     } do
@@ -225,7 +225,7 @@ defmodule Elevator.ControllerTest do
       assert_receive {:"$gen_cast", :stop_now}
     end
 
-    test "Scenario 1.8: Button Spamming is ignored SILENTLY", %{vault: vault, sensor: sensor} do
+    test "[S-REQ-SPAM]: Button Spamming is ignored SILENTLY", %{vault: vault, sensor: sensor} do
       {:ok, pid} =
         Controller.start_link(
           motor: self(),
@@ -266,7 +266,7 @@ defmodule Elevator.ControllerTest do
       assert log2 == ""
     end
 
-    test "Scenario 1.7: Actor Redundancy triggers LOUD warnings (Hardware Layer)", %{vault: vault} do
+    test "[S-SYS-REDUNDANT]: Actor Redundancy triggers LOUD warnings (Hardware Layer)", %{vault: vault} do
       import ExUnit.CaptureLog
 
       # Prove hardware actors we control have warnings
@@ -288,7 +288,7 @@ defmodule Elevator.ControllerTest do
       assert log =~ "Hardware: Redundant Door Open"
     end
 
-    test "Scenario 2.4: Hardware Safety Interlock (The Golden Rule)", %{
+    test "[S-SAFE-GOLDEN]: Hardware Safety Interlock (The Golden Rule)", %{
       vault: vault,
       sensor: sensor
     } do
@@ -330,7 +330,7 @@ defmodule Elevator.ControllerTest do
       assert_receive {:elevator_state, %{phase: :moving, motor_status: :running, door_status: :closed}}
     end
 
-    test "Scenario 2.1: Door obstruction during closing triggers reversal", %{
+    test "[S-SAFE-OBSTRUCT]: Door obstruction during closing triggers reversal", %{
       vault: vault,
       sensor: sensor
     } do
