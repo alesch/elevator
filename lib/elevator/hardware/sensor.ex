@@ -6,6 +6,13 @@ defmodule Elevator.Hardware.Sensor do
   use GenServer
   require Logger
 
+  defstruct [:current_floor, :controller]
+
+  @type t :: %__MODULE__{
+          current_floor: integer(),
+          controller: pid() | atom() | nil
+        }
+
   # ---------------------------------------------------------------------------
   # ## Public API
   # ---------------------------------------------------------------------------
@@ -28,7 +35,7 @@ defmodule Elevator.Hardware.Sensor do
   # ---------------------------------------------------------------------------
 
   @impl true
-  @spec init(keyword()) :: {:ok, map()} | {:stop, term()}
+  @spec init(keyword()) :: {:ok, t()} | {:stop, term()}
   def init(opts) do
     # Register brain only if it's a named process (Supervisor/Production)
     if Keyword.get(opts, :name) != nil do
@@ -43,17 +50,22 @@ defmodule Elevator.Hardware.Sensor do
     floor = vault_floor || Keyword.get(opts, :current_floor, 0)
     controller = Keyword.get(opts, :controller)
 
-    {:ok, %{current_floor: floor, controller: controller}}
+    :telemetry.execute([:elevator, :hardware, :sensor, :init], %{}, %{
+      floor: floor,
+      recovered: not is_nil(vault_floor)
+    })
+
+    {:ok, %__MODULE__{current_floor: floor, controller: controller}}
   end
 
   @impl true
-  @spec handle_call(:get_floor, GenServer.from(), map()) :: {:reply, integer() | :unknown, map()}
+  @spec handle_call(:get_floor, GenServer.from(), t()) :: {:reply, integer() | :unknown, t()}
   def handle_call(:get_floor, _from, %{current_floor: floor} = state) do
     {:reply, floor, state}
   end
 
   @impl true
-  @spec handle_info({:motor_pulse, :up | :down}, map()) :: {:noreply, map()}
+  @spec handle_info({:motor_pulse, :up | :down}, t()) :: {:noreply, t()}
   def handle_info({:motor_pulse, direction}, %{current_floor: current} = state) do
     # Calculate new floor based on physical direction pulse
     next_floor = calculate_next_floor(current, direction)
@@ -67,9 +79,15 @@ defmodule Elevator.Hardware.Sensor do
   end
 
   @impl true
-  @spec handle_info(term(), map()) :: {:noreply, map()}
+  @spec handle_info(term(), t()) :: {:noreply, t()}
   def handle_info(msg, state) do
     Logger.warning("Sensor: Unexpected message #{inspect(msg)} in state: #{inspect(state)}")
+
+    :telemetry.execute([:elevator, :hardware, :sensor, :unexpected_message], %{}, %{
+      message: msg,
+      state: state
+    })
+
     {:noreply, state}
   end
 
@@ -86,10 +104,20 @@ defmodule Elevator.Hardware.Sensor do
     if target, do: Elevator.Vault.get_floor(target), else: nil
   end
 
-  @spec notify_controller(map(), integer()) :: :ok
+  @spec notify_controller(t(), integer()) :: :ok
   defp notify_controller(state, floor) do
     target = state.controller || lookup_controller()
-    if target, do: send(target, {:floor_arrival, floor}), else: :ok
+
+    if target do
+      send(target, {:floor_arrival, floor})
+    else
+      :telemetry.execute([:elevator, :hardware, :sensor, :notification_failure], %{}, %{
+        target: :controller,
+        floor: floor
+      })
+
+      :ok
+    end
   end
 
   defp lookup_vault do
