@@ -114,7 +114,7 @@ defmodule Elevator.Controller do
       # CASE 2: Ambiguity or Cold Start (Perform physical homing)
       :telemetry.execute([:elevator, :controller, :rehoming], %{}, %{
         direction: :down,
-        speed: :slow
+        status: :crawling
       })
 
       {new_state, actions} = Core.handle_event(data.state, :rehoming_started, nil)
@@ -342,8 +342,12 @@ defmodule Elevator.Controller do
 
     Enum.reduce(actions, data, fn action, acc ->
       case action do
-        {:move_motor, dir, speed} ->
-          lookup_hardware(acc, :motor, &Hardware.Motor.move(&1, dir, speed: speed))
+        {:move, dir} ->
+          lookup_hardware(acc, :motor, &Hardware.Motor.move(&1, dir))
+          acc
+
+        {:crawl, dir} ->
+          lookup_hardware(acc, :motor, &Hardware.Motor.crawl(&1, dir))
           acc
 
         {:stop_motor} ->

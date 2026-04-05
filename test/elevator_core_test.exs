@@ -24,7 +24,7 @@ defmodule Elevator.CoreTest do
       assert new_state.heading == :up
       assert new_state.phase == :moving
       assert new_state.requests == [{:car, 4}]
-      assert {:move_motor, :up, :normal} in actions
+      assert {:move, :up} in actions
     end
 
     test "Sub-case B: Request below — heading becomes :down and phase becomes :moving" do
@@ -37,7 +37,7 @@ defmodule Elevator.CoreTest do
       assert new_state.heading == :down
       assert new_state.phase == :moving
       assert new_state.requests == [{:car, 1}]
-      assert {:move_motor, :down, :normal} in actions
+      assert {:move, :down} in actions
     end
   end
 
@@ -286,6 +286,19 @@ defmodule Elevator.CoreTest do
       assert new_state.door_status == :closing
       assert {:close_door} in actions
       assert {:cancel_timer, :door_timeout} in actions
+    end
+    test "[S-REHOME-STATUS]: Rehoming uses :crawling status" do
+      # GIVEN: Idle
+      state = %Core{phase: :idle, current_floor: 1}
+
+      # WHEN: Rehoming starts
+      {new_state, actions} = Core.handle_event(state, :rehoming_started, 0)
+
+      # THEN: Phase is :rehoming, motor is :crawling down
+      assert new_state.phase == :rehoming
+      assert new_state.motor_status == :crawling
+      assert new_state.heading == :down
+      assert {:crawl, :down} in actions
     end
   end
 end

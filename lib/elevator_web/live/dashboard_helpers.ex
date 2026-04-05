@@ -16,14 +16,14 @@ defmodule ElevatorWeb.DashboardHelpers do
   @doc "Calculates the anticipatory visual floor for smooth synchronization."
   @spec visual_floor(integer() | :unknown, atom(), atom()) :: integer() | :unknown
   def visual_floor(:unknown, _, _), do: :unknown
-  def visual_floor(floor, :running, :up), do: floor + 1
-  def visual_floor(floor, :running, :down), do: floor - 1
+  def visual_floor(floor, status, :up) when status in [:running, :crawling], do: floor + 1
+  def visual_floor(floor, status, :down) when status in [:running, :crawling], do: floor - 1
   def visual_floor(floor, _, _), do: floor
 
   @doc "Determines the industrial color code for a given component status."
   @spec state_color(atom()) :: String.t()
   # Cyan (Running/Active)
-  def state_color(state) when state in [:moving, :running, :tracking, :closed],
+  def state_color(state) when state in [:crawling, :running, :tracking, :closed],
     do: "#00f2ff"
 
   # Green (Stable/Ready)

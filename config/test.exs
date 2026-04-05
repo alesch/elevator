@@ -16,3 +16,6 @@ config :phoenix, :plug_init_mode, :runtime
 # to allow isolated testing of functional modules.
 config :elevator,
   hardware_stack_enabled: false
+
+config :cabbage,
+  features: "features/"

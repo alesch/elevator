@@ -6,8 +6,10 @@ defmodule Elevator.Hardware.Motor do
   use GenServer
   require Logger
 
-  # 2 seconds per floor
-  @transit_ms 2000
+  # 1.5 seconds between floors (Leaving 500ms for braking to reach 2s total)
+  @transit_ms 1500
+  # 500ms delay for physical braking
+  @brake_ms 500
 
   # ---------------------------------------------------------------------------
   # ## Public API
@@ -20,10 +22,16 @@ defmodule Elevator.Hardware.Motor do
     GenServer.start_link(__MODULE__, opts, name: name)
   end
 
-  @doc "Starts pulling cables in the specified direction."
-  @spec move(pid() | atom(), :up | :down, keyword()) :: :ok
-  def move(pid \\ __MODULE__, direction, opts \\ []) when direction in [:up, :down] do
-    GenServer.cast(pid, {:move, direction, opts})
+  @doc "Starts pulling cables in the specified direction at normal speed."
+  @spec move(pid() | atom(), :up | :down) :: :ok
+  def move(pid \\ __MODULE__, direction) when direction in [:up, :down] do
+    GenServer.cast(pid, {:move, direction})
+  end
+
+  @doc "Starts pulling cables in the specified direction at slow speed."
+  @spec crawl(pid() | atom(), :up | :down) :: :ok
+  def crawl(pid \\ __MODULE__, direction) when direction in [:up, :down] do
+    GenServer.cast(pid, {:crawl, direction})
   end
 
   @doc "Stops all motion immediately."
@@ -59,7 +67,6 @@ defmodule Elevator.Hardware.Motor do
      %{
        status: :stopped,
        direction: nil,
-       speed: :normal,
        timer: nil,
        sensor: sensor,
        controller: controller
@@ -67,19 +74,34 @@ defmodule Elevator.Hardware.Motor do
   end
 
   @impl true
-  @spec handle_cast({:move, :up | :down, keyword()}, map()) :: {:noreply, map()}
-  def handle_cast({:move, direction, opts}, state) do
-    speed = Keyword.get(opts, :speed, :normal)
-
+  @spec handle_cast({:move, :up | :down}, map()) :: {:noreply, map()}
+  def handle_cast({:move, direction}, state) do
     :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
       direction: direction,
-      speed: speed
+      speed: :normal
     })
 
     state =
       state
       |> cancel_timer()
-      |> update_motion_state(:moving, direction, speed)
+      |> update_motion_state(:running, direction)
+      |> start_transit_timer()
+
+    {:noreply, state}
+  end
+
+  @impl true
+  @spec handle_cast({:crawl, :up | :down}, map()) :: {:noreply, map()}
+  def handle_cast({:crawl, direction}, state) do
+    :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
+      direction: direction,
+      speed: :slow
+    })
+
+    state =
+      state
+      |> cancel_timer()
+      |> update_motion_state(:crawling, direction)
       |> start_transit_timer()
 
     {:noreply, state}
@@ -98,16 +120,25 @@ defmodule Elevator.Hardware.Motor do
     state =
       state
       |> cancel_timer()
-      |> update_motion_state(:stopped, nil, :normal)
+      |> update_motion_state(:stopping, state.direction)
+      |> start_brake_timer()
 
-    notify_controller(state, :motor_stopped)
     {:noreply, state}
   end
+
 
   @impl true
   @spec handle_call(:get_state, GenServer.from(), map()) :: {:reply, map(), map()}
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
+  end
+
+  @impl true
+  @spec handle_info(:brake_complete, map()) :: {:noreply, map()}
+  def handle_info(:brake_complete, state) do
+    state = %{update_motion_state(state, :stopped, nil) | timer: nil}
+    notify_controller(state, :motor_stopped)
+    {:noreply, state}
   end
 
   @impl true
@@ -138,17 +169,23 @@ defmodule Elevator.Hardware.Motor do
     end
   end
 
-  @spec update_motion_state(map(), :moving | :stopped, :up | :down | nil, :normal | :slow) ::
+  @spec update_motion_state(map(), :running | :crawling | :stopping | :stopped, :up | :down | nil) ::
           map()
-  defp update_motion_state(state, status, direction, speed) do
-    %{state | status: status, direction: direction, speed: speed}
+  defp update_motion_state(state, status, direction) do
+    %{state | status: status, direction: direction}
+  end
+
+  @spec start_brake_timer(map()) :: map()
+  defp start_brake_timer(state) do
+    timer = Process.send_after(self(), :brake_complete, @brake_ms)
+    %{state | timer: timer}
   end
 
   @spec start_transit_timer(map()) :: map()
-  defp start_transit_timer(%{direction: direction, speed: speed} = state) do
+  defp start_transit_timer(%{status: status, direction: direction} = state) do
     ms =
-      case speed do
-        :slow -> 5000
+      case status do
+        :crawling -> 4500
         _ -> @transit_ms
       end
 

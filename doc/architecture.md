@@ -86,7 +86,7 @@ sequenceDiagram
         C->>C: Transition to :normal
     else Mismatch or Between Floors
         C->>C: Transition to :rehoming
-        C->>M: move(:down, speed: :slow)
+        C->>M: crawl(:down)
     end
 ```
 
@@ -97,7 +97,7 @@ sequenceDiagram
 | **Vault** | Persistent storage of floor arrival | If wiped, system results in full homing from F0. |
 | **Core** | **The Brain**: Autonomous logic & safety interlocks | If logic fails. |
 | **Controller**| **The Servo**: Hardware mirror & change detection | If crashes, Hardware Stack reboots (Firewall). |
-| **Motor** | Physical motion execution | Supports `:normal` and `:slow` speed for REHOMING. |
+| **Motor** | Physical motion execution | Supports `:running` and `:crawling` statuses for REHOMING. |
 | **Door** | Cabin access safety | Source of `obstruction` events for the Core. |
 
 ## 5. Safety Interlocks (Structural Safety)

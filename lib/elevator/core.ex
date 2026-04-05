@@ -16,13 +16,13 @@ defmodule Elevator.Core do
             last_activity_at: 0,
             phase: :idle,
             door_sensor: :clear,
-            motor_status: :stopped,
-            motor_speed: :normal
+            motor_status: :stopped
 
   @type action ::
           {:set_timer, atom(), integer()}
           | {:cancel_timer, atom()}
-          | {:move_motor, atom(), atom()}
+          | {:move, atom()}
+          | {:crawl, atom()}
           | {:stop_motor}
           | {:open_door}
           | {:close_door}
@@ -35,7 +35,7 @@ defmodule Elevator.Core do
           last_activity_at: integer(),
           phase: :rehoming | :moving | :arriving | :docked | :leaving | :idle,
           door_sensor: :clear | :blocked,
-          motor_status: :running | :stopping | :stopped
+          motor_status: :running | :crawling | :stopping | :stopped
         }
 
   @door_wait_ms 5000
@@ -69,7 +69,7 @@ defmodule Elevator.Core do
         # Different floor — start moving (Scenario 8.1)
         state
         |> update_heading()
-        |> Map.merge(%{phase: :moving, motor_status: :running, motor_speed: :normal})
+        |> Map.merge(%{phase: :moving, motor_status: :running})
       end
 
     {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
@@ -146,7 +146,7 @@ defmodule Elevator.Core do
     state = %{state | door_status: :closed}
 
     if state.heading != :idle do
-      %{state | phase: :moving, motor_status: :running, motor_speed: :normal}
+      %{state | phase: :moving, motor_status: :running}
     else
       %{state | phase: :idle}
     end
@@ -174,7 +174,7 @@ defmodule Elevator.Core do
   end
 
   defp do_handle_event(state, :rehoming_started, _now) do
-    %{state | phase: :rehoming, heading: :down, motor_status: :running, motor_speed: :slow}
+    %{state | phase: :rehoming, heading: :down, motor_status: :crawling}
   end
 
   # Scenario 8.7: Obstruction while leaving — revert to :docked, re-open door.
@@ -369,7 +369,11 @@ defmodule Elevator.Core do
 
       new.motor_status == :running and
           (old.motor_status != :running or old.heading != new.heading) ->
-        actions ++ [{:move_motor, new.heading, new.motor_speed}]
+        actions ++ [{:move, new.heading}]
+
+      new.motor_status == :crawling and
+          (old.motor_status != :crawling or old.heading != new.heading) ->
+        actions ++ [{:crawl, new.heading}]
 
       true ->
         actions
