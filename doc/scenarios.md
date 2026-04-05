@@ -77,7 +77,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Receive `:door_obstructed`.
   - **Then**: `door_status` transitions back to `:opening`, `door_sensor` becomes `:blocked`, `phase` reverts to `:docked`.
 
-- [ ] **Scenario 2.4: Hardware Safety Interlock (The Golden Rule)**
+- [x] **Scenario 2.4: Hardware Safety Interlock (The Golden Rule)**
   - **Given**: Elevator is at F0, state is `:idle`, doors are `:open`.
   - **When**: Request for F3 is received.
   - **Then**: 
