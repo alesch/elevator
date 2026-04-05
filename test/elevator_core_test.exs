@@ -183,8 +183,9 @@ defmodule Elevator.CoreTest do
   end
 
   describe "Autonomous Core: Intent & Safety Interlocks" do
+    @tag :capture_log
     test "The Golden Rule: Motor MUST be stopped if doors are NOT closed" do
-      # Case: Heading is :up (intent to move), but doors are :opening
+      # Case: Deliberately invalid state — golden rule must correct it
       state = %Core{heading: :up, door_status: :opening, motor_status: :running}
 
       # Act: Applying constraints (this is now internal to handle_event)
@@ -201,18 +202,19 @@ defmodule Elevator.CoreTest do
       # GIVEN: Docked at F1, doors open, request for F5 arrives
       state = %Core{phase: :docked, current_floor: 1, door_status: :open, heading: :idle, last_activity_at: 100}
 
-      # WHEN: Request for F5 is added at T=101
+      # WHEN: Request for F5 is added
       {new_state, _actions} = Core.request_floor(state, :car, 5)
 
       # THEN: Heading is :up, but door stays open — 5s timer governs the close
       assert new_state.heading == :up
       assert new_state.door_status == :open
 
-      # WHEN: Tick fires after 5s of inactivity
-      {final_state, actions} = Core.handle_event(new_state, :tick, 5101)
+      # WHEN: Door timeout fires (the controller sends this after 5s)
+      {final_state, actions} = Core.handle_event(new_state, :door_timeout, 5101)
 
-      # THEN: Only now does the door begin closing
+      # THEN: Door begins closing, phase transitions to :leaving
       assert final_state.door_status == :closing
+      assert final_state.phase == :leaving
       assert {:close_door} in actions
     end
 

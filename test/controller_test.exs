@@ -303,38 +303,31 @@ defmodule Elevator.ControllerTest do
 
       _ = Controller.get_state(pid)
 
-      # 1. Start with doors OPEN (at Floor 1)
-      # We manually send :motor_stopped + :door_opened as if we just arrived
-      send(pid, :motor_stopped)
+      # 1. Get to :docked phase — request same floor (F0) to open door without motor cycle
+      Controller.request_floor(pid, :car, 0)
       assert_receive {:"$gen_cast", :open}
       send(pid, :door_opened)
+      assert_receive {:elevator_state, %{phase: :docked, door_status: :open}}
 
-      # 2. Request Floor 3
+      # 2. While docked, add a request for F3
       Controller.request_floor(pid, :car, 3)
+      assert_receive {:elevator_state, %{heading: :up, door_status: :open}}
 
-      # Drain the initial :opening and :open broadcasts from startup/recovery
-      assert_receive {:elevator_state, %{door_status: :opening}}
-      assert_receive {:elevator_state, %{door_status: :open}}
-
-      # ASSERT 1: Immediate visual intent shows :open but heading :up
-      assert_receive {:elevator_state, %{door_status: :open, heading: :up}}
-
-      # 3. Simulate Timeout pulse (The Core decisions happen here)
-      send(pid, {:timeout, :door_timeout})
-
-      # ASSERT 2: Only now is Door Close dispatched
-      assert_receive {:"$gen_cast", :close}
-      assert_receive {:elevator_state, %{door_status: :closing, motor_status: :stopped}}
-
-      # ASSERT 3: Motor is NOT commanded to move yet
+      # ASSERT: Motor is NOT commanded to move — door is still open
       refute_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}, 100
 
-      # 4. Simulate Door reaching CLOSED state
-      send(pid, :door_closed)
+      # 3. Timeout fires → door begins closing (phase: :leaving)
+      send(pid, {:timeout, :door_timeout})
+      assert_receive {:"$gen_cast", :close}
+      assert_receive {:elevator_state, %{phase: :leaving, door_status: :closing, motor_status: :stopped}}
 
-      # ASSERT 4: Finally, the motor is allowed to move
+      # ASSERT: Motor still NOT moving during closing
+      refute_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}, 100
+
+      # 4. Door confirms closed → phase: :moving, motor starts
+      send(pid, :door_closed)
       assert_receive {:"$gen_cast", {:move, :up, [speed: :normal]}}
-      assert_receive {:elevator_state, %{motor_status: :running, door_status: :closed}}
+      assert_receive {:elevator_state, %{phase: :moving, motor_status: :running, door_status: :closed}}
     end
 
     test "Scenario 2.1: Door obstruction during closing triggers reversal", %{

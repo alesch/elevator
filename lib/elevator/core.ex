@@ -72,7 +72,7 @@ defmodule Elevator.Core do
         |> Map.merge(%{phase: :moving, motor_status: :running, motor_speed: :normal})
       end
 
-    {new_state, derive_actions(state, new_state)}
+    {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
   end
 
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
@@ -81,6 +81,7 @@ defmodule Elevator.Core do
       |> add_request(source, floor)
       |> update_heading()
       |> do_process_current_floor()
+      |> enforce_the_golden_rule()
 
     {new_state, derive_actions(state, new_state)}
   end
@@ -93,14 +94,11 @@ defmodule Elevator.Core do
         state
         |> fulfill_current_floor_requests()
         |> confirm_stopped_at_floor()
-        |> apply_logic()
       else
         %{state | motor_status: :stopping}
-        |> apply_logic()
       end
     else
       state
-      |> apply_logic()
     end
   end
 
@@ -119,7 +117,7 @@ defmodule Elevator.Core do
   """
   @spec handle_event(t(), atom(), integer() | nil) :: {t(), [action()]}
   def handle_event(state, event, now) do
-    new_state = do_handle_event(state, event, now)
+    new_state = state |> do_handle_event(event, now) |> enforce_the_golden_rule()
     {new_state, derive_actions(state, new_state)}
   end
 
@@ -132,7 +130,6 @@ defmodule Elevator.Core do
     state
     |> fulfill_current_floor_requests()
     |> confirm_stopped_at_floor()
-    |> apply_logic()
   end
 
   # Scenario 8.3: Doors confirm open while arriving — transition to :docked.
@@ -142,7 +139,6 @@ defmodule Elevator.Core do
 
   defp do_handle_event(%Core{door_status: :opening} = state, :door_opened, now) do
     %{state | door_status: :open, last_activity_at: now}
-    |> apply_logic(now)
   end
 
   # Scenario 8.5 / 8.6: Door closed after leaving — go to :moving or :idle.
@@ -158,7 +154,6 @@ defmodule Elevator.Core do
 
   defp do_handle_event(%Core{door_status: :closing} = state, :door_closed, _now) do
     %{state | door_status: :closed}
-    |> apply_logic()
   end
 
   # Scenario 8.4: Timeout fires while docked — begin leaving.
@@ -169,26 +164,17 @@ defmodule Elevator.Core do
   defp do_handle_event(%Core{door_status: :open} = state, :door_timeout, _now) do
     if state.phase != :rehoming and state.door_sensor == :clear do
       %{state | door_status: :closing}
-      |> apply_logic()
     else
       state
-      |> apply_logic()
     end
-  end
-
-  defp do_handle_event(state, :tick, now) do
-    state
-    |> apply_logic(now)
   end
 
   defp do_handle_event(state, :recovery_complete, floor) do
     %{state | current_floor: floor, phase: :idle}
-    |> apply_logic()
   end
 
   defp do_handle_event(state, :rehoming_started, _now) do
-    %{state | phase: :rehoming}
-    |> apply_logic()
+    %{state | phase: :rehoming, heading: :down, motor_status: :running, motor_speed: :slow}
   end
 
   # Scenario 8.7: Obstruction while leaving — revert to :docked, re-open door.
@@ -198,24 +184,19 @@ defmodule Elevator.Core do
 
   defp do_handle_event(%Core{door_status: :closing} = state, :door_obstructed, _now) do
     %{state | door_sensor: :blocked, door_status: :opening}
-    |> apply_logic()
   end
 
   defp do_handle_event(state, :door_obstructed, _now) do
     %{state | door_sensor: :blocked}
-    |> apply_logic()
   end
 
   defp do_handle_event(state, :door_cleared, _now) do
     %{state | door_sensor: :clear}
-    |> apply_logic()
   end
 
   defp do_handle_event(state, event, _now) do
     Logger.warning("Unexpected event #{inspect(event)} in state: #{inspect(state)}")
-
     state
-    |> apply_logic()
   end
 
   @doc """
@@ -223,7 +204,7 @@ defmodule Elevator.Core do
   """
   @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
   def handle_button_press(state, button, now) do
-    new_state = do_handle_button_press(state, button, now)
+    new_state = state |> do_handle_button_press(button, now) |> enforce_the_golden_rule()
     actions = derive_actions(state, new_state)
 
     # Some button presses might cause unique side effects (like timer cancellation)
@@ -238,22 +219,18 @@ defmodule Elevator.Core do
 
   defp do_handle_button_press(%Core{door_status: :closed} = state, :door_open, _now) do
     %{state | door_status: :opening}
-    |> apply_logic()
   end
 
   defp do_handle_button_press(%Core{door_status: :closing} = state, :door_open, _now) do
     %{state | door_status: :opening}
-    |> apply_logic()
   end
 
   defp do_handle_button_press(%Core{door_status: :open} = state, :door_open, now) do
     %{state | last_activity_at: now}
-    |> apply_logic(now)
   end
 
   defp do_handle_button_press(%Core{door_status: :open} = state, :door_close, _now) do
     %{state | door_status: :closing}
-    |> apply_logic()
   end
 
   defp do_handle_button_press(state, button, _now) do
@@ -280,7 +257,7 @@ defmodule Elevator.Core do
   # Scenario 5.4: Homing arrival — brake and anchor. Phase stays :rehoming until :motor_stopped.
   def process_arrival(%Core{phase: :rehoming} = state, floor) do
     new_state = %{state | current_floor: floor, motor_status: :stopping}
-    {new_state, derive_actions(state, new_state)}
+    {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
   end
 
   # Scenario 8.2: Arriving at target floor while moving — begin braking, transition to :arriving.
@@ -294,13 +271,14 @@ defmodule Elevator.Core do
         new_state
       end
 
-    {new_state, derive_actions(state, new_state)}
+    {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
   end
 
   def process_arrival(state, floor) do
     new_state =
       %{state | current_floor: floor}
       |> do_process_arrival(floor)
+      |> enforce_the_golden_rule()
 
     {new_state, derive_actions(state, new_state)}
   end
@@ -308,10 +286,8 @@ defmodule Elevator.Core do
   defp do_process_arrival(state, floor) do
     if should_stop_at?(state, floor) or overshooting?(state) do
       %{state | heading: :idle}
-      |> apply_logic()
     else
       state
-      |> apply_logic()
     end
   end
 
@@ -366,68 +342,8 @@ defmodule Elevator.Core do
   end
 
   # ---------------------------------------------------------------------------
-  # ## Autonomous Intent & Safety Pipeline
+  # ## Action Derivation & Safety
   # ---------------------------------------------------------------------------
-
-  @spec apply_logic(t(), integer() | nil) :: t()
-  defp apply_logic(state, now \\ nil) do
-    state
-    |> start_rehoming_logic()
-    |> start_servicing_request_logic(now)
-    |> complete_servicing_request_logic()
-    |> start_moving_logic()
-    |> stop_moving_logic()
-    |> enforce_safety_overrides()
-    |> enforce_the_golden_rule()
-  end
-
-  defp start_rehoming_logic(%Core{phase: :rehoming} = state) do
-    state = if state.door_status != :closed, do: %{state | door_status: :closing}, else: state
-    %{state | heading: :down, motor_status: :running, motor_speed: :slow}
-  end
-
-  defp start_rehoming_logic(state), do: state
-
-  defp start_servicing_request_logic(
-         %Core{heading: h, door_status: :open, door_sensor: :clear} = state,
-         now
-       )
-       when h != :idle and not is_nil(now) do
-    if now - state.last_activity_at >= @door_wait_ms do
-      %{state | door_status: :closing}
-    else
-      state
-    end
-  end
-
-  defp start_servicing_request_logic(state, _now), do: state
-
-  defp start_moving_logic(
-         %Core{heading: h, door_status: :closed, motor_status: :stopped} = state
-       )
-       when h != :idle do
-    %{state | motor_status: :running, motor_speed: :normal}
-  end
-
-  defp start_moving_logic(state), do: state
-
-  defp stop_moving_logic(%Core{heading: :idle, motor_status: :running} = state) do
-    %{state | motor_status: :stopping}
-  end
-
-  defp stop_moving_logic(state), do: state
-
-  defp complete_servicing_request_logic(%Core{motor_status: :stopped, door_status: d} = state)
-       when d in [:closed, :closing] do
-    # If we are stopped at a floor that still needs service, open up.
-    if should_stop_at?(state, state.current_floor) do
-      %{state | door_status: :opening}
-    else
-      state
-    end
-  end
-
-  defp complete_servicing_request_logic(state), do: state
 
   defp derive_actions(old, new) do
     []
@@ -477,17 +393,14 @@ defmodule Elevator.Core do
     end
   end
 
-  defp enforce_safety_overrides(state) do
-    if state.door_sensor == :blocked do
-      %{state | door_status: :opening}
-    else
-      state
-    end
-  end
-
   defp enforce_the_golden_rule(state) do
     # "The Golden Rule": Motor stays stopped unless doors are closed.
+    # This should never fire in normal operation — if it does, a phase handler has a bug.
     if state.door_status != :closed and state.motor_status == :running do
+      Logger.warning(
+        "Golden Rule fired — motor forced stopped. Phase: #{state.phase}, door: #{state.door_status}"
+      )
+
       %{state | motor_status: :stopped}
     else
       state
