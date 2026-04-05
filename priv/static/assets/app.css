@@ -14,7 +14,9 @@
   /* Layout */
   --shaft-width: 280px;
   --border-radius: 12px;
-  --floor-height: 60px;
+  /* IMPORTANT: --floor-height must match floor_to_pixels/1 in dashboard_helpers.ex (floor * N).
+     Change both together or the elevator car will mis-align with floor labels. */
+  --floor-height: 50px;
 }
 
 * {
@@ -90,7 +92,7 @@ body {
   background: #000;
   border: 2px solid #222;
   border-radius: 4px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
