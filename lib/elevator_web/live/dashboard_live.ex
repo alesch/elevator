@@ -182,7 +182,21 @@ defmodule ElevatorWeb.DashboardLive do
         <.footer_item icon="🧠" label="Core" state={@controller_state} />
         <.footer_item icon="⚙️" label="Motor" state={@motor_state} />
         <.footer_item icon="🚪" label="Doors" state={@door_state} />
-        <.footer_item icon="👁️" label="Sensors" state={@sensor_state} />
+        <.queue_item requests={@requests} />
+      </div>
+    </div>
+    """
+  end
+
+  defp queue_item(assigns) do
+    ~H"""
+    <div class="footer-item">
+      <div class="status-icon">📋</div>
+      <div class="status-info">
+        <span class="status-label">QUEUE</span>
+        <span class="status-value" style={"color: #{if @requests == [], do: "#445566", else: "#ffae00"}"}>
+          <%= if @requests == [], do: "—", else: @requests |> Enum.map(fn {_, f} -> f end) |> Enum.join(", ") %>
+        </span>
       </div>
     </div>
     """
