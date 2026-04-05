@@ -84,14 +84,15 @@ defmodule Elevator.CoreTest do
     assert new_state.requests == []
   end
 
-  test "Scenario 1.4: Door transition to open" do
-    # Arrange
-    state = %Core{door_status: :opening}
+  test "Scenario 1.4: Door open confirmation — phase becomes :docked, timer set" do
+    # GIVEN: Arriving at floor, doors opening
+    state = %Core{phase: :arriving, door_status: :opening, motor_status: :stopped}
 
-    # Act: Doors open at T=100
+    # WHEN: Doors confirm open at T=100
     {new_state, actions} = Core.handle_event(state, :door_opened, 100)
 
-    # Assert
+    # THEN: Docked, timer armed for auto-close
+    assert new_state.phase == :docked
     assert new_state.door_status == :open
     assert new_state.last_activity_at == 100
     assert {:set_timer, :door_timeout, 5000} in actions

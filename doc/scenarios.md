@@ -30,12 +30,13 @@ This document defines the testable reality of our simulation. We use these scena
     - Door receives `:open`.
     - Request is fulfilled (removed from queue).
 
-- [ ] **Scenario 1.4: Door Open Confirmation**
-  - **Given**: `door_status` is `:opening`.
+- [x] **Scenario 1.4: Door Open Confirmation**
+  - **Given**: `phase: :arriving`, `door_status: :opening`.
   - **When**: Receive `:door_opened` confirmation.
   - **Then**:
+    - `phase` becomes `:docked`.
     - `door_status` becomes `:open`.
-    - Auto-close timer is reset (`last_activity_at` updated).
+    - Auto-close timer is armed (`last_activity_at` updated, `{:set_timer, :door_timeout, 5000}`).
 
 - [ ] **Scenario 1.6: Sequence Verification (Intent & Confirmation)**
   - **When**: Triggered transition `door_status` -> `:closed`.
