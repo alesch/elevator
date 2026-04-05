@@ -184,7 +184,7 @@ defmodule Elevator.CoreTest do
 
   describe "Autonomous Core: Intent & Safety Interlocks" do
     @tag :capture_log
-    test "The Golden Rule: Motor MUST be stopped if doors are NOT closed" do
+    test "[S-SAFE-GOLDEN]: Motor MUST be stopped if doors are NOT closed" do
       # Case: Deliberately invalid state — golden rule must correct it
       state = %Core{heading: :up, door_status: :opening, motor_status: :running}
 
@@ -218,7 +218,7 @@ defmodule Elevator.CoreTest do
       assert {:close_door} in actions
     end
 
-    test "End of Service: Arrival at floor triggers :opening when stopped" do
+    test "[S-MOVE-OPENING]: Arrival at floor triggers :opening when stopped" do
       # GIVEN: Arrived at F3, motor stopped, doors were closed
       state = %Core{
         current_floor: 3,

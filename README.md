@@ -7,10 +7,11 @@ Coded with Antigravity using Gemini 3 Flash, and three agents collaborating.
 
 ## 🧠 Engineering Philosophy
 
-### 1. SDD & TDD (Specification-Driven Development)
+### 1. BDD & TDD (Behavior-Driven Development)
 
-- **Ground Truth**: Every behavior is documented in **[`doc/scenarios.md`](doc/scenarios.md)** first.
-- **Traceable TDD**: Every test is explicitly linked to a Scenario ID. No code is written until a failing test proves the need for it.
+- **The Storybook**: Every observable behavior is defined in formal Gherkin feature files within the **[`features/`](features/)** directory.
+- **The Rulebook**: The underlying business logic and state machine constraints are defined in **[`doc/core_rules.md`](doc/core_rules.md)**.
+- **Traceable TDD**: Every `ExUnit` or `Playwright` test is explicitly linked to a Scenario ID (e.g., `[S-MOVE-WAKEUP]`). No code is written until a failing test proves the need for it.
 
 ---
 

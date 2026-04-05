@@ -5,8 +5,8 @@ defmodule Elevator.AuditTest do
   @floors 0..5
   @headings [:up, :down, :idle]
 
-  describe "Scenario 4.9: Combinatorial State Audit" do
-    test "Scenario 4.9: Total Integrity Sweep (Floors x Headings x Targets)" do
+  describe "[S-REQ-SYNC]: Combinatorial State Audit" do
+    test "[S-REQ-SYNC]: Total Integrity Sweep (Floors x Headings x Targets)" do
       # Dimension 1: Every combination of starting state
       # Dimension 2: Every possible incoming request
       combinations =

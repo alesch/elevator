@@ -12,11 +12,11 @@ defmodule Elevator.MotorTest do
     %{motor: pid}
   end
 
-  test "Scenario 6.1: starts in a stopped state", %{motor: pid} do
+  test "[S-HW-MOTOR]: starts in a stopped state", %{motor: pid} do
     assert %{status: :stopped, direction: nil, timer: nil} = Motor.get_state(pid)
   end
 
-  test "Scenario 6.1: scheduling a move starts the transit timer", %{motor: pid} do
+  test "[S-HW-MOTOR]: scheduling a move starts the transit timer", %{motor: pid} do
     Motor.move(pid, :up)
 
     state = Motor.get_state(pid)
@@ -30,7 +30,7 @@ defmodule Elevator.MotorTest do
     assert remaining > 0 and remaining <= 2000
   end
 
-  test "stopping motion cancels the timer", %{motor: pid} do
+  test "[S-HW-MOTOR]: stopping motion cancels the timer", %{motor: pid} do
     # Start moving
     Motor.move(pid, :up)
 
@@ -45,7 +45,7 @@ defmodule Elevator.MotorTest do
     assert state.timer == nil
   end
 
-  test "consecutive moves reset the timer", %{motor: pid} do
+  test "[S-HW-MOTOR]: consecutive moves reset the timer", %{motor: pid} do
     Motor.move(pid, :up)
     %{} = state1 = Motor.get_state(pid)
     ref1 = state1.timer
@@ -61,7 +61,7 @@ defmodule Elevator.MotorTest do
     assert is_integer(Process.read_timer(ref2))
   end
 
-  test "motor notifies the sensor upon pulse", %{motor: pid} do
+  test "[S-HW-MOTOR]: motor notifies the sensor upon pulse", %{motor: pid} do
     # Start moving to trigger pulses
     Motor.move(pid, :up)
 

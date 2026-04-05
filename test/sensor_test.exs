@@ -17,11 +17,11 @@ defmodule Elevator.SensorTest do
     %{sensor: pid, vault: vault}
   end
 
-  test "Scenario 6.3: starts at the specified floor", %{sensor: pid} do
+  test "[S-HW-SENSOR]: starts at the specified floor", %{sensor: pid} do
     assert Sensor.get_floor(pid) == 1
   end
 
-  test "Scenario 6.3: motor pulse UP increments the floor", %{sensor: pid} do
+  test "[S-HW-SENSOR]: motor pulse UP increments the floor", %{sensor: pid} do
     # Simulate a pulse from the Motor
     send(pid, {:motor_pulse, :up})
 
@@ -31,7 +31,7 @@ defmodule Elevator.SensorTest do
     assert Sensor.get_floor(pid) == 2
   end
 
-  test "Scenario 6.3: motor pulse DOWN decrements the floor", %{sensor: _pid, vault: vault} do
+  test "[S-HW-SENSOR]: motor pulse DOWN decrements the floor", %{sensor: _pid, vault: vault} do
     # Stop the default sensor from setup to start a new one with F3
     stop_supervised!(Sensor)
 
@@ -45,7 +45,7 @@ defmodule Elevator.SensorTest do
     assert Sensor.get_floor(pid) == 2
   end
 
-  test "Scenario 6.3: sensor notifies the Controller upon arrival", %{sensor: pid} do
+  test "[S-HW-SENSOR]: sensor notifies the Controller upon arrival", %{sensor: pid} do
     send(pid, {:motor_pulse, :up})
 
     # The Sensor should notify the Controller (the test process): {:floor_arrival, 2}

@@ -12,6 +12,6 @@ We follow a strict path for every change:
 
 * **[`doc/core_rules.md`](file:///home/alex/dev/elevator/doc/core_rules.md)**: The "Rulebook" for the Brain's logic.
 
-* **[`doc/scenarios.md`](file:///home/alex/dev/elevator/doc/scenarios.md)**: The "Storybook" of what the system should do.
+* **[`features/`](file:///home/alex/dev/elevator/features/)**: The "Storybook" of what the system should do, defined in formal Gherkin scenarios.
 
 * **[`doc/ARCHITECTURE.md`](file:///home/alex/dev/elevator/doc/ARCHITECTURE.md)**: The "Blueprint" of the technical components.

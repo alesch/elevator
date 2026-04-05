@@ -2,7 +2,7 @@ defmodule Elevator.EdgeCasesTest do
   use ExUnit.Case
   alias Elevator.Core
 
-  describe "Scenario 4.6: Same-Floor Interaction" do
+  describe "[S-MOVE-SAME-FLOOR]: Same-Floor Interaction" do
     test "Idle at F3 receives Car request for F3 -> Opens door immediately" do
       # GIVEN: Idle at F3, doors closed, motor stopped
       state = %Core{phase: :idle, current_floor: 3, heading: :idle, motor_status: :stopped, door_status: :closed}
@@ -34,7 +34,7 @@ defmodule Elevator.EdgeCasesTest do
     end
   end
 
-  describe "Scenario 4.8: Boundary Reversals" do
+  describe "[S-MOVE-BOUNDARY]: Boundary Reversals" do
     test "At F5 heading UP with no requests above -> Retire to :idle" do
       # GIVEN: Idle at F5 (top), doors closed
       state = %Core{phase: :idle, current_floor: 5, heading: :up, requests: [], door_status: :closed}
