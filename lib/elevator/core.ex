@@ -191,6 +191,11 @@ defmodule Elevator.Core do
     |> apply_logic()
   end
 
+  # Scenario 8.7: Obstruction while leaving — revert to :docked, re-open door.
+  defp do_handle_event(%Core{phase: :leaving} = state, :door_obstructed, _now) do
+    %{state | door_sensor: :blocked, door_status: :opening, phase: :docked}
+  end
+
   defp do_handle_event(%Core{door_status: :closing} = state, :door_obstructed, _now) do
     %{state | door_sensor: :blocked, door_status: :opening}
     |> apply_logic()

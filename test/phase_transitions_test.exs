@@ -79,4 +79,15 @@ defmodule Elevator.PhaseTransitionsTest do
     assert new_state.phase == :idle
     assert new_state.motor_status == :stopped
   end
+
+  # Scenario 8.7
+  test "Scenario 8.7: :leaving → :docked on obstruction during close" do
+    state = %Core{phase: :leaving, door_status: :closing}
+
+    {new_state, actions} = Core.handle_event(state, :door_obstructed, nil)
+
+    assert new_state.phase == :docked
+    assert new_state.door_status == :opening
+    assert {:open_door} in actions
+  end
 end

@@ -284,7 +284,7 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: `:door_closed` received.
   - **Then**: `phase` becomes `:idle`, `motor_status` stays `:stopped`.
 
-- [ ] **Scenario 8.7: :leaving → :docked (Obstruction during close)**
+- [x] **Scenario 8.7: :leaving → :docked (Obstruction during close)**
   - **Given**: `phase: :leaving`, `door_status: :closing`.
   - **When**: `:door_obstructed` received.
   - **Then**: `phase` reverts to `:docked`, `door_status` becomes `:open`.
