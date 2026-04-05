@@ -109,7 +109,3 @@ Following the refactoring to an Autonomous Core, safety is no longer "checked" b
 The Core enforces a hard constraint: **The motor MUST be in the `:stopped` status unless the `door_status` is confirmed to be `:closed`.**
 
 If any event (like a manual door opening or an obstruction) violates this, the `apply_constraints/1` pipeline automatically corrects the intent by stopping the motor before the Controller can even dispatch the command to hardware.
-
-### 5.2 Obstruction Reversal
-
-If a `:door_obstructed` event occurs while the door is `:closing`, the Core immediately transitions to `:opening`. This logic is centralized in the Core, ensuring consistent behavior regardless of the elevator's current mission.
