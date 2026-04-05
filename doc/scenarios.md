@@ -72,10 +72,10 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 2. Safety Interlocks & Sensors
 
-- [ ] **Scenario 2.1: Door Obstruction**
-  - **Given**: Doors are `:closing`.
-  - **When**: Receive `:door_sensor_blocked`.
-  - **Then**: Immediately transition `door_status` back to `:opening`.
+- [x] **Scenario 2.1: Door Obstruction**
+  - **Given**: `phase: :leaving`, `door_status: :closing`.
+  - **When**: Receive `:door_obstructed`.
+  - **Then**: `door_status` transitions back to `:opening`, `door_sensor` becomes `:blocked`, `phase` reverts to `:docked`.
 
 - [ ] **Scenario 2.4: Hardware Safety Interlock (The Golden Rule)**
   - **Given**: Elevator is at F0, state is `:idle`, doors are `:open`.
@@ -85,9 +85,9 @@ This document defines the testable reality of our simulation. We use these scena
     - Motor is ONLY commanded to `:move` AFTER the `:motor_stopped` and `:door_closed` signals are confirmed.
     - *(Door closing is governed by the 5s timer — see Scenario 7.4)*
 
-- [ ] **Scenario 2.5: Door Sensor Cleared**
+- [x] **Scenario 2.5: Door Sensor Cleared**
   - **Given**: `door_sensor` is `:blocked`.
-  - **When**: Receive `:door_sensor_cleared`.
+  - **When**: Receive `:door_cleared`.
   - **Then**: `door_sensor` becomes `:clear`.
 
 ## 3. Manual Overrides (Door Control)

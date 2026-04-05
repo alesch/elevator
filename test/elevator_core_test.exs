@@ -141,26 +141,29 @@ defmodule Elevator.CoreTest do
     assert {:open_door} in actions
   end
 
-  describe "Scenario 2.1 & 2.5: Door Safety Sensors" do
-    test "Scenario 2.1: door_obstructed reverses a closing door and marks sensor blocked" do
-      state = %Core{door_status: :closing, door_sensor: :clear}
+  describe "Door Safety Sensors" do
+    test "Scenario 2.1: door_obstructed while leaving — door reverses, sensor blocked, phase reverts to :docked" do
+      # GIVEN: Leaving — door in the process of closing
+      state = %Core{phase: :leaving, door_status: :closing, door_sensor: :clear}
 
-      # Act
+      # WHEN: Obstruction detected
       {new_state, actions} = Core.handle_event(state, :door_obstructed, 0)
 
-      # Assert
+      # THEN: Door reverses, sensor flagged, phase reverts to :docked
       assert new_state.door_status == :opening
       assert new_state.door_sensor == :blocked
+      assert new_state.phase == :docked
       assert {:open_door} in actions
     end
 
     test "Scenario 2.5: door_cleared marks sensor as clear" do
+      # GIVEN: Sensor is blocked
       state = %Core{door_sensor: :blocked}
 
-      # Act
+      # WHEN: Obstruction clears
       {new_state, _actions} = Core.handle_event(state, :door_cleared, 0)
 
-      # Assert
+      # THEN: Sensor is clear
       assert new_state.door_sensor == :clear
     end
   end
