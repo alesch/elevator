@@ -126,13 +126,14 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: `process_arrival` at that floor.
   - **Then**: `phase` becomes `:arriving`, `motor_status` becomes `:stopping` — all request types honored.
 
-- [ ] **Scenario 4.6: Same-Floor Interaction**
-  - **Given**: Elevator at F3, `motor_status` is `:stopped`, state is `:idle`.
-  - **When**: Receive `{:car, 3}` (or hall).
+- [x] **Scenario 4.6: Same-Floor Interaction**
+  - **Given**: `phase: :idle`, `door_status: :closed`, elevator at F3.
+  - **When**: Receive `{:car, 3}` or `{:hall, 3}`.
   - **Then**:
-    - The request is immediately fulfilled (removed from queue).
+    - `phase` becomes `:arriving`.
+    - Request is immediately fulfilled (removed from queue).
     - `motor_status` stays `:stopped` (no braking cycle needed).
-    - `door_status` becomes `:opening` and door receives `:open` command.
+    - `door_status` becomes `:opening`, door receives `:open` command.
   - **Note**: The `:stopping` protocol only applies when the motor is actually `:running`. Sending a redundant stop to hardware that is already stopped causes a deadlock — no `:motor_stopped` confirmation is ever returned.
 
 - [x] **Scenario 4.3: Multi-Stop Sweep Ordering**

@@ -4,13 +4,14 @@ defmodule Elevator.EdgeCasesTest do
 
   describe "Scenario 4.6: Same-Floor Interaction" do
     test "Idle at F3 receives Car request for F3 -> Opens door immediately" do
-      # Arrange: Idle at Floor 3, motor already stopped
-      state = %Core{current_floor: 3, heading: :idle, motor_status: :stopped}
+      # GIVEN: Idle at F3, doors closed, motor stopped
+      state = %Core{phase: :idle, current_floor: 3, heading: :idle, motor_status: :stopped, door_status: :closed}
 
-      # Act: Passenger inside presses Floor 3
+      # WHEN: Passenger inside presses Floor 3
       {new_state, actions} = Core.request_floor(state, :car, 3)
 
-      # Assert: Motor stays :stopped (no braking cycle), door opens, request fulfilled
+      # THEN: No braking cycle needed; door opens immediately; request fulfilled; phase :arriving
+      assert new_state.phase == :arriving
       assert new_state.motor_status == :stopped
       assert new_state.door_status == :opening
       refute {:car, 3} in new_state.requests
@@ -18,9 +19,14 @@ defmodule Elevator.EdgeCasesTest do
     end
 
     test "Idle at F3 receives Hall request for F3 -> Opens door immediately" do
-      state = %Core{current_floor: 3, heading: :idle, motor_status: :stopped}
+      # GIVEN: Idle at F3, doors closed, motor stopped
+      state = %Core{phase: :idle, current_floor: 3, heading: :idle, motor_status: :stopped, door_status: :closed}
+
+      # WHEN: Hall call for F3
       {new_state, actions} = Core.request_floor(state, :hall, 3)
 
+      # THEN: Same as car — no braking cycle, door opens, request fulfilled, phase :arriving
+      assert new_state.phase == :arriving
       assert new_state.motor_status == :stopped
       assert new_state.door_status == :opening
       refute {:hall, 3} in new_state.requests
