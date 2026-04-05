@@ -1,12 +1,12 @@
 /_build/
-/deps/
+/deps
 *.dump
 *.log
 /*.txt
 /tmp/
 /agents/
-/node_modules/
+/node_modules
 /playwright-report/
 /test-results/
 /.env
-/priv/plts/
+/priv/plts
