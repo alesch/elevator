@@ -13,14 +13,32 @@ defmodule Elevator.CoreTest do
     assert state.current_floor == 3
   end
 
-  test "requesting a floor above the current floor sets heading and adds request" do
-    state = %Core{current_floor: 1, heading: :idle}
+  describe "Scenario 1.1: Context-Aware Wake Up (Request from IDLE)" do
+    test "Scenario 1.1a: Request above — heading becomes :up and phase becomes :moving" do
+      # GIVEN: Idle at F1, doors closed
+      state = %Core{current_floor: 1, heading: :idle, phase: :idle, door_status: :closed}
 
-    {new_state, _actions} = Core.request_floor(state, :car, 4)
+      # WHEN: Request for F4
+      {new_state, actions} = Core.request_floor(state, :car, 4)
 
-    assert new_state.current_floor == 1
-    assert new_state.heading == :up
-    assert new_state.requests == [{:car, 4}]
+      assert new_state.heading == :up
+      assert new_state.phase == :moving
+      assert new_state.requests == [{:car, 4}]
+      assert {:move_motor, :up, :normal} in actions
+    end
+
+    test "Scenario 1.1b: Request below — heading becomes :down and phase becomes :moving" do
+      # GIVEN: Idle at F5, doors closed
+      state = %Core{current_floor: 5, heading: :idle, phase: :idle, door_status: :closed}
+
+      # WHEN: Request for F1
+      {new_state, actions} = Core.request_floor(state, :car, 1)
+
+      assert new_state.heading == :down
+      assert new_state.phase == :moving
+      assert new_state.requests == [{:car, 1}]
+      assert {:move_motor, :down, :normal} in actions
+    end
   end
 
   test "Scenario 1.2: Arrival at floor triggers braking (stopping)" do

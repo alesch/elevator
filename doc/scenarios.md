@@ -4,7 +4,7 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 1. The "Happy Path" (Standard Movement)
 
-- [ ] **Scenario 1.1: Context-Aware Wake Up (Request from IDLE)**
+- [x] **Scenario 1.1: Context-Aware Wake Up (Request from IDLE)**
   - **Given**: Elevator is `:idle`, doors are `:closed`.
   - **When**: A request is received.
   - **Then**: `requests` includes the new request, and heading is chosen based on position:
