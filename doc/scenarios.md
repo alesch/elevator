@@ -20,13 +20,15 @@ This document defines the testable reality of our simulation. We use these scena
     - Motor receives `:stop_now`.
     - Request stays in queue until motor physically stops.
 
-- [ ] **Scenario 1.3: Braking Complete (Door Opening)**
-  - **Given**: Elevator is at F3, `motor_status` is `:stopping`.
+- [x] **Scenario 1.3: Braking Complete (Door Opening)**
+  - **Given**: `phase: :arriving`, `motor_status: :stopping`, request for current floor in queue.
   - **When**: Receive `:motor_stopped` confirmation.
   - **Then**:
-    - `motor_status` becomes `:stopped` (Physical confirmation).
-    - `door_status` becomes `:opening` (Immediate intent).
+    - `phase` stays `:arriving` (transitions to `:docked` only after `:door_opened` — see 1.4).
+    - `motor_status` becomes `:stopped`.
+    - `door_status` becomes `:opening`.
     - Door receives `:open`.
+    - Request is fulfilled (removed from queue).
 
 - [ ] **Scenario 1.4: Door Open Confirmation**
   - **Given**: `door_status` is `:opening`.

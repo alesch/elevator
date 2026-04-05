@@ -63,23 +63,24 @@ defmodule Elevator.CoreTest do
     assert {:car, 3} in new_state.requests
   end
 
-  test "Scenario 1.3: Completing braking and opening doors" do
-    # Arrange
+  test "Scenario 1.3: Braking complete — motor stops and doors begin opening" do
+    # GIVEN: Arriving at F3 (braking in progress)
     state = %Core{
+      phase: :arriving,
       current_floor: 3,
       motor_status: :stopping,
       requests: [{:car, 3}],
       door_status: :closed
     }
 
-    # Act: Complete braking at T=0
+    # WHEN: Motor confirms stopped
     {new_state, actions} = Core.handle_event(state, :motor_stopped, 0)
 
-    # Assert
+    # THEN: Motor stopped, doors begin opening, request fulfilled
+    assert new_state.phase == :arriving
     assert new_state.motor_status == :stopped
     assert new_state.door_status == :opening
     assert {:open_door} in actions
-    # Now it is safe to clear the request
     assert new_state.requests == []
   end
 
