@@ -41,17 +41,25 @@ defmodule Elevator.CoreTest do
     end
   end
 
-  test "Scenario 1.2: Arrival at floor triggers braking (stopping)" do
-    # Arrange
-    state = %Core{current_floor: 3, heading: :up, requests: [{:car, 3}], motor_status: :running}
+  test "Scenario 1.2: Arrival at target floor triggers braking" do
+    # GIVEN: Moving up, request for F3
+    state = %Core{
+      phase: :moving,
+      current_floor: 2,
+      heading: :up,
+      requests: [{:car, 3}],
+      motor_status: :running
+    }
 
-    # Act
-    {new_state, actions} = Core.process_current_floor(state)
+    # WHEN: Sensor confirms arrival at F3
+    {new_state, actions} = Core.process_arrival(state, 3)
 
-    # Assert
+    # THEN: Motor begins braking; phase transitions to :arriving
+    assert new_state.phase == :arriving
     assert new_state.motor_status == :stopping
+    assert new_state.current_floor == 3
     assert {:stop_motor} in actions
-    # Request should NOT be removed yet (until confirmed stopped)
+    # Request stays in queue until motor actually stops
     assert {:car, 3} in new_state.requests
   end
 

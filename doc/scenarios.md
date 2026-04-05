@@ -11,13 +11,14 @@ This document defines the testable reality of our simulation. We use these scena
     - **Sub-case 1.1a (Request above)**: Elevator at F0, request for F3 → `heading: :up`.
     - **Sub-case 1.1b (Request below)**: Elevator at F5, request for F1 → `heading: :down`.
 
-- [ ] **Scenario 1.2: Arrival at Target Floor (Braking & Idle)**
-  - **Given**: Elevator is at F3, `heading` is `:up`, `requests` includes `{:car, 3}`.
-  - **When**: Sensor confirms arrival at F3.
+- [x] **Scenario 1.2: Arrival at Target Floor (Braking)**
+  - **Given**: `phase: :moving`, `heading: :up`, `requests` includes `{:car, 3}`, elevator approaching F3.
+  - **When**: Sensor confirms arrival at F3 (`process_arrival/2`).
   - **Then**:
-    - `heading` stays `:idle` (Stop intent).
+    - `phase` becomes `:arriving`.
     - `motor_status` becomes `:stopping` (Immediate intent).
     - Motor receives `:stop_now`.
+    - Request stays in queue until motor physically stops.
 
 - [ ] **Scenario 1.3: Braking Complete (Door Opening)**
   - **Given**: Elevator is at F3, `motor_status` is `:stopping`.
