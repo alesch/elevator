@@ -2,7 +2,7 @@ defmodule Elevator.StateMachineFeatureTest do
   use Cabbage.Feature, file: "state_machine.feature"
   alias Elevator.Core
   import Elevator.CommonSteps
-  import_feature Elevator.CommonSteps
+  import_feature(Elevator.CommonSteps)
 
   setup do
     {:ok, %{state: %Core{}, actions: []}}
@@ -53,10 +53,11 @@ defmodule Elevator.StateMachineFeatureTest do
   # --- Then ---
 
   defthen ~r/^the door timeout timer should be set$/, _data, state do
-    assert Enum.any?(state.actions, fn 
-      {:set_timer, :door_timeout, _} -> true 
-      _ -> false 
-    end)
+    assert Enum.any?(state.actions, fn
+             {:set_timer, :door_timeout, _} -> true
+             _ -> false
+           end)
+
     {:ok, state}
   end
 

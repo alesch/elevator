@@ -28,7 +28,9 @@ defmodule Elevator.DoorTest do
     assert remaining > 0 and remaining <= 1000
   end
 
-  test "[S-SAFE-OBSTRUCT]: obstructing the door during closing instantly locks it out", %{door: pid} do
+  test "[S-SAFE-OBSTRUCT]: obstructing the door during closing instantly locks it out", %{
+    door: pid
+  } do
     Door.open(pid)
     # Wait for casts to process
     _ = Door.get_state(pid)

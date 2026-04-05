@@ -126,7 +126,6 @@ defmodule Elevator.Hardware.Motor do
     {:noreply, state}
   end
 
-
   @impl true
   @spec handle_call(:get_state, GenServer.from(), map()) :: {:reply, map(), map()}
   def handle_call(:get_state, _from, state) do

@@ -200,7 +200,13 @@ defmodule Elevator.CoreTest do
 
     test "[S-SAFE-SERVICE-DELAY]: Service delay — door stays open 5s before movement begins" do
       # GIVEN: Docked at F1, doors open, request for F5 arrives
-      state = %Core{phase: :docked, current_floor: 1, door_status: :open, heading: :idle, last_activity_at: 100}
+      state = %Core{
+        phase: :docked,
+        current_floor: 1,
+        door_status: :open,
+        heading: :idle,
+        last_activity_at: 100
+      }
 
       # WHEN: Request for F5 is added
       {new_state, _actions} = Core.request_floor(state, :car, 5)
@@ -277,7 +283,13 @@ defmodule Elevator.CoreTest do
 
     test "[S-MANUAL-CLOSE]: Manual Close Button Override" do
       # GIVEN: Docked, doors open, heading :up (pending work)
-      state = %Core{phase: :docked, current_floor: 1, door_status: :open, heading: :up, last_activity_at: 100}
+      state = %Core{
+        phase: :docked,
+        current_floor: 1,
+        door_status: :open,
+        heading: :up,
+        last_activity_at: 100
+      }
 
       # WHEN: Passenger presses close button
       {new_state, actions} = Core.handle_button_press(state, :door_close, 150)
@@ -287,6 +299,7 @@ defmodule Elevator.CoreTest do
       assert {:close_door} in actions
       assert {:cancel_timer, :door_timeout} in actions
     end
+
     test "[S-REHOME-STATUS]: Rehoming uses :crawling status" do
       # GIVEN: Idle
       state = %Core{phase: :idle, current_floor: 1}

@@ -12,6 +12,7 @@ defmodule Elevator.AlgorithmTest do
         requests: [{:hall, 5}],
         motor_status: :running
       }
+
       {state, _} = Core.request_floor(state, :hall, 3)
 
       # WHEN: Sensor confirms arrival at F3

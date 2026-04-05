@@ -37,7 +37,7 @@ The motor process is managed via a GenServer and supports the following commands
 2. **Golden Rule**: If a move/crawl command is received while the motor is already in motion, any existing pulse/brake timers are cancelled, and the new motion begins immediately.
 3. **Directional Blindness**: The motor does not know which floor it is on; it only knows its current `direction` (`:up` or `:down`).
 
-## How the pulse work with the Sensor
+## How the pulse interacts with the Sensor
 
 The **Pulse Timer** acts as our digital "physics engine," simulating the travel time between levels in our digital twin.
 

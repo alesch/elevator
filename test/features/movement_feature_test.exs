@@ -2,7 +2,7 @@ defmodule Elevator.MovementFeatureTest do
   use Cabbage.Feature, file: "movement.feature"
   alias Elevator.Core
   import Elevator.CommonSteps
-  import_feature Elevator.CommonSteps
+  import_feature(Elevator.CommonSteps)
 
   setup do
     {:ok, %{state: %Core{}, actions: []}}
@@ -13,12 +13,14 @@ defmodule Elevator.MovementFeatureTest do
   defgiven ~r/^the elevator is approaching floor (?<floor>\d+)$/, %{floor: floor}, state do
     target = String.to_integer(floor)
     # Position it just before the floor to trigger arrival logic smoothly
-    new_state = %{state.state | 
-      current_floor: target - 1, 
-      phase: :moving, 
-      heading: :up,
-      requests: [{:car, target}]
+    new_state = %{
+      state.state
+      | current_floor: target - 1,
+        phase: :moving,
+        heading: :up,
+        requests: [{:car, target}]
     }
+
     {:ok, %{state | state: new_state}}
   end
 
@@ -44,13 +46,17 @@ defmodule Elevator.MovementFeatureTest do
 
   # --- Then ---
 
-  defthen ~r/^(?:the )?motor should (?:receive a )?"(?<command>:[^"]+)"(?: command)?$/, %{command: cmd}, state do
+  defthen ~r/^(?:the )?motor should (?:receive a )?"(?<command>:[^"]+)"(?: command)?$/,
+          %{command: cmd},
+          state do
     expected = parse_atom(cmd)
+
     case expected do
       :stop_now -> assert {:set_motor_speed, :stop} in state.actions
       :normal -> assert {:set_motor_speed, :normal} in state.actions
       _ -> assert Enum.any?(state.actions, fn {a, v} -> a == expected or v == expected end)
     end
+
     {:ok, state}
   end
 
@@ -65,20 +71,25 @@ defmodule Elevator.MovementFeatureTest do
     {:ok, %{state | state: s2}}
   end
 
-  defthen ~r/^the "(?<field>[^"]+)" queue should include the new request$/, %{field: field}, state do
+  defthen ~r/^the "(?<field>[^"]+)" queue should include the new request$/,
+          %{field: field},
+          state do
     # For the Multi-Stop Sweep Ordering scenario (Floor 3 was the new request)
     assert Enum.any?(Map.get(state.state, String.to_atom(field)), fn {_, f} -> f == 3 end)
     {:ok, state}
   end
 
-  defthen ~r/^the request should remain in the queue until the motor physically stops$/, _vars, state do
+  defthen ~r/^the request should remain in the queue until the motor physically stops$/,
+          _vars,
+          state do
     # In the current Core, requests are consumed during process_arrival.
     # We verify the current behavior of the core.
     {:ok, state}
   end
 
-  defthen ~r/^if a new request arrives for floor (?<floor>\d+), "(?<field>[^"]+)" should become "(?<value>[^"]+)"$/, 
-           %{floor: floor, field: field, value: value}, state do
+  defthen ~r/^if a new request arrives for floor (?<floor>\d+), "(?<field>[^"]+)" should become "(?<value>[^"]+)"$/,
+          %{floor: floor, field: field, value: value},
+          state do
     # Simulate a new request arriving and check the resulting state
     {new_state, _} = Core.request_floor(state.state, :car, String.to_integer(floor))
     assert Map.get(new_state, String.to_atom(field)) == parse_atom(value)
@@ -89,41 +100,50 @@ defmodule Elevator.MovementFeatureTest do
 
   defgiven ~r/^car requests exist for floors (?<list>.+)$/, %{list: list}, state do
     # "2, 4, and 6"
-    floors = list 
-      |> String.replace("and", "") 
-      |> String.split(",") 
-      |> Enum.map(&String.trim/1) 
+    floors =
+      list
+      |> String.replace("and", "")
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
       |> Enum.reject(&(&1 == ""))
       |> Enum.map(&String.to_integer/1)
 
-    new_state = Enum.reduce(floors, state.state, fn f, s -> 
-      {ns, _} = Core.request_floor(s, :car, f)
-      ns
-    end)
+    new_state =
+      Enum.reduce(floors, state.state, fn f, s ->
+        {ns, _} = Core.request_floor(s, :car, f)
+        ns
+      end)
+
     {:ok, %{state | state: new_state}}
   end
 
   defwhen ~r/^the elevator moves upward through each floor$/, _vars, state do
     # We'll simulate arrival at each floor in sequence and capture stop events
     floors = [1, 2, 3, 4, 5, 6]
-    {final_state, all_actions} = Enum.reduce(floors, {state.state, []}, fn f, {s, acc} ->
-      {ns, actions} = Core.process_arrival(s, f)
-      # If we stop, we need to simulate the docking/leaving to keep moving
-      {ns2, actions2} = if ns.phase == :arriving do
-        {s_stopped, _} = Core.handle_event(ns, :motor_stopped, 0)
-        {s_opened, _} = Core.handle_event(s_stopped, :door_opened, 0)
-        {s_closed, a_close} = Core.handle_event(s_opened, :door_timeout, 0)
-        {s_closed, a_close}
-      else
-        {ns, []}
-      end
-      {ns2, acc ++ actions ++ actions2}
-    end)
+
+    {final_state, all_actions} =
+      Enum.reduce(floors, {state.state, []}, fn f, {s, acc} ->
+        {ns, actions} = Core.process_arrival(s, f)
+        # If we stop, we need to simulate the docking/leaving to keep moving
+        {ns2, actions2} =
+          if ns.phase == :arriving do
+            {s_stopped, _} = Core.handle_event(ns, :motor_stopped, 0)
+            {s_opened, _} = Core.handle_event(s_stopped, :door_opened, 0)
+            {s_closed, a_close} = Core.handle_event(s_opened, :door_timeout, 0)
+            {s_closed, a_close}
+          else
+            {ns, []}
+          end
+
+        {ns2, acc ++ actions ++ actions2}
+      end)
+
     {:ok, %{state | state: final_state, actions: all_actions}}
   end
 
-  defthen ~r/^stops should be made in ascending order: floor (?<f1>\d+), then (?<f2>\d+), then (?<f3>\d+)$/, 
-           %{f1: f1, f2: f2, f3: f3}, state do
+  defthen ~r/^stops should be made in ascending order: floor (?<f1>\d+), then (?<f2>\d+), then (?<f3>\d+)$/,
+          %{f1: f1, f2: f2, f3: f3},
+          state do
     # Check that we received :stop actions at the correct floors in the correct order
     # Our manual simulation above collected all actions.
     # We look for stop commands.

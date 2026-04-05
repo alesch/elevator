@@ -151,10 +151,11 @@ defmodule Elevator.ControllerTest do
       assert_receive {:"$gen_cast", :open}
     end
 
-    test "[S-MOVE-BRAKING]/[S-MOVE-OPENING]: Arrival sequence triggers immediate intent signals", %{
-      vault: vault,
-      sensor: sensor
-    } do
+    test "[S-MOVE-BRAKING]/[S-MOVE-OPENING]: Arrival sequence triggers immediate intent signals",
+         %{
+           vault: vault,
+           sensor: sensor
+         } do
       {:ok, pid} =
         Controller.start_link(
           motor: self(),
@@ -266,7 +267,9 @@ defmodule Elevator.ControllerTest do
       assert log2 == ""
     end
 
-    test "[S-SYS-REDUNDANT]: Actor Redundancy triggers LOUD warnings (Hardware Layer)", %{vault: vault} do
+    test "[S-SYS-REDUNDANT]: Actor Redundancy triggers LOUD warnings (Hardware Layer)", %{
+      vault: vault
+    } do
       import ExUnit.CaptureLog
 
       # Prove hardware actors we control have warnings
@@ -319,7 +322,9 @@ defmodule Elevator.ControllerTest do
       # 3. Timeout fires → door begins closing (phase: :leaving)
       send(pid, {:timeout, :door_timeout})
       assert_receive {:"$gen_cast", :close}
-      assert_receive {:elevator_state, %{phase: :leaving, door_status: :closing, motor_status: :stopped}}
+
+      assert_receive {:elevator_state,
+                      %{phase: :leaving, door_status: :closing, motor_status: :stopped}}
 
       # ASSERT: Motor still NOT moving during closing
       refute_receive {:"$gen_cast", {:move, :up}}, 100
@@ -327,7 +332,9 @@ defmodule Elevator.ControllerTest do
       # 4. Door confirms closed → phase: :moving, motor starts
       send(pid, :door_closed)
       assert_receive {:"$gen_cast", {:move, :up}}
-      assert_receive {:elevator_state, %{phase: :moving, motor_status: :running, door_status: :closed}}
+
+      assert_receive {:elevator_state,
+                      %{phase: :moving, motor_status: :running, door_status: :closed}}
     end
 
     test "[S-SAFE-OBSTRUCT]: Door obstruction during closing triggers reversal", %{
