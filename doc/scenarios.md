@@ -146,12 +146,12 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Same-floor request triggers heading update.
   - **Then**: `heading` becomes `:idle` — never goes higher than the top floor.
 
-- [ ] **Scenario 4.9: Request Fulfillment (Internal Core Sync)**
-  - **Given**: Elevator at Floor 1, having arrived from Floor 3, with `requests` containing `{:car, 3}` and `{:car, 0}`.
-  - **When**: A new request for Floor 0 is received while stopped.
+- [x] **Scenario 4.9: Request Fulfillment (Internal Core Sync)**
+  - **Given**: `phase: :arriving` at F3, requests `[{:car, 3}, {:car, 0}]`.
+  - **When**: `motor_stopped` received (fulfills F3), then a new request for F0 triggers heading recalculation.
   - **Then**:
-    - The `requests` list MUST be cleared of Floor 3 (fulfillment).
-    - The `heading` MUST become `:down` to reach Floor 0.
+    - `{:car, 3}` is cleared from the queue.
+    - `heading` becomes `:down` to reach F0.
 
 ---
 

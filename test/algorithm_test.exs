@@ -156,26 +156,26 @@ defmodule Elevator.AlgorithmTest do
 
   describe "Scenario 4.9: Request Fulfillment (Internal State Sync)" do
     test "clears requests during arrival to ensure correct heading choice" do
-      # Arrange: Elevator at F1, heading up, requests contain {:car, 3} and {:car, 0}
+      # GIVEN: Arriving at F3 (from a move up), two requests in queue
       state = %Core{
-        current_floor: 1,
+        phase: :arriving,
+        current_floor: 3,
         heading: :up,
-        motor_status: :stopped,
+        motor_status: :stopping,
         requests: [{:car, 3}, {:car, 0}]
       }
 
-      # Act: Simulate arrival and STOP at Floor 3
-      state = %{state | current_floor: 3, motor_status: :stopping}
+      # WHEN: Motor confirms stopped (fulfills F3 request)
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
 
-      # Assert: F3 is cleared, F0 remains
+      # THEN: F3 cleared, F0 remains
       refute {:car, 3} in state.requests
       assert {:car, 0} in state.requests
 
-      # Act: Passenger presses Floor 0 again (already queued — triggers update_heading)
+      # WHEN: Request for F0 triggers heading update (already queued — update_heading recalculates)
       {state, _} = Core.request_floor(state, :car, 0)
 
-      # Assert: Heading is now :down (the only remaining work is below)
+      # THEN: Heading is :down (only remaining work is below)
       assert state.heading == :down
     end
   end
