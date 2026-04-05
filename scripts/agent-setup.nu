@@ -11,7 +11,7 @@ def main [agent_name: string] {
     let reset = (ansi reset)
 
     let agent_dir = $"($agents_root)/($agent_name)"
-    let branch = $"agent/($agent_name)"
+    let branch = $"agent-($agent_name)"
 
     print $"\n($cyan)--- 🤖 Setting up Sandbox for Agent: ($agent_name) ---($reset)"
 
