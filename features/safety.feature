@@ -5,8 +5,7 @@ Feature: Elevator Safety
 
   @S-SAFE-GOLDEN @R-SAFE-GOLDEN
   Scenario: Hardware Safety Interlock (The Golden Rule)
-    Given the elevator is at floor 0 and is ":idle"
-    And the doors are ":open"
+    Given the elevator is at floor 0 and is ":docked"
     When a request for floor 3 is received
     Then the motor MUST stay ":stopped" while the doors are ":opening", ":open", or ":closing"
     And the motor is ONLY commanded to ":move" after ":motor_stopped" and ":door_closed" signals are confirmed
@@ -34,9 +33,9 @@ Feature: Elevator Safety
     And "phase" should become "<phase>"
 
     Examples:
-      | sensor   | action           | door_status | phase     |
-      | :clear   | {:close_door}    | :closing    | :leaving  |
-      | :blocked | (No action)      | :open       | :docked   |
+      | sensor   | action        | door_status | phase    |
+      | :clear   | {:close_door} | :closing    | :leaving |
+      | :blocked | (No action)   | :open       | :docked  |
 
   @S-SAFE-SERVICE-DELAY @R-SAFE-ARRIVAL
   Scenario: Service Delay (Auto-Close Integration)
