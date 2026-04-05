@@ -38,9 +38,12 @@ This document defines the testable reality of our simulation. We use these scena
     - `door_status` becomes `:open`.
     - Auto-close timer is armed (`last_activity_at` updated, `{:set_timer, :door_timeout, 5000}`).
 
-- [ ] **Scenario 1.6: Sequence Verification (Intent & Confirmation)**
-  - **When**: Triggered transition `door_status` -> `:closed`.
-  - **Then**: `door_status` first becomes `:closing` (Intent), then `:closed` (Physical).
+- [x] **Scenario 1.6: Sequence Verification (Intent & Confirmation)**
+  - **Given**: `phase: :docked`, `door_status: :open`, `door_sensor: :clear`.
+  - **When**: Timeout fires, then hardware confirms close.
+  - **Then**:
+    - Step 1 (Intent): `door_status` becomes `:closing`, `{:close_door}` action emitted.
+    - Step 2 (Confirmation): `door_status` becomes `:closed` on `:door_closed` event.
 
 - [ ] **Scenario 1.7: Actor Redundancy (Loud Warnings)**
   - **Given**: System actor (Motor/Door) is already in state X.

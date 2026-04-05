@@ -98,6 +98,25 @@ defmodule Elevator.CoreTest do
     assert {:set_timer, :door_timeout, 5000} in actions
   end
 
+  test "Scenario 1.6: Door closing is a two-step sequence — intent then confirmation" do
+    # GIVEN: Docked, doors open, sensor clear — timeout fires
+    state = %Core{phase: :docked, door_status: :open, door_sensor: :clear}
+
+    # STEP 1 — WHEN: Timeout fires
+    {closing_state, actions} = Core.handle_event(state, :door_timeout, 5000)
+
+    # THEN: Intent set to :closing, close command dispatched
+    assert closing_state.door_status == :closing
+    assert closing_state.phase == :leaving
+    assert {:close_door} in actions
+
+    # STEP 2 — WHEN: Hardware confirms door is physically closed
+    {closed_state, _actions} = Core.handle_event(closing_state, :door_closed, 6000)
+
+    # THEN: Confirmed :closed
+    assert closed_state.door_status == :closed
+  end
+
   test "Scenario 3.2: Reset Auto-Close Timer" do
     # Arrange: Doors are open, last activity was at T=100
     state = %Core{door_status: :open, last_activity_at: 100}
