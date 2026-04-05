@@ -109,17 +109,17 @@ This document defines the testable reality of our simulation. We use these scena
 
 ## 4. Directional Bias & Priority (The LOOK Algorithm)
 
-- [ ] **Scenario 4.1: Pick-up on the Way (Sweep)**
-  - **Given**: Moving `:up` from 0 to 5.
-  - **When**: Receive `{:hall, 3}`.
-  - **Then**: The elevator must stop at 3 because it is in the current heading.
+- [x] **Scenario 4.1: Pick-up on the Way (Sweep)**
+  - **Given**: `phase: :moving`, heading `:up`, request for F5 in queue.
+  - **When**: Hall request for F3 added, sensor confirms arrival at F3.
+  - **Then**: `phase` becomes `:arriving`, `motor_status` becomes `:stopping`.
 
-- [ ] **Scenario 4.2: Reverse or Retire**
-  - **Given**: Moving `:up` from 0 to 3, with no more requests above.
-  - **When**: All requests at 3 are satisfied.
+- [x] **Scenario 4.2: Reverse or Retire**
+  - **Given**: `phase: :arriving` at F3, only request is `{:car, 3}`.
+  - **When**: `motor_stopped` received (request fulfilled).
   - **Then**:
-    - If requests exist below -> Change `heading` to `:down`.
-    - If NO requests exist anywhere -> Change `heading` to `:idle`.
+    - `heading` stays `:up` (updated only when next direction is chosen).
+    - If a new request arrives below → `heading` becomes `:down`.
 
 - [ ] **Scenario 4.4: Honor All Requests**
   - **Given**: Moving `:up`, a `{:car, floor}` or `{:hall, floor}` request exists on the path.

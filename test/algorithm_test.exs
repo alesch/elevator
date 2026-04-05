@@ -4,35 +4,44 @@ defmodule Elevator.AlgorithmTest do
 
   describe "LOOK Algorithm (Scenarios 4.1 & 4.2)" do
     test "Scenario 4.1: Pick-up on the way (Hall Request)" do
-      # Arrange: Moving UP to 5, someone calls from 3
-      state = %Core{current_floor: 1, heading: :up, requests: [{:hall, 5}]}
+      # GIVEN: Moving UP to F5, hall request added for F3
+      state = %Core{
+        phase: :moving,
+        current_floor: 1,
+        heading: :up,
+        requests: [{:hall, 5}],
+        motor_status: :running
+      }
       {state, _} = Core.request_floor(state, :hall, 3)
 
-      # Act: Move to 3
-      state = %{state | current_floor: 3}
-      {new_state, _} = Core.process_current_floor(state)
+      # WHEN: Sensor confirms arrival at F3
+      {new_state, actions} = Core.process_arrival(state, 3)
 
-      # Assert: It should stop at 3
+      # THEN: Elevator must stop at F3 (it is in the current heading)
+      assert new_state.phase == :arriving
       assert new_state.motor_status == :stopping
       assert {:hall, 3} in new_state.requests
+      assert {:stop_motor} in actions
     end
 
     test "Scenario 4.2 (Retire): Heading becomes :idle when no requests remain" do
-      # Arrange: At 3, just finished a request, no more work
+      # GIVEN: Arriving at F3, about to confirm stop — no more work above
       state = %Core{
+        phase: :arriving,
         current_floor: 3,
         heading: :up,
         requests: [{:car, 3}],
         motor_status: :stopping
       }
 
-      # Act: Confirm stopped at T=0 (which removes the request)
+      # WHEN: Motor confirms stopped (clears the request, opens door)
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
 
-      # Assert: Heading is still :up until we explicitly update it
+      # THEN: Heading is still :up — updated only when next direction is chosen
       assert state.heading == :up
+      refute {:car, 3} in state.requests
 
-      # Now update heading (this would happen after door cycle in the real app)
+      # WHEN: New request arrives below — heading updates to :down
       state_with_down = %{state | requests: [{:hall, 1}]}
       {new_state, _} = Core.request_floor(state_with_down, :hall, 1)
       assert new_state.heading == :down
