@@ -73,7 +73,7 @@ The CSS transition `transition: bottom 2s linear` on `.car-container` handles th
 | Change type | How to reload |
 | :--- | :--- |
 | Template (`.ex` LiveView file) | Phoenix LiveReloader hot-reloads automatically |
-| CSS (`app.css`) | Requires **hard refresh**: `Ctrl+Shift+R` (or `Cmd+Shift+R`) |
+| CSS (`app.css`) | Requires refresh: `Ctrl+R` |
 | Elixir helpers/components | Phoenix LiveReloader hot-reloads automatically |
 
 Always test in **Incognito/Private Mode** to avoid cookie conflicts from prior sessions on different ports.
