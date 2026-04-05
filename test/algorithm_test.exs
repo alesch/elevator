@@ -48,6 +48,46 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
+  describe "Scenario 4.4: Honor All Requests" do
+    test "Car request on the path — elevator stops" do
+      # GIVEN: Moving :up, car request for F3 on the path
+      state = %Core{
+        phase: :moving,
+        current_floor: 1,
+        heading: :up,
+        requests: [{:car, 3}],
+        motor_status: :running
+      }
+
+      # WHEN: Sensor confirms arrival at F3
+      {new_state, actions} = Core.process_arrival(state, 3)
+
+      # THEN: Elevator stops at F3
+      assert new_state.phase == :arriving
+      assert new_state.motor_status == :stopping
+      assert {:stop_motor} in actions
+    end
+
+    test "Hall request on the path — elevator stops" do
+      # GIVEN: Moving :up, hall request for F4 on the path
+      state = %Core{
+        phase: :moving,
+        current_floor: 2,
+        heading: :up,
+        requests: [{:hall, 4}],
+        motor_status: :running
+      }
+
+      # WHEN: Sensor confirms arrival at F4
+      {new_state, actions} = Core.process_arrival(state, 4)
+
+      # THEN: Elevator stops at F4
+      assert new_state.phase == :arriving
+      assert new_state.motor_status == :stopping
+      assert {:stop_motor} in actions
+    end
+  end
+
   describe "Wake Up Logic (Scenario 4.5)" do
     test "Scenario 4.5: Context-Aware Wake Up (Idle at F5 heads DOWN for F1)" do
       # Arrange: Elevator is idle at Floor 5

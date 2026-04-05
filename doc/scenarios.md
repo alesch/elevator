@@ -121,10 +121,10 @@ This document defines the testable reality of our simulation. We use these scena
     - `heading` stays `:up` (updated only when next direction is chosen).
     - If a new request arrives below → `heading` becomes `:down`.
 
-- [ ] **Scenario 4.4: Honor All Requests**
-  - **Given**: Moving `:up`, a `{:car, floor}` or `{:hall, floor}` request exists on the path.
-  - **When**: Elevator arrives at that floor.
-  - **Then**: **STOP** at that floor — all requests are honored.
+- [x] **Scenario 4.4: Honor All Requests**
+  - **Given**: `phase: :moving`, a `{:car, floor}` or `{:hall, floor}` request exists on the path.
+  - **When**: `process_arrival` at that floor.
+  - **Then**: `phase` becomes `:arriving`, `motor_status` becomes `:stopping` — all request types honored.
 
 - [ ] **Scenario 4.6: Same-Floor Interaction**
   - **Given**: Elevator at F3, `motor_status` is `:stopped`, state is `:idle`.
