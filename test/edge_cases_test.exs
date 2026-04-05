@@ -34,27 +34,31 @@ defmodule Elevator.EdgeCasesTest do
     end
   end
 
-  describe "Scenario 4.8: Boundary Floors (F1/F5)" do
+  describe "Scenario 4.8: Boundary Reversals" do
     test "At F5 heading UP with no requests above -> Retire to :idle" do
-      # Even if something set heading to :up (which shouldn't happen), update_heading must fix it
-      state = %Core{current_floor: 5, heading: :up, requests: []}
+      # GIVEN: Idle at F5 (top), doors closed
+      state = %Core{phase: :idle, current_floor: 5, heading: :up, requests: [], door_status: :closed}
 
-      # Act: Force a heading update
+      # WHEN: Same-floor request forces heading update
       {new_state, _} = Core.request_floor(state, :car, 5)
 
-      # Assert: Heading becomes :idle because there is nowhere higher to go
+      # THEN: Heading becomes :idle — nowhere higher to go
       assert new_state.heading == :idle
     end
 
     test "At F1 heading DOWN with no requests below -> Retire to :idle" do
-      state = %Core{current_floor: 1, heading: :down, requests: []}
+      # GIVEN: Idle at F1 (bottom), doors closed
+      state = %Core{phase: :idle, current_floor: 1, heading: :down, requests: [], door_status: :closed}
+
       {new_state, _} = Core.request_floor(state, :car, 1)
 
       assert new_state.heading == :idle
     end
 
     test "Extreme Reversal: At F5, request for F1 -> Heading becomes :down" do
-      state = %Core{current_floor: 5, heading: :idle}
+      # GIVEN: Idle at F5, doors closed
+      state = %Core{phase: :idle, current_floor: 5, heading: :idle, door_status: :closed}
+
       {new_state, _} = Core.request_floor(state, :hall, 1)
 
       assert new_state.heading == :down

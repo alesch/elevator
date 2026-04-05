@@ -141,10 +141,10 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: Elevator moves upward through each floor (`process_arrival`).
   - **Then**: Stops are made in ascending order — F2 first, then F4, then F6. Each arrival sets `phase: :arriving`, `motor_status: :stopping`. No floor is skipped.
 
-- [ ] **Scenario 4.8: Boundary Reversals**
-  - **Given**: Elevator at F5 (Top) heading UP.
-  - **When**: Queued requests above are empty.
-  - **Then**: `heading` MUST transition to `:idle` or `:down` (never higher).
+- [x] **Scenario 4.8: Boundary Reversals**
+  - **Given**: `phase: :idle`, elevator at F5 (top), heading `:up`, no requests above.
+  - **When**: Same-floor request triggers heading update.
+  - **Then**: `heading` becomes `:idle` — never goes higher than the top floor.
 
 - [ ] **Scenario 4.9: Request Fulfillment (Internal Core Sync)**
   - **Given**: Elevator at Floor 1, having arrived from Floor 3, with `requests` containing `{:car, 3}` and `{:car, 0}`.
