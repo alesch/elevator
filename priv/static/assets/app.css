@@ -222,8 +222,8 @@ body {
     border: 2px solid var(--glass-border);
     background: rgba(255, 255, 255, 0.05);
     color: #666;
-    font-family: "JetBrains Mono", monospace;
-    font-size: 1rem;
+    font-family: "Inter", sans-serif;
+    font-size: 1.1rem;
     font-weight: 800;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
