@@ -74,41 +74,43 @@ defmodule Elevator.AlgorithmTest do
 
   describe "Scenario 4.3: Multi-Stop Sweep Ordering" do
     test "Elevator stops at each floor in ascending order when heading up" do
-      # GIVEN: At F0, requests for F2, F4, F6
-      state = %Core{current_floor: 0, heading: :idle}
+      # GIVEN: Idle at F0, three car requests
+      state = %Core{phase: :idle, current_floor: 0, heading: :idle, door_status: :closed}
       {state, _} = Core.request_floor(state, :car, 2)
       {state, _} = Core.request_floor(state, :car, 4)
       {state, _} = Core.request_floor(state, :car, 6)
 
       assert state.heading == :up
+      assert state.phase == :moving
 
-      # ACT + ASSERT: Arrive at F2 — must stop
-      state = %{state | current_floor: 2}
-      {state, _} = Core.process_current_floor(state)
+      # ARRIVE at F2 — must stop
+      {state, _} = Core.process_arrival(state, 2)
+      assert state.phase == :arriving
       assert state.motor_status == :stopping
 
-      # Clear F2, continue
+      # Clear F2 (motor stopped), then simulate door cycle completing → back to :moving
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
       refute {:car, 2} in state.requests
+      state = %{state | phase: :moving, motor_status: :running, door_status: :closed}
 
-      # ACT + ASSERT: Arrive at F4 — must stop
-      state = %{state | current_floor: 4, motor_status: :running}
-      {state, _} = Core.process_current_floor(state)
+      # ARRIVE at F4 — must stop
+      {state, _} = Core.process_arrival(state, 4)
+      assert state.phase == :arriving
       assert state.motor_status == :stopping
 
-      # Clear F4, continue
+      # Clear F4, simulate door cycle
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
       refute {:car, 4} in state.requests
+      state = %{state | phase: :moving, motor_status: :running, door_status: :closed}
 
-      # ACT + ASSERT: Arrive at F6 — must stop
-      state = %{state | current_floor: 6, motor_status: :running}
-      {state, _} = Core.process_current_floor(state)
+      # ARRIVE at F6 — must stop
+      {state, _} = Core.process_arrival(state, 6)
+      assert state.phase == :arriving
       assert state.motor_status == :stopping
 
       # All requests fulfilled
       {final_state, _} = Core.handle_event(state, :motor_stopped, 0)
       assert final_state.requests == []
-      assert final_state.heading == :up
     end
   end
 

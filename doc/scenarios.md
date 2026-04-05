@@ -135,10 +135,10 @@ This document defines the testable reality of our simulation. We use these scena
     - `door_status` becomes `:opening` and door receives `:open` command.
   - **Note**: The `:stopping` protocol only applies when the motor is actually `:running`. Sending a redundant stop to hardware that is already stopped causes a deadlock — no `:motor_stopped` confirmation is ever returned.
 
-- [ ] **Scenario 4.3: Multi-Stop Sweep Ordering**
-  - **Given**: Elevator at F0 heading `:up`, requests for F2, F4, and F6.
-  - **When**: Elevator moves upward through each floor.
-  - **Then**: Stops are made in ascending order — F2 first, then F4, then F6. No floor is skipped or served out of order.
+- [x] **Scenario 4.3: Multi-Stop Sweep Ordering**
+  - **Given**: `phase: :idle` at F0, car requests for F2, F4, and F6.
+  - **When**: Elevator moves upward through each floor (`process_arrival`).
+  - **Then**: Stops are made in ascending order — F2 first, then F4, then F6. Each arrival sets `phase: :arriving`, `motor_status: :stopping`. No floor is skipped.
 
 - [ ] **Scenario 4.8: Boundary Reversals**
   - **Given**: Elevator at F5 (Top) heading UP.
