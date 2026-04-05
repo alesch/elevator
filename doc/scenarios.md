@@ -45,12 +45,12 @@ This document defines the testable reality of our simulation. We use these scena
     - Step 1 (Intent): `door_status` becomes `:closing`, `{:close_door}` action emitted.
     - Step 2 (Confirmation): `door_status` becomes `:closed` on `:door_closed` event.
 
-- [ ] **Scenario 1.7: Actor Redundancy (Loud Warnings)**
+- [x] **Scenario 1.7: Actor Redundancy (Loud Warnings)**
   - **Given**: System actor (Motor/Door) is already in state X.
   - **When**: Receive redundant internal command to transition to state X.
   - **Then**: Log a `Logger.warning` (Audit Trail) and do NOT re-trigger hardware timers.
 
-- [ ] **Scenario 1.8: Button Spamming (Silent Idempotency)**
+- [x] **Scenario 1.8: Button Spamming (Silent Idempotency)**
   - **Given**: The `requests` list already contains a request for Floor X.
   - **When**: Any additional external request for Floor X is received.
   - **Then**: The system ignores it SILENTLY. No warnings are logged.
@@ -60,12 +60,12 @@ This document defines the testable reality of our simulation. We use these scena
   - **When**: The `Controller` processes the change.
   - **Then**: The new state is broadcasted over PubSub to the `"elevator:status"` topic.
 
-- [ ] **Scenario 1.10: Return to Base (Inactivity Timeout)**
+- [x] **Scenario 1.10: Return to Base (Inactivity Timeout)**
   - **Given**: Elevator is `phase: :idle` with no pending requests.
   - **When**: 5 minutes (300s) pass without any activity.
   - **Then**: A `{:car, 0}` request is automatically added, sending the elevator back to Floor 0 (ground floor).
 
-- [ ] **Scenario 1.11: Concurrent Requests (Race Condition Safety)**
+- [x] **Scenario 1.11: Concurrent Requests (Race Condition Safety)**
   - **Given**: Elevator is idle.
   - **When**: Multiple hall requests for different floors arrive simultaneously (e.g. from parallel processes).
   - **Then**: All requests are recorded exactly once in the `requests` queue — no drops, no duplicates.
