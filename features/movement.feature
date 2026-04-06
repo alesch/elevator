@@ -6,14 +6,14 @@ Feature: Elevator Movement
   @S-MOVE-WAKEUP @R-MOVE-WAKEUP @R-CORE-STATE
   Scenario Outline: Wake up from idle state
     Given the elevator is idle at floor <current>
-    When a request is received for floor <target>
+    When a request for floor <target> is received
     Then the elevator should start moving <heading>
-    And the floor <target> should be in the pending requests
+    And floor <target> should be in the pending requests
 
     Examples:
       | current | target | heading |
-      | ground  | 3      | up      |
-      | 5       | 1      | down    |
+      | ground  |      3 | up      |
+      |       5 |      1 | down    |
 
   @S-MOVE-BRAKING @R-SAFE-ARRIVAL
   Scenario: Arrival at target floor
@@ -34,16 +34,17 @@ Feature: Elevator Movement
 
   @S-MOVE-DOCKED @R-CORE-STATE @R-SAFE-TIMEOUT
   Scenario: Doors are fully open
-    Given the elevator doors are opening
+    Given the elevator is idle at floor 3
+    And the doors are opening
     When the door confirms it has fully opened
-    Then the elevator should be docked at the floor
-    And the doors should be set to close automatically after 5 seconds
+    Then the elevator should be docked at floor 3
+    And the doors should be set to close in 5 seconds
 
   @S-MOVE-BASE @R-MOVE-BASE
   Scenario: Return to base after inactivity
     Given the elevator is idle at floor 3
     When 5 minutes pass without any activity
-    Then a request for floor ground should be automatically added
+    Then a request for floor ground should be added
     And the elevator should return to floor ground
 
   @S-MOVE-SWEEP-CAR @R-MOVE-SWEEP
@@ -81,6 +82,12 @@ Feature: Elevator Movement
   Scenario: Multiple hall requests are deferred to the return journey
     Given the elevator is idle at floor ground
     And hall requests are received for floors 2, 4, and 5
-    When the elevator travels to the highest floor at floor 5
+    When the elevator arrives at floor 5
     Then it should stop at floors: 5, 4, 2
 
+  @S-MOVE-OBSTRUCT @R-SAFE-OBSTRUCT
+  Scenario: Door obstruction during closing sequence
+    Given the elevator is idle at floor 3
+    And the doors are closing
+    When the door sensor detects an obstruction
+    Then the elevator should begin opening the doors

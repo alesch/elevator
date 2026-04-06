@@ -16,7 +16,7 @@ This table maps every Business Rule defined in [`doc/core_rules.md`](core_rules.
 | **[R-SAFE-ARRIVAL]** | Asynchronous Arrival Protocol | `[S-MOVE-BRAKING]`, `[S-MOVE-OPENING]`, `[S-SAFE-SERVICE-DELAY]` |
 | **[R-SAFE-TIMEOUT]** | Automatic Door Closing (Timer) | `[S-MOVE-DOCKED]`, `[S-SAFE-TIMEOUT]` |
 | **[R-SAFE-MANUAL]** | Manual Door Override | `[S-MANUAL-OPEN-IDLE]`, `[S-MANUAL-OPEN-WIN]`, `[S-MANUAL-RESET-TIMER]`, `[S-MANUAL-CLOSE]`, `[S-MANUAL-EXTEND]` |
-| **[R-SAFE-OBSTRUCT]** | Door Obstruction | `[S-SAFE-OBSTRUCT]`, `[S-SAFE-CLEARED]`, `[S-PHASE-LEAVE-DOCK]` |
+| **[R-SAFE-OBSTRUCT]** | Door Obstruction | `[S-MOVE-OBSTRUCT]`, `[S-SAFE-OBSTRUCT]`, `[S-SAFE-CLEARED]`, `[S-PHASE-LEAVE-DOCK]` |
 | **[R-REQ-TAGS]** | Tagged Requests | `[S-REQ-SPAM]`, `[S-REQ-CONCURRENCY]`, `[S-REQ-HONOR-ALL]`, `[S-REQ-SYNC]` |
 | **[R-HOME-VAULT]** | State Persistence (Vault Backup) | `[S-HOME-ANCHOR]` |
 | **[R-HOME-STRATEGY]** | Homing Procedure (Power-On Safety) | `[S-HOME-COLD]`, `[S-HOME-ZERO]`, `[S-HOME-MOVE]`, `[S-HOME-ANCHOR]`, `[S-HOME-NO-DOOR]`, `[S-HOME-BLOCK-REQ]` |
