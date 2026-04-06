@@ -33,7 +33,7 @@ This document tracks finalized phrasing for our BDD stories to ensure high reusa
 | **When** | `the door confirms it has fully opened` | `When the door confirms it has fully opened` |
 | **When** | `the door sensor detects an obstruction` | `When the door sensor detects an obstruction` |
 | **When** | `the elevator travels {direction}` | `When the elevator travels upward` |
-| **When** | `the elevator travels {direction} and satisfies all requests up to floor {floor}` | `When the elevator travels upward and satisfies all requests up to floor 5` |
+| **When** | `the elevator travels {direction}, passing floors {list} to reach floor {floor}` | `When the elevator travels upward, passing floors 2 and 4 to reach floor 5` |
 
 ## 3. Behavioral Outcomes (Then)
 

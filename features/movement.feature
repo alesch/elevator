@@ -82,7 +82,7 @@ Feature: Elevator Movement
   Scenario: Multiple hall requests are deferred to the return journey
     Given the elevator is idle at floor ground
     And hall requests are received for floors 2, 4, and 5
-    When the elevator arrives at floor 5
+    When the elevator travels upward, passing floors 2 and 4 to reach floor 5
     Then it should stop at floors: 5, 4, 2
 
   @S-MOVE-OBSTRUCT @R-SAFE-OBSTRUCT
