@@ -8,6 +8,7 @@ The core operates as an explicit **Phase State Machine**:
 
 | Phase | Description | Expected Motor | Expected Door |
 | :--- | :--- | :--- | :--- |
+| **`:booting`** | Initial synchronization; waiting for hardware discovery. | `:stopped` | `:closed` |
 | **`:idle`** | At floor, stationary, no active work. | `:stopped` | `:closed` |
 | **`:rehoming`** | Recovering position by moving down slowly. | `:crawling` | `:closed` |
 | **`:moving`** | Traveling Toward a target floor at high speed. | `:running` | `:closed` |
@@ -19,6 +20,7 @@ The core operates as an explicit **Phase State Machine**:
 
 ```mermaid
 stateDiagram-v2
+    booting: :booting
     rehoming: :rehoming
     idle: :idle
     moving: :moving
@@ -26,6 +28,8 @@ stateDiagram-v2
     docked: :docked
     leaving: :leaving
 
+    booting --> :idle : recovery_complete
+    booting --> :rehoming : rehoming_started
     rehoming --> :idle : recovery_complete / motor_stopped
     idle --> :moving : request_floor (different floor)
     idle --> :arriving : request_floor (same floor)
@@ -34,8 +38,24 @@ stateDiagram-v2
     docked --> :leaving : door_timeout / door_close
     leaving --> :moving : door_closed (if requests remain)
     leaving --> :idle : door_closed (if no requests)
-    leaving --> :docked : door_obstructed
+    leaving --> :arriving : door_obstructed
 ```
+
+### Transition Ledger
+
+| From Phase | Trigger (Input) | To Phase | Action (Side Effect) |
+| :--- | :--- | :--- | :--- |
+| **`:booting`** | `handle_event(:recovery_complete)` | **`:idle`** | None |
+| **`:booting`** | `handle_event(:rehoming_started)` | **`:rehoming`** | `{:crawl, :down}` |
+| **`:idle`** | `request_floor` (same) | **`:arriving`** | `{:open_door}` |
+| **`:idle`** | `request_floor` (diff) | **`:moving`** | `{:move, dir}` |
+| **`:rehoming`** | `process_arrival` (F0) | **`:idle`** | `{:stop_motor}` |
+| **`:moving`** | `process_arrival` (target) | **`:arriving`** | `{:stop_motor}` |
+| **`:arriving`** | `handle_event(:door_opened)` | **`:docked`** | `{:set_timer, :door_timeout, 5000}` |
+| **`:docked`** | `handle_event(:door_timeout)` | **`:leaving`** | `{:close_door}` |
+| **`:leaving`** | `handle_event(:door_closed)` | **`:moving`** | `{:move, dir}` (if reqs remain) |
+| **`:leaving`** | `handle_event(:door_closed)` | **`:idle`** | None (if no reqs remain) |
+| **`:leaving`** | `handle_event(:door_obstructed)` | **`:arriving`** | `{:open_door}` |
 
 ## Internal State
 

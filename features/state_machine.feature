@@ -54,10 +54,10 @@ Feature: Elevator State Machine
     Then the "phase" should become ":idle"
     And "motor_status" should stay ":stopped"
 
-  @S-PHASE-LEAVE-DOCK @R-CORE-STATE @R-SAFE-OBSTRUCT
-  Scenario: :leaving → :docked (Obstruction)
+  @S-PHASE-LEAVE-ARRIVE @R-CORE-STATE @R-SAFE-OBSTRUCT
+  Scenario: :leaving → :arriving (Obstruction Gateway)
     Given the elevator is in "phase: :leaving"
     And "door_status" is ":closing"
     When a ":door_obstructed" message is received
-    Then the "phase" should revert to ":docked"
-    And "door_status" should become ":open"
+    Then the "phase" should become ":arriving"
+    And "door_status" should become ":obstructed"

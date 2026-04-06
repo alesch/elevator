@@ -6,7 +6,7 @@ defmodule Elevator.AlgorithmTest do
     test "[S-MOVE-SWEEP-UP]: Pick-up on the way (Hall Request)" do
       # GIVEN: Moving UP to F5, hall request added for F3
       state = %Core{
-        phase: :moving,
+        phase: :idle,
         current_floor: 1,
         heading: :up,
         requests: [{:hall, 5}],
@@ -53,7 +53,7 @@ defmodule Elevator.AlgorithmTest do
     test "Car request on the path — elevator stops" do
       # GIVEN: Moving :up, car request for F3 on the path
       state = %Core{
-        phase: :moving,
+        phase: :idle,
         current_floor: 1,
         heading: :up,
         requests: [{:car, 3}],
@@ -72,7 +72,7 @@ defmodule Elevator.AlgorithmTest do
     test "Hall request on the path — elevator stops" do
       # GIVEN: Moving :up, hall request for F4 on the path
       state = %Core{
-        phase: :moving,
+        phase: :idle,
         current_floor: 2,
         heading: :up,
         requests: [{:hall, 4}],
@@ -92,7 +92,7 @@ defmodule Elevator.AlgorithmTest do
   describe "Wake Up Logic ([S-MOVE-WAKEUP])" do
     test "[S-MOVE-WAKEUP]: Context-Aware Wake Up (Idle at F5 heads DOWN for F1)" do
       # Arrange: Elevator is idle at Floor 5
-      state = %Core{current_floor: 5, heading: :idle}
+      state = %Core{phase: :idle, current_floor: 5, heading: :idle}
 
       # Act: Request comes in for Floor 1
       {new_state, _} = Core.request_floor(state, :hall, 1)
@@ -103,7 +103,7 @@ defmodule Elevator.AlgorithmTest do
 
     test "Idle elevator at F1 heads UP for F3" do
       # Arrange: Elevator is idle at Floor 1
-      state = %Core{current_floor: 1, heading: :idle}
+      state = %Core{phase: :idle, current_floor: 1, heading: :idle}
 
       # Act: Request comes in for Floor 3
       {new_state, _} = Core.request_floor(state, :hall, 3)
@@ -121,6 +121,7 @@ defmodule Elevator.AlgorithmTest do
       {state, _} = Core.request_floor(state, :car, 4)
       {state, _} = Core.request_floor(state, :car, 6)
 
+      # Pulse settlement: the first request_floor starts the move
       assert state.heading == :up
       assert state.phase == :moving
 
@@ -132,7 +133,10 @@ defmodule Elevator.AlgorithmTest do
       # Clear F2 (motor stopped), then simulate door cycle completing → back to :moving
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
       refute {:car, 2} in state.requests
-      state = %{state | phase: :moving, motor_status: :running, door_status: :closed}
+      state = %{state | phase: :leaving, door_status: :closed}
+      # Pulse 2: settle transition from leaving to moving
+      {state, _} = Core.pulse(state)
+      assert state.phase == :moving
 
       # ARRIVE at F4 — must stop
       {state, _} = Core.process_arrival(state, 4)
@@ -142,7 +146,9 @@ defmodule Elevator.AlgorithmTest do
       # Clear F4, simulate door cycle
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
       refute {:car, 4} in state.requests
-      state = %{state | phase: :moving, motor_status: :running, door_status: :closed}
+      state = %{state | phase: :leaving, door_status: :closed}
+      {state, _} = Core.pulse(state)
+      assert state.phase == :moving
 
       # ARRIVE at F6 — must stop
       {state, _} = Core.process_arrival(state, 6)
@@ -173,7 +179,7 @@ defmodule Elevator.AlgorithmTest do
       refute {:car, 3} in state.requests
       assert {:car, 0} in state.requests
 
-      # WHEN: Request for F0 triggers heading update (already queued — update_heading recalculates)
+      # WHEN: Request for F0 triggers heading update
       {state, _} = Core.request_floor(state, :car, 0)
 
       # THEN: Heading is :down (only remaining work is below)

@@ -80,13 +80,13 @@ defmodule Elevator.PhaseTransitionsTest do
     assert new_state.motor_status == :stopped
   end
 
-  # [S-PHASE-LEAVE-DOCK]
-  test "[S-PHASE-LEAVE-DOCK]: :leaving → :docked on obstruction during close" do
+  test "[S-PHASE-LEAVE-DOCK]: :leaving → :arriving on obstruction during close" do
     state = %Core{phase: :leaving, door_status: :closing}
 
     {new_state, actions} = Core.handle_event(state, :door_obstructed, nil)
 
-    assert new_state.phase == :docked
+    # Note: Transition to :arriving (the "Gateway" broker)
+    assert new_state.phase == :arriving
     assert new_state.door_status == :obstructed
     assert {:open_door} in actions
   end

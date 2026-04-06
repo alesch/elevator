@@ -35,6 +35,7 @@ defmodule Elevator.HomingTest do
 
     # 4. Verification (State-Based)
     # Give it a millisecond for handle_continue to finish
+    send(ctrl, {:recovery_complete, 0})
     _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
@@ -66,7 +67,7 @@ defmodule Elevator.HomingTest do
     # 3. Verification
     _ = Controller.get_state(ctrl)
 
-    # Controller should be :rehoming
+    # Controller should be :rehoming (auto-triggered by mismatch)
     state = Controller.get_state(ctrl)
     assert state.phase == :rehoming
 

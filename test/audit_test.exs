@@ -18,7 +18,7 @@ defmodule Elevator.AuditTest do
         end
 
       Enum.each(combinations, fn {current, heading, target, source} ->
-        state = %Core{current_floor: current, heading: heading}
+        state = %Core{phase: :idle, current_floor: current, heading: heading}
 
         # ACT: Receive request
         {new_state, _actions} = Core.request_floor(state, source, target)

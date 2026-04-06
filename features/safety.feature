@@ -16,7 +16,7 @@ Feature: Elevator Safety
     When a ":door_obstructed" message is received
     Then "door_status" becomes ":obstructed"
     And "door_sensor" becomes ":blocked"
-    And "phase" becomes ":docked"
+    And "phase" becomes ":arriving"
     And the actions should include "{:open_door}"
 
   @S-SAFE-CLEARED @R-SAFE-OBSTRUCT
