@@ -9,7 +9,10 @@ defmodule Elevator.Core do
   # ## Data Structure & Initialization
   # ---------------------------------------------------------------------------
 
-  defstruct current_floor: 0,
+  @door_wait_ms 5000
+  @base_floor 0
+
+  defstruct current_floor: @base_floor,
             heading: :idle,
             door_status: :closed,
             requests: [],
@@ -38,11 +41,8 @@ defmodule Elevator.Core do
           motor_status: :running | :crawling | :stopping | :stopped
         }
 
-  @door_wait_ms 5000
-
-
   # ---------------------------------------------------------------------------
-  # ## Public State Transitions
+  # ## Public API
   # ---------------------------------------------------------------------------
 
   @doc """
@@ -83,22 +83,6 @@ defmodule Elevator.Core do
     {new_state, derive_actions(state, new_state)}
   end
 
-  defp do_process_current_floor(state) do
-    if should_stop_at?(state, state.current_floor) do
-      if state.motor_status == :stopped do
-        # Motor already stopped — skip the :stopping protocol entirely.
-        # Sending a redundant stop to hardware causes a deadlock (no :motor_stopped reply).
-        state
-        |> fulfill_current_floor_requests()
-        |> confirm_stopped_at_floor()
-      else
-        %{state | motor_status: :stopping}
-      end
-    else
-      state
-    end
-  end
-
   @doc """
   Processes the current floor arrival logic.
   Initiates braking if this is a target floor.
@@ -116,6 +100,85 @@ defmodule Elevator.Core do
   def handle_event(state, event, now) do
     new_state = state |> do_handle_event(event, now) |> enforce_the_golden_rule()
     {new_state, derive_actions(state, new_state)}
+  end
+
+  @doc """
+  Handles physical button presses.
+  """
+  @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
+  def handle_button_press(state, button, now) do
+    new_state = state |> do_handle_button_press(button, now) |> enforce_the_golden_rule()
+    actions = derive_actions(state, new_state)
+
+    # Some button presses might cause unique side effects (like timer cancellation)
+    actions =
+      case button do
+        :door_close -> actions ++ [{:cancel_timer, :door_timeout}]
+        _ -> actions
+      end
+
+    {new_state, actions}
+  end
+
+  @doc "Updates the heading based on current floor and requests."
+  @spec update_heading(t()) :: t()
+  def update_heading(state) do
+    cond do
+      any_requests_above?(state) -> %{state | heading: :up}
+      any_requests_below?(state) -> %{state | heading: :down}
+      true -> %{state | heading: :idle}
+    end
+  end
+
+  @doc "Processes a floor arrival with physical safety checks (Stop/Overshoot)."
+  @spec process_arrival(t(), integer()) :: {t(), [action()]}
+  # Scenario 5.4: Homing arrival — brake and anchor. Phase stays :rehoming until :motor_stopped.
+  def process_arrival(%Core{phase: :rehoming} = state, floor) do
+    new_state = %{state | current_floor: floor, motor_status: :stopping}
+    {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
+  end
+
+  # Scenario 8.2: Arriving at target floor while moving — begin braking, transition to :arriving.
+  def process_arrival(%Core{phase: :moving} = state, floor) do
+    new_state = %{state | current_floor: floor}
+
+    new_state =
+      if should_stop_at?(new_state, floor) or overshooting?(new_state) do
+        %{new_state | motor_status: :stopping, phase: :arriving}
+      else
+        new_state
+      end
+
+    {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
+  end
+
+  def process_arrival(state, floor) do
+    new_state =
+      %{state | current_floor: floor}
+      |> do_process_arrival(floor)
+      |> enforce_the_golden_rule()
+
+    {new_state, derive_actions(state, new_state)}
+  end
+
+  # ---------------------------------------------------------------------------
+  # ## Internal Logic (State Transitions)
+  # ---------------------------------------------------------------------------
+
+  defp do_process_current_floor(state) do
+    if should_stop_at?(state, state.current_floor) do
+      if state.motor_status == :stopped do
+        # Motor already stopped — skip the :stopping protocol entirely.
+        # Sending a redundant stop to hardware causes a deadlock (no :motor_stopped reply).
+        state
+        |> fulfill_current_floor_requests()
+        |> confirm_stopped_at_floor()
+      else
+        %{state | motor_status: :stopping}
+      end
+    else
+      state
+    end
   end
 
   # Scenario 5.6: Rehoming complete — go idle, NO door cycle.
@@ -191,37 +254,22 @@ defmodule Elevator.Core do
     %{state | door_sensor: :clear}
   end
 
+  @doc """
+  Inactivity timeout fires when idle and not at base floor — begin rehoming.
+  """
   defp do_handle_event(
          %Core{phase: :idle, current_floor: floor} = state,
          :inactivity_timeout,
          _now
        )
-       when floor != 0 do
-    {new_state, _} = request_floor(state, :car, 0)
+       when floor != @base_floor do
+    {new_state, _} = request_floor(state, :car, @base_floor)
     new_state
   end
 
   defp do_handle_event(state, event, _now) do
     Logger.warning("Unexpected event #{inspect(event)} in state: #{inspect(state)}")
     state
-  end
-
-  @doc """
-  Handles physical button presses.
-  """
-  @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
-  def handle_button_press(state, button, now) do
-    new_state = state |> do_handle_button_press(button, now) |> enforce_the_golden_rule()
-    actions = derive_actions(state, new_state)
-
-    # Some button presses might cause unique side effects (like timer cancellation)
-    actions =
-      case button do
-        :door_close -> actions ++ [{:cancel_timer, :door_timeout}]
-        _ -> actions
-      end
-
-    {new_state, actions}
   end
 
   defp do_handle_button_press(%Core{door_status: :closed} = state, :door_open, _now) do
@@ -245,51 +293,6 @@ defmodule Elevator.Core do
     state
   end
 
-  # ---------------------------------------------------------------------------
-  # ## Private Internal Logic
-  # ---------------------------------------------------------------------------
-
-  @doc "Updates the heading based on current floor and requests."
-  @spec update_heading(t()) :: t()
-  def update_heading(state) do
-    cond do
-      any_requests_above?(state) -> %{state | heading: :up}
-      any_requests_below?(state) -> %{state | heading: :down}
-      true -> %{state | heading: :idle}
-    end
-  end
-
-  @doc "Processes a floor arrival with physical safety checks (Stop/Overshoot)."
-  @spec process_arrival(t(), integer()) :: {t(), [action()]}
-  # Scenario 5.4: Homing arrival — brake and anchor. Phase stays :rehoming until :motor_stopped.
-  def process_arrival(%Core{phase: :rehoming} = state, floor) do
-    new_state = %{state | current_floor: floor, motor_status: :stopping}
-    {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
-  end
-
-  # Scenario 8.2: Arriving at target floor while moving — begin braking, transition to :arriving.
-  def process_arrival(%Core{phase: :moving} = state, floor) do
-    new_state = %{state | current_floor: floor}
-
-    new_state =
-      if should_stop_at?(new_state, floor) or overshooting?(new_state) do
-        %{new_state | motor_status: :stopping, phase: :arriving}
-      else
-        new_state
-      end
-
-    {enforce_the_golden_rule(new_state), derive_actions(state, new_state)}
-  end
-
-  def process_arrival(state, floor) do
-    new_state =
-      %{state | current_floor: floor}
-      |> do_process_arrival(floor)
-      |> enforce_the_golden_rule()
-
-    {new_state, derive_actions(state, new_state)}
-  end
-
   defp do_process_arrival(state, floor) do
     if should_stop_at?(state, floor) or overshooting?(state) do
       %{state | heading: :idle}
@@ -297,6 +300,10 @@ defmodule Elevator.Core do
       state
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # ## Calculation Helpers
+  # ---------------------------------------------------------------------------
 
   @spec overshooting?(t()) :: boolean()
   defp overshooting?(state) do
@@ -379,7 +386,8 @@ defmodule Elevator.Core do
 
   defp maybe_add_door_action(actions, old, new) do
     cond do
-      new.door_status in [:opening, :obstructed] and old.door_status not in [:opening, :obstructed] ->
+      new.door_status in [:opening, :obstructed] and
+          old.door_status not in [:opening, :obstructed] ->
         actions ++ [{:open_door}]
 
       new.door_status == :closing and old.door_status != :closing ->
