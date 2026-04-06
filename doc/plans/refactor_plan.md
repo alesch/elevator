@@ -22,14 +22,14 @@ reflect the new model. Read them before starting.
 phase: :rehoming | :moving | :arriving | :docked | :leaving | :idle
 ```
 
-| Phase      | Meaning                                      | Motor       | Door                  |
-|:-----------|:---------------------------------------------|:------------|:----------------------|
-| `:rehoming`| Boot/crash recovery, moving down             | `:crawling` | `:closed`             |
-| `:moving`  | Traveling to a target floor                  | `:running`  | `:closed`             |
-| `:arriving`| Motor stopping → stopped → door opening      | transitioning | `:opening`          |
-| `:docked`  | At floor, doors open, serving passengers     | `:stopped`  | `:open`               |
-| `:leaving` | Service complete: door closing               | `:stopped`  | `:closing` → `:closed`|
-| `:idle`    | At floor, doors closed, no active work       | `:stopped`  | `:closed`             |
+| Phase      | Meaning                                      | Motor         | Door                  |
+|:-----------|:---------------------------------------------|:--------------|:----------------------|
+| `:rehoming`| Boot/crash recovery, moving down             | `:crawling`   | `:closed`             |
+| `:moving`  | Traveling to a target floor                  | `:running`    | `:closed`             |
+| `:arriving`| Motor stopping → stopped → door opening      | transitioning | `:opening`            |
+| `:docked`  | At floor, doors open, serving passengers     | `:stopped`    | `:open`               |
+| `:leaving` | Service complete: door closing               | `:stopped`    | `:closing` → `:closed`|
+| `:idle`    | At floor, doors closed, no active work       | `:stopped`    | `:closed`             |
 
 ### Phase Transitions
 
@@ -85,6 +85,7 @@ while both fields still coexist.
 **Goal**: Delete all overload/weight logic and tests.
 
 In `lib/elevator/core.ex`:
+
 - Remove `weight` and `weight_limit` from `defstruct`
 - Remove from `@type t`
 - Delete functions: `update_weight/2`, `update_overload_status/1`, `remaining_capacity/1`, `set_weight/1`
@@ -93,10 +94,12 @@ In `lib/elevator/core.ex`:
 - Simplify `should_stop_at?/2` — remove the `remaining_capacity` check, always stop for both `:car` and `:hall` requests
 
 In test files:
+
 - Delete any test case that references `weight`, `weight_limit`, or `status: :overload`
 - These map to old scenarios (full load bypass, weight variant) — delete those tests
 
 In `lib/elevator/controller.ex`:
+
 - Remove any `update_weight` calls
 
 Run `mix test` — all remaining tests must pass.
@@ -109,6 +112,7 @@ Commit: `Remove overload and weight logic from Elevator.Core`
 **Goal**: Delete the `status` field entirely.
 
 In `lib/elevator/core.ex`:
+
 - Remove `status` from `defstruct`
 - Remove from `@type t`
 - Replace all remaining references to `state.status` with `state.phase`
@@ -117,9 +121,11 @@ In `lib/elevator/core.ex`:
 - The `update_overload_status/1` function is already gone from Chunk 3
 
 In `lib/elevator/controller.ex`:
+
 - Replace all `state.status` references with `state.phase`
 
 In `lib/elevator_web/live/dashboard_live.ex` and `dashboard_components.ex`:
+
 - Replace display of `status` with `phase`
 
 Run `mix test` — **many tests will now fail**. This is expected and intentional.
@@ -134,6 +140,7 @@ Work through the scenarios in the **[`features/`](../features/)** directory in o
 When a scenario is complete, mark it `[x]` in your task list as part of the commit.
 
 **For each scenario:**
+
 1. Read the scenario
 2. Find or write the test that covers it — if no test exists, write it first (RED)
 3. Implement the phase-gated handler in `Elevator.Core` (GREEN)
@@ -151,6 +158,7 @@ directly drive the new handler rewrites. Then work backwards to fix any older
 scenarios that depend on the new phase logic.
 
 Suggested order:
+
 1. Homing — these are already well-specified and cover `:rehoming` phase
 2. Phase Transitions — new scenarios, drive the core rewrite
 3. Happy Path — standard movement
