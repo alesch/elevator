@@ -25,7 +25,7 @@ This document captures the "Executive Summary" of our current Elevator implement
 
   **Phase Transitions Chart:**
 
-  ```
+  ```text
   :rehoming  --[motor_stopped]--------------------------> :idle
   :idle      --[request + heading set]------------------> :moving
   :moving    --[floor_arrival at target]----------------> :arriving

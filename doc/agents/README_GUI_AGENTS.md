@@ -20,7 +20,7 @@ There is **no esbuild, no webpack, no Tailwind**. The CSS is served as-is from `
 
 ## 2. Layout Structure
 
-```
+```text
 .dashboard-container   (16:9 aspect-ratio locked, max 90vh)
 ├── .main-content      (flex row, overflow: hidden — clips anything that overflows)
 │   ├── .left-panel    (fixed width: --shaft-width = 280px, flex column)
@@ -98,7 +98,7 @@ If you need to add UI elements inside `.shaft-container`, reduce `--floor-height
 
 ## 7. PubSub & State Flow
 
-```
+```text
 Elevator.Controller
   └── Phoenix.PubSub.broadcast("elevator:status", {:elevator_state, state})
         └── DashboardLive.handle_info/2  →  assigns  →  render/1  →  DOM patch

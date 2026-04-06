@@ -18,7 +18,7 @@ reflect the new model. Read them before starting.
 
 ## New State Model
 
-```
+```text
 phase: :rehoming | :moving | :arriving | :docked | :leaving | :idle
 ```
 
@@ -33,7 +33,7 @@ phase: :rehoming | :moving | :arriving | :docked | :leaving | :idle
 
 ### Phase Transitions
 
-```
+```text
 :rehoming  --[motor_stopped]--------------------------> :idle
 :idle      --[request + heading set]------------------> :moving
 :moving    --[floor_arrival at target]----------------> :arriving
