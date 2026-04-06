@@ -12,7 +12,7 @@ Feature: Elevator Movement
 
     Examples:
       | current | target | heading |
-      | 0       | 3      | up      |
+      | ground  | 3      | up      |
       | 5       | 1      | down    |
 
   @S-MOVE-BRAKING @R-SAFE-ARRIVAL
@@ -48,7 +48,7 @@ Feature: Elevator Movement
 
   @S-MOVE-SWEEP-CAR @R-MOVE-SWEEP
   Scenario: Stop for car request on the way
-    Given the elevator is at the ground floor
+    Given the elevator is at floor ground
     And it is moving up to serve a request at floor 5
     When a passenger inside the car selects floor 3
     And the elevator arrives at floor 3
@@ -56,7 +56,7 @@ Feature: Elevator Movement
 
   @S-MOVE-SWEEP-HALL @R-MOVE-SWEEP
   Scenario: Defer hall request to the return journey
-    Given the elevator is at the ground floor
+    Given the elevator is at floor ground
     And it is moving up to serve a request at floor 5
     When a hall request is received for floor 3
     And the elevator passes floor 3
@@ -72,14 +72,14 @@ Feature: Elevator Movement
 
   @S-MOVE-MULTI-CAR @R-MOVE-SWEEP
   Scenario: Multiple car requests are served in order on the way up
-    Given the elevator is idle at the ground floor
+    Given the elevator is idle at floor ground
     And passengers inside the car select floors 2, 4, and 5
     When the elevator travels upward
     Then it should stop at floors: 2, 4, 5
 
   @S-MOVE-MULTI-HALL @R-MOVE-SWEEP
   Scenario: Multiple hall requests are deferred to the return journey
-    Given the elevator is idle at the ground floor
+    Given the elevator is idle at floor ground
     And hall requests are received for floors 2, 4, and 5
     When the elevator travels to the highest floor at floor 5
     Then it should stop at floors: 5, 4, 2
