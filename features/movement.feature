@@ -41,10 +41,10 @@ Feature: Elevator Movement
 
   @S-MOVE-BASE @R-MOVE-BASE
   Scenario: Return to base after inactivity
-    Given the elevator is idle with no pending requests
+    Given the elevator is idle at floor 3
     When 5 minutes pass without any activity
-    Then a request for the ground floor should be automatically added
-    And the elevator should return to the ground floor
+    Then a request for floor ground should be automatically added
+    And the elevator should return to floor ground
 
   @S-MOVE-SWEEP-CAR @R-MOVE-SWEEP
   Scenario: Stop for car request on the way
