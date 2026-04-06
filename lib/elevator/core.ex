@@ -40,9 +40,6 @@ defmodule Elevator.Core do
 
   @door_wait_ms 5000
 
-  @doc "Creates a standard passenger elevator state."
-  @spec new_passenger() :: t()
-  def new_passenger, do: %Core{}
 
   # ---------------------------------------------------------------------------
   # ## Public State Transitions

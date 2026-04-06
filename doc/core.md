@@ -56,7 +56,6 @@ The state is managed via the `%Elevator.Core{}` struct:
 
 ### Primary Entry Points
 
-- `new_passenger()`: Initializes a fresh, idle elevator state.
 - `request_floor(state, source, floor)`: Adds a request and determines if movement should begin.
 - `handle_event(state, event, now)`: Processes hardware confirmations and timeouts.
 - `handle_button_press(state, button, now)`: Processes manual door overrides.

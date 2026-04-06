@@ -391,8 +391,7 @@ defmodule Elevator.Controller do
     |> position_at_provided_floor(opts)
   end
 
-  @spec create_base_state(keyword()) :: Elevator.Core.t()
-  defp create_base_state(_opts), do: Core.new_passenger()
+  defp create_base_state(_opts), do: %Core{}
 
   @spec position_at_provided_floor(Core.t(), keyword()) :: Core.t()
   defp position_at_provided_floor(state, opts) do
