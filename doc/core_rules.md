@@ -50,7 +50,7 @@ This document captures the "Executive Summary" of our current Elevator implement
   * If no requests remain in any direction, the `heading` becomes `:idle`.
 
 * **Rule: Return to Base [R-MOVE-BASE]**
-  * If the state remains `:idle` for more than 5 minutes (300 seconds), an automatic `{:car, 0}` request is added to the queue.
+  * If the state remains `:idle` for more than 5 minutes (300 seconds), an automatic `{:hall, 0}` request is added to the queue.
 
 * **Rule: Context-Aware Wake Up [R-MOVE-WAKEUP]**
   * When an `:idle` elevator receives a request, it must choose its initial heading based on the relative position of the work:

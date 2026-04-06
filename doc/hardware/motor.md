@@ -6,12 +6,12 @@ The Elevator Motor is a "dumb" actuator responsible for vertical motion. It does
 
 The motor operates as a 4-state machine:
 
-| Status | Description | Transitions To |
-| :--- | :--- | :--- |
-| **`:stopped`** | Initial/Stationary state. No timers active. | `:running`, `:crawling` |
-| **`:running`** | Normal speed travel (2s/floor). Pulse timer active. | `:stopping` |
-| **`:crawling`** | Slow speed travel (5s/floor). Pulse timer active. | `:stopping` |
-| **`:stopping`** | Active braking phase (500ms). Brake timer active. | **`:stopped`** |
+| Status          | Description                                           | Transitions To          |
+| :---            | :---                                                  | :---                    |
+| **`:stopped`**  | Initial/Stationary state. No timers active.           | `:running`, `:crawling` |
+| **`:running`**  | Normal speed travel (1.5s/floor). Pulse timer active. | `:stopping`             |
+| **`:crawling`** | Slow speed travel (4.5s/floor). Pulse timer active.   | `:stopping`             |
+| **`:stopping`** | Active braking phase (500ms). Brake timer active.     | **`:stopped`**          |
 
 ## Public API
 
