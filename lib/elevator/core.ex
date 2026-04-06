@@ -49,8 +49,8 @@ defmodule Elevator.Core do
   Adds a floor request to the state and updates the heading.
   """
   @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
+  # Start from idle: Elevator is :idle and doors are :closed.
   # Scenario 8.1 (different floor) / Scenario 4.6 (same floor)
-  # Only fires when doors are confirmed closed — prevents motor start with open doors.
   def request_floor(%Core{phase: :idle, door_status: :closed} = state, source, floor)
       when is_integer(floor) do
     state = add_request(state, source, floor)
@@ -254,9 +254,7 @@ defmodule Elevator.Core do
     %{state | door_sensor: :clear}
   end
 
-  @doc """
-  Inactivity timeout fires when idle and not at base floor — begin rehoming.
-  """
+  # Inactivity timeout fires when idle and not at base floor — begin rehoming.
   defp do_handle_event(
          %Core{phase: :idle, current_floor: floor} = state,
          :inactivity_timeout,
