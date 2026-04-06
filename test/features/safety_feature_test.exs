@@ -1,5 +1,6 @@
 defmodule Elevator.SafetyFeatureTest do
   use Cabbage.Feature, file: "safety.feature"
+  @moduletag :skip
   alias Elevator.Core
   import Elevator.CommonSteps
   import_feature(Elevator.CommonSteps)

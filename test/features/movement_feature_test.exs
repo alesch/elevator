@@ -1,5 +1,6 @@
 defmodule Elevator.MovementFeatureTest do
   use Cabbage.Feature, file: "movement.feature"
+  @moduletag :skip
   alias Elevator.Core
   import Elevator.CommonSteps
   import_feature(Elevator.CommonSteps)

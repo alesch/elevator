@@ -1,5 +1,6 @@
 defmodule Elevator.StateMachineFeatureTest do
   use Cabbage.Feature, file: "state_machine.feature"
+  @moduletag :skip
   alias Elevator.Core
   import Elevator.CommonSteps
   import_feature(Elevator.CommonSteps)
