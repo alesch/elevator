@@ -9,7 +9,7 @@ Feature: Elevator Booting & Synchronization
     Given the elevator has just powered on
     Then the "phase" should be ":booting"
     And the "motor_status" should be ":stopped"
-    When any floor request or arrival is received
+    When any floor request is received
     Then the logical state machine should NOT transition
     And no hardware commands should be issued
 
@@ -26,4 +26,4 @@ Feature: Elevator Booting & Synchronization
     When the system detects a floor mismatch or cold start
     Then the "phase" should transition to ":rehoming"
     And "heading" should be ":down"
-    And "motor_speed" should be ":crawling"
+    And "motor_status" should be ":crawling"

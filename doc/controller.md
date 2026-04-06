@@ -46,21 +46,24 @@ sequenceDiagram
 
 ### System Control
 
-- `reset()`: Destructive recovery. Clears the Vault and kills the hardware supervisor to force a full rehoming from F0.
+- `reset()`: Destructive recovery. Clears the Vault and kills the **`Elevator.HardwareSupervisor`**. Because of the `:one_for_all` strategy, this forces a full reboot of the hardware stack and the Controller, triggering a new rehoming sequence.
 
-## Hardware Discovery
+## Hardware Discovery & Architecture
 
-The Controller uses a hybrid "Injection + Discovery" strategy:
+The Controller uses an discovery strategy managed by the **`Elevator.HardwareSupervisor`**:
 
-1. **Dependency Injection**: Can be provided with specific pids/names during `init/1` (primarily for testing).
-2. **Registry Lookup**: If no dependency is provided, it attempts to locate the hardware pid via the **`Elevator.Registry`**.
+1. **Registry Lookup**: Actors (Motor, Door, Sensor) register themselves with the **`Elevator.Registry`**. The Controller performs a lookup to obtain their PIDs during command execution.
+2. **Dependency Injection**: For testing, specific PIDs can still be provided during `init/1` (via the `:motor`, `:door`, etc. keys in `opts`) to bypass registry lookup.
+3. **Fatal Failures**: The Hardware Supervisor uses a `:one_for_all` strategy. If any hardware actor crashes, the entire stack (including the Controller) is rebooted to ensure logical consistency.
 
 ## Homing & Recovery Logic
 
-Upon startup (`handle_continue`), the Controller executes a "Smart Homing" check:
+Upon startup (`handle_continue`), the Controller executes a "Smart Homing" check. This process is the bridge between hardware discovery and the Brain's logic:
 
-- **Case 1 (Zero-Move)**: If `Vault` and `Sensor` agree on a floor, the system enters `:idle` immediately.
-- **Case 2 (Physical Rehome)**: If they disagree or position is `:unknown`, the controller triggers a `:down` movement at `:crawling` speed via the Core.
+1. **State Gating**: The system starts with the Brain in the `:booting` phase, where all external movement requests are ignored.
+2. **Hardware Sync**: The Controller queries both the **`Elevator.Vault`** (persisted position) and the **`Hardware.Sensor`** (current physical position).
+3. **Case 1 (Zero-Move Recovery)**: If `Vault` and `Sensor` agree on a floor, the Controller notifies the Brain with `:recovery_complete`. The Brain transitions to `:idle` immediately.
+4. **Case 2 (Physical Rehoming)**: If they disagree or position is `:unknown`, the Controller notifies the Brain with `:rehoming_started`. The Brain transitions to `:rehoming` and triggers a `:down` movement at `:crawling` speed.
 
 ## Action Materialization
 

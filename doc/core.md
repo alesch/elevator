@@ -8,7 +8,7 @@ The core operates as an explicit **Phase State Machine**:
 
 | Phase | Description | Expected Motor | Expected Door |
 | :--- | :--- | :--- | :--- |
-| **`:booting`** | Initial synchronization; waiting for hardware discovery. | `:stopped` | `:closed` |
+| **`:booting`** | Initial synchronization; waiting for hardware discovery. External requests are ignored in this phase. | `:stopped` | `:closed` |
 | **`:idle`** | At floor, stationary, no active work. | `:stopped` | `:closed` |
 | **`:rehoming`** | Recovering position by moving down slowly. | `:crawling` | `:closed` |
 | **`:moving`** | Traveling Toward a target floor at high speed. | `:running` | `:closed` |
