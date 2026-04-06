@@ -2,7 +2,8 @@ defmodule Elevator.AlgorithmTest do
   use ExUnit.Case
   alias Elevator.Core
 
-  describe "LOOK Algorithm ([S-MOVE-SWEEP-UP] & [S-MOVE-REVERSE])" do
+  describe "LOOK Algorithm ([S-MOVE-SWEEP-CAR] & [S-MOVE-SWEEP-HALL])" do
+    # REVISE: Align with [S-MOVE-SWEEP-CAR] (immediate stop) and [S-MOVE-SWEEP-HALL] (deferred sweep).
     test "[S-MOVE-SWEEP-UP]: Pick-up on the way (Hall Request)" do
       # GIVEN: Moving UP to F5, hall request added for F3
       state = %Core{
@@ -23,29 +24,6 @@ defmodule Elevator.AlgorithmTest do
       assert new_state.motor_status == :stopping
       assert {:hall, 3} in new_state.requests
       assert {:stop_motor} in actions
-    end
-
-    test "[S-MOVE-REVERSE]: Retire/Reverse — Heading updates when no requests remain" do
-      # GIVEN: Arriving at F3, about to confirm stop — no more work above
-      state = %Core{
-        phase: :arriving,
-        current_floor: 3,
-        heading: :up,
-        requests: [{:car, 3}],
-        motor_status: :stopping
-      }
-
-      # WHEN: Motor confirms stopped (clears the request, opens door)
-      {state, _} = Core.handle_event(state, :motor_stopped, 0)
-
-      # THEN: Heading is still :up — updated only when next direction is chosen
-      assert state.heading == :up
-      refute {:car, 3} in state.requests
-
-      # WHEN: New request arrives below — heading updates to :down
-      state_with_down = %{state | requests: [{:hall, 1}]}
-      {new_state, _} = Core.request_floor(state_with_down, :hall, 1)
-      assert new_state.heading == :down
     end
   end
 
@@ -113,7 +91,8 @@ defmodule Elevator.AlgorithmTest do
     end
   end
 
-  describe "[S-MOVE-MULTI-STOP]: Multi-Stop Sweep Ordering" do
+  describe "Multi-Stop Sweep Ordering ([S-MOVE-MULTI-CAR] & [S-MOVE-MULTI-HALL])" do
+    # REVISE: Align with [S-MOVE-MULTI-CAR] (ascending: 2, 4, 5) and [S-MOVE-MULTI-HALL] (descending: 5, 4, 2).
     test "Elevator stops at each floor in ascending order when heading up" do
       # GIVEN: Idle at F0, three car requests
       state = %Core{phase: :idle, current_floor: 0, heading: :idle, door_status: :closed}

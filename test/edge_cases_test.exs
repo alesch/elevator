@@ -3,6 +3,7 @@ defmodule Elevator.EdgeCasesTest do
   alias Elevator.Core
 
   describe "[S-MOVE-SAME-FLOOR]: Same-Floor Interaction" do
+    # REVISE: Align with [S-MOVE-SAME-FLOOR] behavioral scenario (Request on the current floor).
     test "Idle at F3 receives Car request for F3 -> Opens door immediately" do
       # GIVEN: Idle at F3, doors closed, motor stopped
       state = %Core{
@@ -46,46 +47,12 @@ defmodule Elevator.EdgeCasesTest do
     end
   end
 
-  describe "[S-MOVE-BOUNDARY]: Boundary Reversals" do
-    test "At F5 heading UP with no requests above -> Retire to :idle" do
-      # GIVEN: Idle at F5 (top), doors closed
-      state = %Core{
-        phase: :idle,
-        current_floor: 5,
-        heading: :up,
-        requests: [],
-        door_status: :closed
-      }
+  test "Extreme Reversal: At F5, request for F1 -> Heading becomes :down" do
+    # GIVEN: Idle at F5, doors closed
+    state = %Core{phase: :idle, current_floor: 5, heading: :idle, door_status: :closed}
 
-      # WHEN: Same-floor request forces heading update
-      {new_state, _} = Core.request_floor(state, :car, 5)
+    {new_state, _} = Core.request_floor(state, :hall, 1)
 
-      # THEN: Heading becomes :idle — nowhere higher to go
-      assert new_state.heading == :idle
-    end
-
-    test "At F1 heading DOWN with no requests below -> Retire to :idle" do
-      # GIVEN: Idle at F1 (bottom), doors closed
-      state = %Core{
-        phase: :idle,
-        current_floor: 1,
-        heading: :down,
-        requests: [],
-        door_status: :closed
-      }
-
-      {new_state, _} = Core.request_floor(state, :car, 1)
-
-      assert new_state.heading == :idle
-    end
-
-    test "Extreme Reversal: At F5, request for F1 -> Heading becomes :down" do
-      # GIVEN: Idle at F5, doors closed
-      state = %Core{phase: :idle, current_floor: 5, heading: :idle, door_status: :closed}
-
-      {new_state, _} = Core.request_floor(state, :hall, 1)
-
-      assert new_state.heading == :down
-    end
+    assert new_state.heading == :down
   end
 end

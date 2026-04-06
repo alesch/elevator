@@ -8,7 +8,7 @@ This table maps every Business Rule defined in [`doc/core_rules.md`](core_rules.
 | **[R-CORE-SHELL]** | Imperative Shell | `[S-SYS-PUBSUB]`, `[S-UI-JOURNEY]` |
 | **[R-CORE-STATE]** | Explicit Phase State Machine | `[S-MOVE-WAKEUP]`, `[S-MOVE-DOCKED]`, `[S-MOVE-CLOSING]`, `[S-PHASE-IDLE-MOVE]`, `[S-PHASE-MOVE-ARRIVE]`, `[S-PHASE-ARRIVE-DOCK]`, `[S-PHASE-DOCK-LEAVE]`, `[S-PHASE-LEAVE-MOVE]`, `[S-PHASE-LEAVE-IDLE]`, `[S-PHASE-LEAVE-DOCK]` |
 | **[R-MOVE-INTENT]** | Intent vs. Action | (Implicitly covered by all Movement scenarios) |
-| **[R-MOVE-SWEEP]** | Directional Bias (The Sweep) | `[S-MOVE-SWEEP-UP]`, `[S-MOVE-REVERSE]`, `[S-MOVE-MULTI-STOP]`, `[S-MOVE-BOUNDARY]`, `[S-PHASE-LEAVE-MOVE]` |
+| **[R-MOVE-SWEEP]** | Directional Bias (The Sweep) | `[S-MOVE-SWEEP-CAR]`, `[S-MOVE-SWEEP-HALL]`, `[S-MOVE-MULTI-CAR]`, `[S-MOVE-MULTI-HALL]`, `[S-PHASE-LEAVE-MOVE]` |
 | **[R-MOVE-IDLE]** | Retiring (Idle State) | `[S-PHASE-LEAVE-IDLE]` |
 | **[R-MOVE-BASE]** | Return to Base | `[S-MOVE-BASE]` |
 | **[R-MOVE-WAKEUP]** | Context-Aware Wake Up | `[S-MOVE-WAKEUP]`, `[S-MOVE-SAME-FLOOR]` |

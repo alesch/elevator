@@ -46,43 +46,41 @@ Feature: Elevator Movement
     Then a request for the ground floor should be automatically added
     And the elevator should return to the ground floor
 
-  @S-MOVE-SWEEP-UP @R-MOVE-SWEEP
-  Scenario: Pick-up on the Way (Sweep)
-    Given the elevator is in "phase: :moving" with "heading: :up"
-    And "requests" includes floor 5
-    When a hall request for floor 3 is added
-    And the sensor confirms arrival at floor 3
-    Then the "phase" should become ":arriving"
-    And "motor_status" should become ":stopping"
+  @S-MOVE-SWEEP-CAR @R-MOVE-SWEEP
+  Scenario: Stop for car request on the way
+    Given the elevator is at the ground floor
+    And it is moving up to serve a request at floor 5
+    When a passenger inside the car selects floor 3
+    And the elevator arrives at floor 3
+    Then the elevator should stop at floor 3
 
-  @S-MOVE-REVERSE @R-MOVE-SWEEP
-  Scenario: Reverse or Retire
-    Given the elevator is in "phase: :arriving" at floor 3
-    And the only request in the queue is "{:car, 3}"
-    When the ":motor_stopped" confirmation is received
-    Then the "heading" should remain ":up" until a new direction is chosen
-    And if a new request arrives for floor 1, "heading" should become ":down"
+  @S-MOVE-SWEEP-HALL @R-MOVE-SWEEP
+  Scenario: Defer hall request to the return journey
+    Given the elevator is at the ground floor
+    And it is moving up to serve a request at floor 5
+    When a hall request is received for floor 3
+    And the elevator passes floor 3
+    Then the elevator should not stop at floor 3
+    And it should continue towards floor 5
 
   @S-MOVE-SAME-FLOOR @R-MOVE-WAKEUP
-  Scenario: Same-Floor Interaction
-    Given the elevator is in "phase: :idle" at floor 3 with doors ":closed"
+  Scenario: Request on the current floor
+    Given the elevator is idle at floor 3
     When a request for floor 3 is received
-    Then the "phase" should become ":arriving"
-    And the request should be immediately fulfilled
-    And "motor_status" should remain ":stopped"
-    And "door_status" should become ":opening"
+    Then the elevator should begin opening the doors
+    And the request should be fulfilled without any motor movement
 
-  @S-MOVE-MULTI-STOP @R-MOVE-SWEEP
-  Scenario: Multi-Stop Sweep Ordering
-    Given the elevator is ":idle" at floor 0
-    And car requests exist for floors 2, 4, and 6
-    When the elevator moves upward through each floor
-    Then stops should be made in ascending order: floor 2, then 4, then 6
+  @S-MOVE-MULTI-CAR @R-MOVE-SWEEP
+  Scenario: Multiple car requests are served in order on the way up
+    Given the elevator is idle at the ground floor
+    And passengers inside the car select floors 2, 4, and 5
+    When the elevator travels upward
+    Then it should stop at floors: 2, 4, 5
 
-  @S-MOVE-BOUNDARY @R-MOVE-SWEEP
-  Scenario: Boundary Reversals
-    Given the elevator is ":idle" at floor 5 (top floor)
-    And "heading" is ":up"
-    And there are no requests above floor 5
-    When a same-floor request triggers a heading update
-    Then the "heading" should become ":idle"
+  @S-MOVE-MULTI-HALL @R-MOVE-SWEEP
+  Scenario: Multiple hall requests are deferred to the return journey
+    Given the elevator is idle at the ground floor
+    And hall requests are received for floors 2, 4, and 5
+    When the elevator travels to the highest floor at floor 5
+    Then it should stop at floors: 5, 4, 2
+

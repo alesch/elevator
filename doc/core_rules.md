@@ -43,8 +43,9 @@ This document captures the "Executive Summary" of our current Elevator implement
   * **`motor_status`**: Represents **PHYSICAL MOVEMENT** (`:running`, `:stopping`, `:stopped`).
 
 * **Rule: Directional Bias (The Sweep) [R-MOVE-SWEEP]**
-  * Once moving in a direction, the elevator continues to satisfy all requests in that direction until none remain.
-  * It only reverses heading once all requests in the current direction are satisfied and there is work in the opposite direction.
+  * Once moving in a direction, the elevator satisfies all **Car Requests** in the current direction.
+  * **Hall Requests** are deferred to the return journey to minimize interruptions for passengers already inside the car.
+  * For multi-stop journeys, this results in an ascending sweep for internal passengers and a descending sweep for external arrivals.
 
 * **Rule: Retiring (Idle State) [R-MOVE-IDLE]**
   * If no requests remain in any direction, the `heading` becomes `:idle`.
