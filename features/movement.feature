@@ -4,54 +4,47 @@ Feature: Elevator Movement
   To serve passenger requests while following the LOOK algorithm
 
   @S-MOVE-WAKEUP @R-MOVE-WAKEUP @R-CORE-STATE
-  Scenario Outline: Context-Aware Wake Up (Request from IDLE)
-    Given the elevator is ":idle" and doors are ":closed" at floor <current>
-    When a request for floor <target> is received
-    Then the "requests" queue should include the new request
-    And the elevator "heading" should become "<heading>"
-    And the "phase" should become ":moving"
+  Scenario Outline: Wake up from idle state
+    Given the elevator is idle at floor <current>
+    When a request is received for floor <target>
+    Then the elevator should start moving <heading>
+    And the floor <target> should be in the pending requests
 
     Examples:
       | current | target | heading |
-      | 0       | 3      | :up     |
-      | 5       | 1      | :down   |
+      | 0       | 3      | up      |
+      | 5       | 1      | down    |
 
   @S-MOVE-BRAKING @R-SAFE-ARRIVAL
-  Scenario: Arrival at Target Floor (Braking)
-    Given the elevator is in "phase: :moving" with "heading: :up"
-    And "requests" includes "{:car, 3}"
-    And the elevator is approaching floor 3
+  Scenario: Arrival at target floor
+    Given the elevator is moving up towards floor 3
+    And a request for floor 3 is active
     When the sensor confirms arrival at floor 3
-    Then the "phase" should become ":arriving"
-    And "motor_status" should become ":stopping"
-    And the motor should receive a ":stop_now" command
-    And the request should remain in the queue until the motor physically stops
+    Then the elevator should begin to stop
+    And a stop command should be sent to the motor
+    And the request for floor 3 should still be pending
 
   @S-MOVE-OPENING @R-SAFE-ARRIVAL
-  Scenario: Braking Complete (Door Opening)
-    Given the elevator is in "phase: :arriving" with "motor_status: :stopping"
-    And a request for the current floor is in the queue
-    When the ":motor_stopped" confirmation is received
-    Then the "phase" should remain ":arriving"
-    And "motor_status" should become ":stopped"
-    And "door_status" should become ":opening"
-    And the door should receive an ":open" command
-    And the request for the current floor should be removed from the queue
+  Scenario: Doors start opening after motor stops
+    Given the elevator is stopping at a floor
+    And a request for the current floor is pending
+    When the motor confirms it has stopped
+    Then the elevator should begin opening the doors
+    And the request for the current floor should be fulfilled
 
   @S-MOVE-DOCKED @R-CORE-STATE @R-SAFE-TIMEOUT
-  Scenario: Door Open Confirmation
-    Given the elevator is in "phase: :arriving" with "door_status: :opening"
-    When the ":door_opened" confirmation is received
-    Then the "phase" should become ":docked"
-    And "door_status" should become ":open"
-    And the auto-close timer should be armed for 5000ms
+  Scenario: Doors are fully open
+    Given the elevator doors are opening
+    When the door confirms it has fully opened
+    Then the elevator should be docked at the floor
+    And the doors should be set to close automatically after 5 seconds
 
   @S-MOVE-BASE @R-MOVE-BASE
-  Scenario: Return to Base (Inactivity Timeout)
-    Given the elevator is in "phase: :idle" with no pending requests
-    When 5 minutes (300s) pass without any activity
-    Then a "{:car, 0}" request should be automatically added
-    And the elevator should return to floor 0
+  Scenario: Return to base after inactivity
+    Given the elevator is idle with no pending requests
+    When 5 minutes pass without any activity
+    Then a request for the ground floor should be automatically added
+    And the elevator should return to the ground floor
 
   @S-MOVE-SWEEP-UP @R-MOVE-SWEEP
   Scenario: Pick-up on the Way (Sweep)
