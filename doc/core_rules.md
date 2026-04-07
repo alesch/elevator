@@ -41,14 +41,16 @@ This document captures the "Executive Summary" of our current Elevator implement
 * **Rule: The Four Rules of LOOK [R-MOVE-LOOK]**
   The `Elevator.Sweep` module implements the **LOOK algorithm** which governs movement and stop priority:
   1. **Directional Bias**: The elevator travels in its current `heading` as long as there are requests further along that path.
-  2. **Stopping on the Way**: Stops at floors with requests in that direction. Priority is given to **Car Requests**; **Hall Requests** are picked up on the way ONLY if they are the last request in that direction to minimize interruptions.
+  2. **Stopping on the Way (Directional Asymmetry)**:
+      * **UP Journeys**: Priority is given to **Car Requests**. **Hall Requests** are picked up on the way ONLY if they are at the "peak" (the furthest request) to minimize interruptions for internal passengers.
+      * **DOWN Journeys**: Pick up ALL requests (Car and Hall) on the way to maximize efficiency for returning cars.
   3. **The "Look Ahead"**: Before reversing, the system verifies if there are any requests ahead of the current position in the current heading.
   4. **Reverse on Empty**: If no work remains in the current heading, the elevator reverses to satisfy requests in the opposite direction. If NO work exists altogether, it becomes `:idle`.
 
 * **Rule: Directional Bias (The Sweep) [R-MOVE-SWEEP]**
   * Once moving in a direction, the elevator satisfies all **Car Requests** in the current direction.
-  * **Hall Requests** are picked up only at the "peak" of the current sweep if car requests remain above them. (Refined: See [R-MOVE-LOOK]).
-  * This results in an ascending sweep for internal passengers and a descending sweep for external arrivals.
+  * **Hall Requests** follow the directional asymmetry rules defined in **[R-MOVE-LOOK]**.
+  * This results in an ascending sweep optimized for internal passengers and a descending sweep for external arrivals.
 
 * **Rule: Retiring (Idle State) [R-MOVE-IDLE]**
   * If no requests remain in any direction, the `heading` becomes `:idle`.

@@ -6,6 +6,17 @@ defmodule Elevator.Sweep do
   - It maintains a `heading` (:up or :down) as long as there are requests "ahead".
   - It reverses direction ONLY when it "looks" ahead and finds no further requests in that direction.
   - Car requests are prioritized on the way, while Hall requests may be deferred to the return journey.
+
+  ## Algorithm Deep Dive
+
+  1. **Look-Ahead Logic**: 
+     The elevator "looks ahead" along its current heading. If it sees a request, it keeps going. However, to be efficient, it only stops for Hall requests if they are at the "peak" (the furthest point) of the current sweep. Car requests are ALWAYS stops.
+
+  2. **Directional Asymmetry**: 
+     As per our business rules [R-MOVE-LOOK], hall requests are deferred on UP journeys (unless they are the peak), but are picked up normally on DOWN journeys to maximize throughput.
+
+  3. **The Return Journey**: 
+     Anything "behind" us or "deferred" gets moved to the end of the queue and is sorted in the reverse direction, forming the next sweep.
   """
   alias __MODULE__, as: Sweep
 
@@ -83,26 +94,7 @@ defmodule Elevator.Sweep do
     %{sweep | heading: calculate_heading(sweep, current_floor)}
   end
 
-  #
-  #  --- Private functions ---
-  #
-
-  # --- LOOK Algorithm Implementation ---
-  #
-  # 1. Look-Ahead Logic:
-  #    The elevator "looks ahead" along its current heading. If it sees a
-  #    request, it keeps going. However, to be efficient, it only stops
-  #    for Hall requests if they are at the "peak" (the furthest point)
-  #    of the current sweep. Car requests are ALWAYS stops.
-  #
-  # 2. Directional Asymmetry (Project Specific):
-  #    As per our business rules [R-MOVE-LOOK], hall requests are deferred
-  #    on UP journeys (unless they are the peak), but are picked up
-  #    normally on DOWN journeys.
-  #
-  # 3. The Return Journey:
-  #    Anything "behind" us or "deferred" gets moved to the end of the
-  #    queue and is sorted in the reverse direction, forming the next sweep.
+  # --- Private Functions ---
 
   defp split_by_heading(requests, current_floor, :up) do
     Enum.split_with(requests, fn {_, f} -> f >= current_floor end)
