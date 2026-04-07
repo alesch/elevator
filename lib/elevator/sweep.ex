@@ -52,7 +52,7 @@ defmodule Elevator.Sweep do
   def queue(%Sweep{heading: heading, requests: requests}, current_floor) do
     # The LOOK Algorithm "Story":
     # 1. We split the universe into what's "Ahead" and what's "Behind" us.
-    {ahead, behind} = split_by_proximity(requests, current_floor, heading)
+    {ahead, behind} = split_by_heading(requests, current_floor, heading)
 
     # 2. In the current direction, we decide which requests are immediate stops
     #    and which should be deferred (Look-Ahead logic).
@@ -104,11 +104,11 @@ defmodule Elevator.Sweep do
   #    Anything "behind" us or "deferred" gets moved to the end of the
   #    queue and is sorted in the reverse direction, forming the next sweep.
 
-  defp split_by_proximity(requests, current_floor, :up) do
+  defp split_by_heading(requests, current_floor, :up) do
     Enum.split_with(requests, fn {_, f} -> f >= current_floor end)
   end
 
-  defp split_by_proximity(requests, current_floor, :down) do
+  defp split_by_heading(requests, current_floor, :down) do
     Enum.split_with(requests, fn {_, f} -> f <= current_floor end)
   end
 
