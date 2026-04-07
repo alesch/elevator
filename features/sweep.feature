@@ -7,13 +7,13 @@ Feature: Elevator Sweep Algorithm (LOOK)
   Scenario: Upward sweep orders ahead-requests first
     Given a sweep with heading up and the elevator at floor 3
     When requests are added for floors: 5, 2, 4
-    Then the ordered queue should be: 4, 5, 2
+    Then the queue should be: 4, 5, 2
 
   @S-MOVE-LOOK-DOWN
   Scenario: Downward sweep orders ahead-requests first
     Given a sweep with heading down and the elevator at floor 3
     When requests are added for floors: 1, 5, 4
-    Then the ordered queue should be: 1, 4, 5
+    Then the queue should be: 1, 4, 5
 
   @S-MOVE-LOOK-CAR
   Scenario: Stopping for car requests on the way up

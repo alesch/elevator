@@ -39,11 +39,11 @@ defmodule Elevator.Sweep do
     end
   end
 
-  @doc "Returns the ordered queue of requests based on current heading and position."
-  @spec ordered_queue(t(), floor()) :: [request()]
-  def ordered_queue(%Sweep{heading: :idle, requests: reqs}, _current_floor), do: reqs
+  @doc "Returns the queue of requests based on current heading and position."
+  @spec queue(t(), floor()) :: [request()]
+  def queue(%Sweep{heading: :idle, requests: reqs}, _current_floor), do: reqs
 
-  def ordered_queue(%Sweep{heading: heading, requests: requests}, current_floor) do
+  def queue(%Sweep{heading: heading, requests: requests}, current_floor) do
     # The LOOK Algorithm "Story":
     # 1. We split the universe into what's "Ahead" and what's "Behind" us.
     {ahead, behind} = split_by_proximity(requests, current_floor, heading)
@@ -60,7 +60,7 @@ defmodule Elevator.Sweep do
   @spec next_stop(t(), floor()) :: floor() | nil
   def next_stop(sweep, current_floor) do
     sweep
-    |> ordered_queue(current_floor)
+    |> queue(current_floor)
     |> List.first()
     |> element_to_floor()
   end

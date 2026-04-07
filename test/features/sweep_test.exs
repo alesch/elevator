@@ -32,12 +32,12 @@ defmodule Elevator.SweepTest do
     {:ok, %{state | sweep: new_sweep}}
   end
 
-  # Then the ordered queue should be: 2, 4, 5
-  defthen ~r/^the ordered queue should be: (?<floors>.+)$/, %{floors: floors_str}, state do
+  # Then the queue should be: 2, 4, 5
+  defthen ~r/^the queue should be: (?<floors>.+)$/, %{floors: floors_str}, state do
     expected_floors = floors_str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.map(&String.to_integer/1)
     
     # Extract only floors from the requests, using current_floor
-    actual_floors = Sweep.ordered_queue(state.sweep, state.current_floor) |> Enum.map(fn {_, f} -> f end) |> Enum.uniq()
+    actual_floors = Sweep.queue(state.sweep, state.current_floor) |> Enum.map(fn {_, f} -> f end) |> Enum.uniq()
     
     assert actual_floors == expected_floors
     {:ok, state}
