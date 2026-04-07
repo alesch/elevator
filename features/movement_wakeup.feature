@@ -14,3 +14,12 @@ Feature: Elevator Movement Wakeup
       | current | target | heading |
       | ground  |      3 | up      |
       |       5 |      1 | down    |
+
+  @S-MOVE-BRAKING @R-SAFE-ARRIVAL
+  Scenario: Arrival at target floor
+    Given the elevator is moving up towards floor 3
+    And a request for floor 3 is active
+    When the sensor confirms arrival at floor 3
+    Then the elevator should begin to stop
+    And a stop command should be sent to the motor
+    And the request for floor 3 should still be pending

@@ -1,5 +1,5 @@
 defmodule Elevator.MovementWakeupTest do
-  use Cabbage.Feature, file: "movement_wakeup.feature", scenarios: ["Wake up from idle state"]
+  use Cabbage.Feature, file: "movement_wakeup.feature", scenarios: ["Wake up from idle state", "Arrival at target floor"]
   alias Elevator.Core
   import ExUnit.Assertions
 
@@ -71,6 +71,60 @@ defmodule Elevator.MovementWakeupTest do
 
     assert {:car, floor} in state.state.requests
 
+    {:ok, state}
+  end
+
+  # @S-MOVE-BRAKING
+  # Given the elevator is moving up towards floor 3
+  defgiven ~r/^the elevator is moving up towards floor (?<target>.+)$/, %{target: target}, state do
+    floor = parse_floor(target)
+    # Positioning the elevator just before the target floor
+    new_internal_state = %{
+      state.state
+      | phase: :moving,
+        current_floor: floor - 1,
+        heading: :up,
+        motor_status: :running
+    }
+
+    {:ok, %{state | state: new_internal_state}}
+  end
+
+  # And a request for floor 3 is active
+  defgiven ~r/^a request for floor (?<target>.+) is active$/, %{target: target}, state do
+    floor = parse_floor(target)
+    new_internal_state = %{state.state | requests: [{:car, floor}]}
+    {:ok, %{state | state: new_internal_state}}
+  end
+
+  # When the sensor confirms arrival at floor 3
+  defwhen ~r/^the sensor confirms arrival at floor (?<target>.+)$/,
+          %{target: target},
+          context do
+    floor = parse_floor(target)
+    {new_internal_state, actions} = Core.process_arrival(context.state, floor)
+    {:ok, %{context | state: new_internal_state, actions: actions}}
+  end
+
+  # Then the elevator should begin to stop
+  defthen ~r/^the elevator should begin to stop$/, _vars, state do
+    assert state.state.phase == :arriving
+    assert state.state.motor_status == :stopping
+    {:ok, state}
+  end
+
+  # And a stop command should be sent to the motor
+  defthen ~r/^a stop command should be sent to the motor$/, _vars, state do
+    assert {:stop_motor} in state.actions
+    {:ok, state}
+  end
+
+  # And the request for floor 3 should still be pending
+  defthen ~r/^the request for floor (?<target>.+) should still be pending$/,
+          %{target: target},
+          state do
+    floor = parse_floor(target)
+    assert {:car, floor} in state.state.requests
     {:ok, state}
   end
 end
