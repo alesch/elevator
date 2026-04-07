@@ -16,6 +16,7 @@ defmodule Elevator.Core do
   defstruct current_floor: :unknown,
             heading: :idle,
             door_status: :closed,
+            door_command: nil,
             requests: [],
             last_activity_at: 0,
             phase: :booting,
@@ -35,6 +36,7 @@ defmodule Elevator.Core do
           current_floor: integer() | :unknown,
           heading: :up | :down | :idle,
           door_status: :open | :closed | :opening | :closing | :obstructed,
+          door_command: :open | :close | nil,
           requests: list({atom(), integer()}),
           last_activity_at: integer(),
           phase: :booting | :rehoming | :moving | :arriving | :docked | :leaving | :idle,
@@ -50,53 +52,43 @@ defmodule Elevator.Core do
   @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
   def request_floor(%Core{phase: :booting} = state, _source, _floor), do: {state, []}
 
-  def request_floor(%Core{} = original_state, source, floor) when is_integer(floor) do
-    state_with_facts = original_state
-      |> add_request(source, floor)
-      |> update_heading()
-
-    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
-    {final_state, derive_actions(original_state, final_state)}
+  def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
+    state
+    |> apply_request(source, floor)
+    |> pulse()
   end
 
   @doc "Processes physical arrival at a floor and triggers a transit pulse."
   @spec process_arrival(t(), integer()) :: {t(), [action()]}
-  def process_arrival(%Core{} = original_state, floor) do
-    state_with_facts = original_state
-      |> Map.put(:current_floor, floor)
-
-    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
-    {final_state, derive_actions(original_state, final_state)}
+  def process_arrival(%Core{} = state, floor) do
+    state
+    |> Map.put(:current_floor, floor)
+    |> pulse()
   end
 
   @doc "Handles physical button presses and triggers a transit pulse."
   @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
-  def handle_button_press(original_state, button, now) do
-    state_with_facts = original_state
-      |> do_ingest_button(button, now)
-
-    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
-    {final_state, derive_actions(original_state, final_state)}
+  def handle_button_press(state, button, now) do
+    state
+    |> do_ingest_button(button, now)
+    |> pulse()
   end
 
   @doc "Central event handler for component confirmations and triggers a transit pulse."
   @spec handle_event(t(), atom(), integer() | nil) :: {t(), [action()]}
-  def handle_event(original_state, event, payload \\ nil) do
-    state_with_facts = original_state
-      |> do_ingest_event(event, payload)
-
-    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
-    {final_state, derive_actions(original_state, final_state)}
+  def handle_event(state, event, payload \\ nil) do
+    state
+    |> do_ingest_event(event, payload)
+    |> pulse()
   end
 
   # ---------------------------------------------------------------------------
   # ## The Engine (Pulse)
   # ---------------------------------------------------------------------------
 
-  @doc "Legacy pulse logic exposed for tests."
-  def pulse(%Core{} = state) do
-    final_state = state |> transit() |> enforce_the_golden_rule()
-    {final_state, derive_actions(state, final_state)}
+  def pulse(state) do
+    new_state = state |> transit() |> enforce_the_golden_rule()
+    {new_state, derive_actions(state, new_state)}
   end
 
   # ---------------------------------------------------------------------------
@@ -104,8 +96,7 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   defp transit(%Core{} = state) do
-    next_state = do_transit(state)
-    if state == next_state, do: next_state, else: transit(next_state)
+    state |> do_transit()
   end
 
   # Rule: Transition from Booting to Idle via Recovery
@@ -123,9 +114,8 @@ defmodule Elevator.Core do
   end
 
   # Rule: Transition from Moving to Arriving (Braking)
-  defp do_transit(%Core{phase: :moving, motor_status: m} = state)
-       when m in [:running, :crawling] do
-    if should_stop_at?(state, state.current_floor) or overshooting?(state) do
+  defp do_transit(%Core{phase: :moving} = state) do
+    if should_stop_at?(state, state.current_floor) do
       %{state | motor_status: :stopping, phase: :arriving}
     else
       state
@@ -137,9 +127,20 @@ defmodule Elevator.Core do
     state
   end
 
-  # Rule: Wakeup: Same-Floor Request
+  # Rule: Wakeup: Same-Floor Request OR Manual Door Open Command
+  defp do_transit(%Core{phase: :idle, door_command: :open} = state) do
+    state
+    |> Map.put(:phase, :arriving)
+    |> Map.put(:door_status, :opening)
+    |> Map.put(:door_command, nil)
+    |> fulfill_current_floor_requests()
+  end
+
   defp do_transit(%Core{phase: :idle, heading: :idle} = state) do
-    %{state | phase: :arriving}
+    state
+    |> Map.put(:phase, :arriving)
+    |> Map.put(:door_status, :opening)
+    |> fulfill_current_floor_requests()
   end
 
   # Rule: Wakeup: Different-Floor Request
@@ -147,9 +148,14 @@ defmodule Elevator.Core do
     %{state | phase: :moving, motor_status: :running}
   end
 
-  # Rule: Gateway Reversal -> Transition to arriving when obstructed
+  # Rule: Gateway Reversal -> Transition to arriving AND opening doors
   defp do_transit(%Core{phase: :leaving, door_status: :obstructed} = state) do
-    %{state | phase: :arriving}
+    %{state | phase: :arriving, door_status: :opening}
+  end
+
+  # Rule: Gateway Reversal -> Manual Door Open Command
+  defp do_transit(%Core{phase: :leaving, door_command: :open} = state) do
+    %{state | phase: :arriving, door_status: :opening, door_command: nil}
   end
 
   # Rule: Transition door to closing when leaving
@@ -160,6 +166,11 @@ defmodule Elevator.Core do
   # Rule: Gateway Exit -> Transition to :docked when doors are open
   defp do_transit(%Core{phase: :arriving, door_status: :open} = state) do
     %{state | phase: :docked}
+  end
+
+  # Rule: Door Command Close (Timeout or Button) -> Transition to leaving
+  defp do_transit(%Core{phase: :docked, door_command: :close} = state) do
+    %{state | phase: :leaving, door_status: :closing, door_command: nil}
   end
 
   # Rule: Gateway Settle -> Initiate door opening once motor stops
@@ -176,9 +187,12 @@ defmodule Elevator.Core do
   # Rule: Settlement from Leaving
   defp do_transit(%Core{phase: :leaving, door_status: :closed} = state) do
     state = update_heading(state)
-    new_phase = if state.heading == :idle, do: :idle, else: :moving
-    new_motor = if new_phase == :idle, do: :stopped, else: :running
-    %{state | phase: new_phase, motor_status: new_motor}
+
+    if state.heading == :idle do
+      %{state | phase: :idle, motor_status: :stopped}
+    else
+      %{state | phase: :moving, motor_status: :running}
+    end
   end
 
   # Default: Stable
@@ -204,14 +218,14 @@ defmodule Elevator.Core do
 
   defp do_ingest_event(%Core{phase: :idle} = state, :inactivity_timeout, _) do
     if state.current_floor != @base_floor do
-      add_request(state, :car, @base_floor) |> update_heading()
+      apply_request(state, :car, @base_floor)
     else
       state
     end
   end
 
   defp do_ingest_event(%Core{phase: :docked} = state, :door_timeout, _) do
-    %{state | phase: :leaving}
+    %{state | door_command: :close}
   end
 
   defp do_ingest_event(state, _, _), do: state
@@ -221,20 +235,18 @@ defmodule Elevator.Core do
   end
 
   defp do_ingest_button(%Core{phase: :idle} = state, :door_open, _now) do
-    %{state | phase: :arriving}
+    %{state | door_command: :open}
   end
 
   defp do_ingest_button(%Core{phase: :leaving} = state, :door_open, _now) do
-    %{state | phase: :arriving}
+    %{state | door_command: :open}
   end
 
   defp do_ingest_button(state, :door_open, _now), do: state
 
-  defp do_ingest_button(%Core{phase: :docked} = state, :door_close, _now) do
-    %{state | phase: :leaving}
+  defp do_ingest_button(%Core{} = state, :door_close, _now) do
+    %{state | door_command: :close}
   end
-
-  defp do_ingest_button(state, :door_close, _now), do: state
 
   defp do_ingest_button(state, _, _), do: state
 
@@ -250,14 +262,6 @@ defmodule Elevator.Core do
     end
   end
 
-  defp overshooting?(state) do
-    cond do
-      state.heading == :up and not any_requests_above?(state) -> true
-      state.heading == :down and not any_requests_below?(state) -> true
-      true -> false
-    end
-  end
-
   defp fulfill_current_floor_requests(state) do
     state |> Map.update!(:requests, fn reqs ->
       Enum.reject(reqs, fn {_, f} -> f == state.current_floor end)
@@ -265,7 +269,17 @@ defmodule Elevator.Core do
   end
 
   defp should_stop_at?(state, floor) do
-    Enum.any?(state.requests, fn {_, f} -> f == floor end)
+    has_car_request? = Enum.any?(state.requests, &(&1 == {:car, floor}))
+    has_hall_request? = Enum.any?(state.requests, &(&1 == {:hall, floor}))
+
+    cond do
+      has_car_request? -> true
+      state.heading == :down and has_hall_request? -> true
+      # Pick up a hall request going UP ONLY if there is nothing strictly above us to sweep
+      state.heading == :up and has_hall_request? and not any_requests_above?(state) -> true
+      state.heading == :idle and has_hall_request? -> true
+      true -> false
+    end
   end
 
   defp any_requests_above?(state) do
@@ -282,6 +296,12 @@ defmodule Elevator.Core do
     else
       %{state | requests: state.requests ++ [{source, floor}]}
     end
+  end
+
+  defp apply_request(state, source, floor) do
+    state
+    |> add_request(source, floor)
+    |> update_heading()
   end
 
   # ---------------------------------------------------------------------------
