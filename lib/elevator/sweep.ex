@@ -7,13 +7,14 @@ defmodule Elevator.Sweep do
   - It reverses direction ONLY when it "looks" ahead and finds no further requests in that direction.
   - Car requests are prioritized on the way, while Hall requests may be deferred to the return journey.
   """
+  alias __MODULE__, as: Sweep
 
   defstruct heading: :idle, requests: []
 
   @type source :: :car | :hall
   @type floor :: integer()
   @type request :: {source(), floor()}
-  @type t :: %__MODULE__{
+  @type t :: %Sweep{
           heading: :up | :down | :idle,
           requests: [request()]
         }
@@ -21,12 +22,12 @@ defmodule Elevator.Sweep do
   @doc "Initializes a new sweep state."
   @spec new(:up | :down | :idle, [request()]) :: t()
   def new(heading \\ :idle, requests \\ []) do
-    %__MODULE__{heading: heading, requests: requests}
+    %Sweep{heading: heading, requests: requests}
   end
 
   @doc "Adds a request to the sweep."
   @spec add_request(t(), source(), floor()) :: t()
-  def add_request(%__MODULE__{requests: reqs} = sweep, source, floor) do
+  def add_request(%Sweep{requests: reqs} = sweep, source, floor) do
     if {source, floor} in reqs do
       sweep
     else
@@ -36,7 +37,7 @@ defmodule Elevator.Sweep do
 
   @doc "Returns the ordered queue of requests based on current heading and position."
   @spec ordered_queue(t(), floor()) :: [request()]
-  def ordered_queue(%__MODULE__{heading: :up, requests: reqs}, current_floor) do
+  def ordered_queue(%Sweep{heading: :up, requests: reqs}, current_floor) do
     # Divide into ahead and behind
     {ahead, behind} = Enum.split_with(reqs, fn {_, f} -> f >= current_floor end)
     
@@ -53,7 +54,7 @@ defmodule Elevator.Sweep do
     Enum.sort_by(behind ++ deferred, fn {_, f} -> f end, :desc)
   end
 
-  def ordered_queue(%__MODULE__{heading: :down, requests: reqs}, current_floor) do
+  def ordered_queue(%Sweep{heading: :down, requests: reqs}, current_floor) do
     {ahead, behind} = Enum.split_with(reqs, fn {_, f} -> f <= current_floor end)
     
     # In LOOK, we pick up all hall requests on the way DOWN
@@ -64,7 +65,7 @@ defmodule Elevator.Sweep do
     Enum.sort_by(behind, fn {_, f} -> f end, :asc)
   end
 
-  def ordered_queue(%__MODULE__{requests: reqs}, _current_floor), do: reqs
+  def ordered_queue(%Sweep{requests: reqs}, _current_floor), do: reqs
 
   @doc "Determines if the elevator should stop at the given floor."
   @spec should_stop?(t(), floor(), floor()) :: boolean()
@@ -93,13 +94,13 @@ defmodule Elevator.Sweep do
 
   @doc "Removes all requests for the given floor."
   @spec floor_serviced(t(), floor()) :: t()
-  def floor_serviced(%__MODULE__{requests: reqs} = sweep, floor) do
+  def floor_serviced(%Sweep{requests: reqs} = sweep, floor) do
     %{sweep | requests: Enum.reject(reqs, fn {_, f} -> f == floor end)}
   end
 
   @doc "Updates the heading based on current floor and requests."
   @spec update_heading(t(), floor()) :: t()
-  def update_heading(%__MODULE__{requests: []} = sweep, _current_floor) do
+  def update_heading(%Sweep{requests: []} = sweep, _current_floor) do
     %{sweep | heading: :idle}
   end
 
