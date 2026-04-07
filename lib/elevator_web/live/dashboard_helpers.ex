@@ -22,13 +22,20 @@ defmodule ElevatorWeb.DashboardHelpers do
 
   @doc "Determines the industrial color code for a given component status."
   @spec state_color(atom()) :: String.t()
-  # Cyan (Running/Active)
-  def state_color(state) when state in [:crawling, :running, :tracking, :closed],
-    do: "#00f2ff"
-
-  # Green (Stable/Ready)
-  def state_color(state) when state in [:idle, :stopped, :clear, :open, :docked],
-    do: "#39ff14"
+  # Cyan (Healthy: Active or Ready)
+  def state_color(state)
+      when state in [
+             :crawling,
+             :running,
+             :tracking,
+             :closed,
+             :idle,
+             :stopped,
+             :clear,
+             :open,
+             :docked
+           ],
+      do: "#00f2ff"
 
   # Amber (Intent & Transitions)
   def state_color(state) when state in [:stopping, :opening, :closing, :rehoming],
