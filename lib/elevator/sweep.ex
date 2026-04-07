@@ -138,15 +138,16 @@ defmodule Elevator.Sweep do
     {ahead, []}
   end
 
-  defp assemble_journey(immediate, return_journey, heading) do
-    sort_by_heading(immediate, heading) ++ sort_reverse_heading(return_journey, heading)
+  defp assemble_journey(immediate, return_journey, :up) do
+    sort_ascending(immediate) ++ sort_descending(return_journey)
   end
 
-  defp sort_by_heading(requests, :up), do: Enum.sort_by(requests, fn {_, f} -> f end, :asc)
-  defp sort_by_heading(requests, :down), do: Enum.sort_by(requests, fn {_, f} -> f end, :desc)
+  defp assemble_journey(immediate, return_journey, :down) do
+    sort_descending(immediate) ++ sort_ascending(return_journey)
+  end
 
-  defp sort_reverse_heading(requests, :up), do: Enum.sort_by(requests, fn {_, f} -> f end, :desc)
-  defp sort_reverse_heading(requests, :down), do: Enum.sort_by(requests, fn {_, f} -> f end, :asc)
+  defp sort_ascending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :asc)
+  defp sort_descending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :desc)
 
   defp any_requests_above?(sweep, floor) do
     Enum.any?(sweep.requests, fn {_, f} -> f > floor end)
