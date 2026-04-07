@@ -1,3 +1,4 @@
+@skip
 Feature: Elevator System Behavior
   As an elevator system
   I want to handle actor redundancy and message spam

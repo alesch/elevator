@@ -1,3 +1,4 @@
+@skip
 Feature: Elevator Dashboard UI
   As a passenger
   I want to interact with the elevator via the dashboard

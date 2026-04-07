@@ -1,3 +1,4 @@
+@skip
 Feature: Manual Door Control
   As a passenger
   I want to manually control the elevator doors

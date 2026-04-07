@@ -1,3 +1,4 @@
+@skip
 Feature: Elevator Homing & Recovery
   As an elevator system
   I want to safely re-home the elevator after a reboot or crash

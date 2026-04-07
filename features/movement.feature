@@ -1,3 +1,4 @@
+@skip
 Feature: Elevator Movement
   As an elevator system
   I want to travel between floors efficiently

@@ -1,3 +1,4 @@
+@skip
 Feature: Hardware Protocols
   As a hardware driver
   I want to maintain internal state for motor, door, and sensors

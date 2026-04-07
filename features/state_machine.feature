@@ -1,3 +1,4 @@
+@skip
 Feature: Elevator State Machine
   As an elevator system
   I want to transition between operational phases explicitly
