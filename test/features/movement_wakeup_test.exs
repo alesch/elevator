@@ -1,6 +1,7 @@
 defmodule Elevator.MovementWakeupTest do
   use Cabbage.Feature, file: "movement_wakeup.feature", scenarios: ["Wake up from idle state", "Arrival at target floor"]
   alias Elevator.Core
+  alias Elevator.Gherkin.Arguments, as: Args
   import ExUnit.Assertions
 
   setup do
@@ -9,21 +10,11 @@ defmodule Elevator.MovementWakeupTest do
     {:ok, %{state: %Core{}, actions: []}}
   end
 
-  defp parse_floor("ground"), do: 0
-
-  defp parse_floor(n) when is_binary(n) do
-    case Integer.parse(n) do
-      {num, _} -> num
-      :error -> n
-    end
-  end
-
-  defp parse_floor(num) when is_integer(num), do: num
 
   # @S-MOVE-WAKEUP
   # Given the elevator is idle at floor <current>
   defgiven ~r/^the elevator is idle at floor (?<current>.+)$/, %{current: current}, state do
-    floor = parse_floor(current)
+    floor = Args.parse_floor(current)
 
     # We initialize the state to match the "idle" requirement.
     # In a real system, it would have reached :idle via the booting/recovery sequence.
@@ -41,7 +32,7 @@ defmodule Elevator.MovementWakeupTest do
 
   # When a request for floor <target> is received
   defwhen ~r/^a request for floor (?<target>.+) is received$/, %{target: target}, context do
-    floor = parse_floor(target)
+    floor = Args.parse_floor(target)
 
     # Trigger the core logic
     {new_internal_state, actions} = Core.request_floor(context.state, :car, floor)
@@ -53,7 +44,7 @@ defmodule Elevator.MovementWakeupTest do
   defthen ~r/^the elevator should start moving (?<heading>up|down)$/,
           %{heading: heading_str},
           state do
-    expected_heading = String.to_atom(heading_str)
+    expected_heading = Args.parse_heading(heading_str)
 
     # Assertions on state
     assert state.state.phase == :moving
@@ -67,7 +58,7 @@ defmodule Elevator.MovementWakeupTest do
 
   # And floor <target> should be in the pending requests
   defthen ~r/^floor (?<target>.+) should be in the pending requests$/, %{target: target}, state do
-    floor = parse_floor(target)
+    floor = Args.parse_floor(target)
 
     assert {:car, floor} in state.state.requests
 
@@ -77,7 +68,7 @@ defmodule Elevator.MovementWakeupTest do
   # @S-MOVE-BRAKING
   # Given the elevator is moving up towards floor 3
   defgiven ~r/^the elevator is moving up towards floor (?<target>.+)$/, %{target: target}, state do
-    floor = parse_floor(target)
+    floor = Args.parse_floor(target)
     # Positioning the elevator just before the target floor
     new_internal_state = %{
       state.state
@@ -92,7 +83,7 @@ defmodule Elevator.MovementWakeupTest do
 
   # And a request for floor 3 is active
   defgiven ~r/^a request for floor (?<target>.+) is active$/, %{target: target}, state do
-    floor = parse_floor(target)
+    floor = Args.parse_floor(target)
     new_internal_state = %{state.state | requests: [{:car, floor}]}
     {:ok, %{state | state: new_internal_state}}
   end
@@ -101,7 +92,7 @@ defmodule Elevator.MovementWakeupTest do
   defwhen ~r/^the sensor confirms arrival at floor (?<target>.+)$/,
           %{target: target},
           context do
-    floor = parse_floor(target)
+    floor = Args.parse_floor(target)
     {new_internal_state, actions} = Core.process_arrival(context.state, floor)
     {:ok, %{context | state: new_internal_state, actions: actions}}
   end
@@ -123,7 +114,7 @@ defmodule Elevator.MovementWakeupTest do
   defthen ~r/^the request for floor (?<target>.+) should still be pending$/,
           %{target: target},
           state do
-    floor = parse_floor(target)
+    floor = Args.parse_floor(target)
     assert {:car, floor} in state.state.requests
     {:ok, state}
   end
