@@ -112,9 +112,20 @@ defmodule Elevator.Sweep do
     Enum.split_with(requests, fn {_, f} -> f <= current_floor end)
   end
 
+  # Example: 
+  #   If `ahead` is `[{:hall, 3}, {:car, 5}, {:hall, 5}]` and heading is :up:
+  #   1. `peak_floor` becomes 5.
+  #   2. `split_with` groups `{:car, 5}` and `{:hall, 5}` as immediate stops.
+  #   3. `{:hall, 3}` is deferred into the second list of the tuple.
+  #   Result: `{[{:car, 5}, {:hall, 5}], [{:hall, 3}]}`
   defp apply_look_priorities(ahead, :up) do
     # On UP journeys: Defer hall requests that aren't the peak.
-    peak_floor = ahead |> Enum.map(fn {_, f} -> f end) |> Enum.max(fn -> nil end)
+    peak_floor =
+      ahead
+      # transforms [{:car, 5}, {:hall, 3}] into [5, 3]
+      |> Enum.map(fn {_, f} -> f end)
+      # finds the highest floor number (5)
+      |> Enum.max(fn -> nil end)
 
     Enum.split_with(ahead, fn
       {:car, _} -> true
