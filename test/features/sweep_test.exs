@@ -89,4 +89,15 @@ defmodule Elevator.SweepTest do
     assert Sweep.next_stop(state.sweep, state.current_floor) == floor
     {:ok, state}
   end
+
+  # Then the heading should be up
+  defthen ~r/^the heading should be (?<heading>up|down|idle)$/, %{heading: heading_str}, state do
+    expected_heading = String.to_existing_atom(heading_str)
+    
+    # We check what the heading BECOMES when updated from the current position
+    actual_sweep = Sweep.update_heading(state.sweep, state.current_floor)
+    
+    assert actual_sweep.heading == expected_heading
+    {:ok, state}
+  end
 end

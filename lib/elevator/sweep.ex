@@ -41,7 +41,13 @@ defmodule Elevator.Sweep do
 
   @doc "Returns the queue of requests based on current heading and position."
   @spec queue(t(), floor()) :: [request()]
-  def queue(%Sweep{heading: :idle, requests: reqs}, _current_floor), do: reqs
+  def queue(%Sweep{heading: :idle, requests: []}, _current_floor), do: []
+
+  def queue(%Sweep{heading: :idle, requests: _requests} = sweep, current_floor) do
+    # If idle but has work, we calculate the heading for the journey
+    heading = calculate_heading(sweep, current_floor)
+    queue(%{sweep | heading: heading}, current_floor)
+  end
 
   def queue(%Sweep{heading: heading, requests: requests}, current_floor) do
     # The LOOK Algorithm "Story":
@@ -73,16 +79,8 @@ defmodule Elevator.Sweep do
 
   @doc "Updates the heading based on current floor and requests."
   @spec update_heading(t(), floor()) :: t()
-  def update_heading(%Sweep{requests: []} = sweep, _current_floor) do
-    %{sweep | heading: :idle}
-  end
-
   def update_heading(sweep, current_floor) do
-    cond do
-      any_requests_above?(sweep, current_floor) -> %{sweep | heading: :up}
-      any_requests_below?(sweep, current_floor) -> %{sweep | heading: :down}
-      true -> %{sweep | heading: :idle}
-    end
+    %{sweep | heading: calculate_heading(sweep, current_floor)}
   end
 
   #
@@ -149,4 +147,14 @@ defmodule Elevator.Sweep do
 
   defp element_to_floor(nil), do: nil
   defp element_to_floor({_, f}), do: f
+
+  defp calculate_heading(%Sweep{requests: []}, _current_floor), do: :idle
+
+  defp calculate_heading(sweep, current_floor) do
+    cond do
+      any_requests_above?(sweep, current_floor) -> :up
+      any_requests_below?(sweep, current_floor) -> :down
+      true -> :idle
+    end
+  end
 end

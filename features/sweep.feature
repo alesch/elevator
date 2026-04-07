@@ -57,3 +57,10 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Given a sweep with heading up and the elevator at floor 1
     And requests for floors: 2, 5
     Then the next stop should be floor 2
+
+  @S-MOVE-LOOK-IDLE-START
+  Scenario: Calculating next stop from IDLE
+    Given a sweep with heading idle and the elevator at floor 3
+    And a car request for floor 5
+    Then the next stop should be floor 5
+    And the heading should be up
