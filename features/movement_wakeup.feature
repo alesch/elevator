@@ -15,6 +15,13 @@ Feature: Elevator Movement Wakeup
       | ground  |      3 | up      |
       |       5 |      1 | down    |
 
+  @S-MOVE-SAME-FLOOR @R-MOVE-WAKEUP
+  Scenario: Request on the current floor
+    Given the elevator is idle at floor 3
+    When a request for floor 3 is received
+    Then the elevator should begin opening the doors
+    And the request should be fulfilled without any motor movement
+
   @S-MOVE-BRAKING @R-SAFE-ARRIVAL
   Scenario: Arrival at target floor
     Given the elevator is moving up towards floor 3

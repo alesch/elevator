@@ -42,3 +42,5 @@ This document serves as the "Source of Truth" for all Gherkin steps implemented 
 | `should return to floor {n}` | Verifies return to base behavior. | `Then the elevator should return to floor 0` |
 | `should start moving {heading}` | Verifies phase transition to :moving with heading. | `Then the elevator should start moving up` |
 | `floor {n} should be in the pending requests` | Asserts floor n is in the request queue. | `And floor 5 should be in the pending requests` |
+| `should begin opening the doors` | Verifies the doors start opening. | `Then the elevator should begin opening the doors` |
+| `the request should be fulfilled without any motor movement` | Confirms fulfillment and zero motor action. | `And the request should be fulfilled...` |

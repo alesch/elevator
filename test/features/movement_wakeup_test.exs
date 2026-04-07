@@ -1,5 +1,8 @@
 defmodule Elevator.MovementWakeupTest do
-  use Cabbage.Feature, file: "movement_wakeup.feature", scenarios: ["Wake up from idle state", "Arrival at target floor"]
+  use Cabbage.Feature,
+    file: "movement_wakeup.feature",
+    scenarios: ["Wake up from idle state", "Arrival at target floor"]
+
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
   import ExUnit.Assertions
@@ -9,7 +12,6 @@ defmodule Elevator.MovementWakeupTest do
     # but our scenario starts with "Given the elevator is idle".
     {:ok, %{state: %Core{}, actions: []}}
   end
-
 
   # @S-MOVE-WAKEUP
   # Given the elevator is idle at floor <current>
@@ -56,6 +58,27 @@ defmodule Elevator.MovementWakeupTest do
     {:ok, state}
   end
 
+  # Then the elevator should begin opening the doors
+  defthen ~r/^the elevator should begin opening the doors$/, _vars, state do
+    assert state.state.door_status == :opening
+    assert {:open_door} in state.actions
+
+    {:ok, state}
+  end
+
+  # And the request should be fulfilled without any motor movement
+  defthen ~r/^the request should be fulfilled without any motor movement$/, _vars, state do
+    # Fulfillment: No requests for current floor
+    current_floor = state.state.current_floor
+    assert Enum.all?(state.state.requests, fn {_, f} -> f != current_floor end)
+
+    # Motor check: Should remain stopped
+    assert state.state.motor_status == :stopped
+    refute Enum.any?(state.actions, fn a -> match?({:move, _}, a) end)
+
+    {:ok, state}
+  end
+
   # And floor <target> should be in the pending requests
   defthen ~r/^floor (?<target>.+) should be in the pending requests$/, %{target: target}, state do
     floor = Args.parse_floor(target)
@@ -67,7 +90,9 @@ defmodule Elevator.MovementWakeupTest do
 
   # @S-MOVE-BRAKING
   # Given the elevator is moving up towards floor 3
-  defgiven ~r/^the elevator is moving up towards floor (?<target>.+)$/, %{target: target}, state do
+  defgiven ~r/^the elevator is moving up towards floor (?<target>.+)$/,
+           %{target: target},
+           state do
     floor = Args.parse_floor(target)
     # Positioning the elevator just before the target floor
     new_internal_state = %{
