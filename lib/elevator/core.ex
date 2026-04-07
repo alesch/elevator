@@ -50,44 +50,53 @@ defmodule Elevator.Core do
   @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
   def request_floor(%Core{phase: :booting} = state, _source, _floor), do: {state, []}
 
-  def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
-    state
-    |> add_request(source, floor)
-    |> update_heading()
-    |> pulse()
+  def request_floor(%Core{} = original_state, source, floor) when is_integer(floor) do
+    state_with_facts = original_state
+      |> add_request(source, floor)
+      |> update_heading()
+
+    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
+    {final_state, derive_actions(original_state, final_state)}
   end
 
   @doc "Processes physical arrival at a floor and triggers a transit pulse."
   @spec process_arrival(t(), integer()) :: {t(), [action()]}
-  def process_arrival(%Core{} = state, floor) do
-    state
-    |> Map.put(:current_floor, floor)
-    |> pulse()
+  def process_arrival(%Core{} = original_state, floor) do
+    state_with_facts = original_state
+      |> Map.put(:current_floor, floor)
+
+    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
+    {final_state, derive_actions(original_state, final_state)}
   end
 
   @doc "Handles physical button presses and triggers a transit pulse."
   @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
-  def handle_button_press(state, button, now) do
-    state
-    |> do_ingest_button(button, now)
-    |> pulse()
+  def handle_button_press(original_state, button, now) do
+    state_with_facts = original_state
+      |> do_ingest_button(button, now)
+
+    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
+    {final_state, derive_actions(original_state, final_state)}
   end
 
   @doc "Central event handler for component confirmations and triggers a transit pulse."
   @spec handle_event(t(), atom(), integer() | nil) :: {t(), [action()]}
-  def handle_event(state, event, payload \\ nil) do
-    state
-    |> do_ingest_event(event, payload)
-    |> pulse()
+  def handle_event(original_state, event, payload \\ nil) do
+    state_with_facts = original_state
+      |> do_ingest_event(event, payload)
+
+    final_state = state_with_facts |> transit() |> enforce_the_golden_rule()
+    {final_state, derive_actions(original_state, final_state)}
   end
 
   # ---------------------------------------------------------------------------
   # ## The Engine (Pulse)
   # ---------------------------------------------------------------------------
 
-  def pulse(state) do
-    new_state = state |> transit() |> enforce_the_golden_rule()
-    {new_state, derive_actions(state, new_state)}
+  @doc "Legacy pulse logic exposed for tests."
+  def pulse(%Core{} = state) do
+    final_state = state |> transit() |> enforce_the_golden_rule()
+    {final_state, derive_actions(state, final_state)}
   end
 
   # ---------------------------------------------------------------------------
@@ -95,28 +104,27 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   defp transit(%Core{} = state) do
-    state
-    |> transit_logic()
-  end
-
-  # Internal recursive-ready transit loop (but maintains single-step logic per plan)
-  defp transit_logic(state) do
-    state
-    |> do_transit()
+    next_state = do_transit(state)
+    if state == next_state, do: next_state, else: transit(next_state)
   end
 
   # Rule: Transition from Booting to Idle via Recovery
   defp do_transit(%Core{phase: :booting} = state), do: state
 
   # Rule: Transition from Rehoming to Arriving (Braking)
-  defp do_transit(%Core{phase: :rehoming, current_floor: 0, motor_status: m} = state)
-       when m in [:running, :crawling] do
-    %{state | motor_status: :stopping, phase: :arriving}
+  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: m} = state) 
+       when is_integer(floor) and m in [:running, :crawling] do
+    %{state | motor_status: :stopping}
   end
 
-  # Rule: Transition from Moving/Idle to Arriving (Braking)
-  defp do_transit(%Core{phase: p, motor_status: m} = state)
-       when p in [:moving, :idle] and m in [:running, :crawling] do
+  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: :stopped} = state) 
+       when is_integer(floor) do
+    %{state | phase: :idle}
+  end
+
+  # Rule: Transition from Moving to Arriving (Braking)
+  defp do_transit(%Core{phase: :moving, motor_status: m} = state)
+       when m in [:running, :crawling] do
     if should_stop_at?(state, state.current_floor) or overshooting?(state) do
       %{state | motor_status: :stopping, phase: :arriving}
     else
@@ -124,16 +132,29 @@ defmodule Elevator.Core do
     end
   end
 
-  # Rule: Transition from Idle to Moving
-  defp do_transit(%Core{phase: :idle, heading: h, door_status: :closed} = state)
-       when h != :idle do
+  # Rule: Wakeup: Completely Idle (No Requests)
+  defp do_transit(%Core{phase: :idle, requests: []} = state) do
+    state
+  end
+
+  # Rule: Wakeup: Same-Floor Request
+  defp do_transit(%Core{phase: :idle, heading: :idle} = state) do
+    %{state | phase: :arriving}
+  end
+
+  # Rule: Wakeup: Different-Floor Request
+  defp do_transit(%Core{phase: :idle} = state) do
     %{state | phase: :moving, motor_status: :running}
   end
 
-  # Rule: Gateway Exit -> Transition to :leaving when doors begin closing
-  defp do_transit(%Core{phase: p, door_status: :closing} = state)
-       when p in [:arriving, :docked] do
-    %{state | phase: :leaving}
+  # Rule: Gateway Reversal -> Transition to arriving when obstructed
+  defp do_transit(%Core{phase: :leaving, door_status: :obstructed} = state) do
+    %{state | phase: :arriving}
+  end
+
+  # Rule: Transition door to closing when leaving
+  defp do_transit(%Core{phase: :leaving, door_status: :open} = state) do
+    %{state | door_status: :closing}
   end
 
   # Rule: Gateway Exit -> Transition to :docked when doors are open
@@ -190,30 +211,30 @@ defmodule Elevator.Core do
   end
 
   defp do_ingest_event(%Core{phase: :docked} = state, :door_timeout, _) do
-    if state.door_sensor == :clear do
-      %{state | door_status: :closing}
-    else
-      state
-    end
+    %{state | phase: :leaving}
   end
 
   defp do_ingest_event(state, _, _), do: state
 
-  defp do_ingest_button(state, :door_open, now) do
-    if state.door_status in [:closed, :closing] do
-      %{state | door_status: :opening}
-    else
-      %{state | last_activity_at: now}
-    end
+  defp do_ingest_button(%Core{phase: :docked} = state, :door_open, now) do
+    %{state | last_activity_at: now}
   end
 
-  defp do_ingest_button(state, :door_close, _) do
-    if state.door_status == :open do
-      %{state | door_status: :closing}
-    else
-      state
-    end
+  defp do_ingest_button(%Core{phase: :idle} = state, :door_open, _now) do
+    %{state | phase: :arriving}
   end
+
+  defp do_ingest_button(%Core{phase: :leaving} = state, :door_open, _now) do
+    %{state | phase: :arriving}
+  end
+
+  defp do_ingest_button(state, :door_open, _now), do: state
+
+  defp do_ingest_button(%Core{phase: :docked} = state, :door_close, _now) do
+    %{state | phase: :leaving}
+  end
+
+  defp do_ingest_button(state, :door_close, _now), do: state
 
   defp do_ingest_button(state, _, _), do: state
 

@@ -16,7 +16,7 @@ defmodule Elevator.PhaseTransitionsTest do
 
   # [S-PHASE-MOVE-ARRIVE]
   test "[S-PHASE-MOVE-ARRIVE]: :moving → :arriving when target floor reached" do
-    state = %Core{phase: :moving, heading: :up, requests: [{:car, 3}], current_floor: 2}
+    state = %Core{phase: :moving, heading: :up, requests: [{:car, 3}], current_floor: 2, motor_status: :running}
 
     {new_state, actions} = Core.process_arrival(state, 3)
 
@@ -36,8 +36,8 @@ defmodule Elevator.PhaseTransitionsTest do
     assert {:set_timer, :door_timeout, 5000} in actions
   end
 
-  # [S-PHASE-DOCK-LEAVE]
-  test "[S-PHASE-DOCK-LEAVE]: :docked → :leaving when door timeout fires" do
+  # [S-SAFE-TIMEOUT]
+  test "[S-SAFE-TIMEOUT]: :docked → :leaving when door timeout fires" do
     state = %Core{phase: :docked, door_status: :open, door_sensor: :clear}
 
     {new_state, actions} = Core.handle_event(state, :door_timeout, 5000)
@@ -87,7 +87,7 @@ defmodule Elevator.PhaseTransitionsTest do
 
     # Note: Transition to :arriving (the "Gateway" broker)
     assert new_state.phase == :arriving
-    assert new_state.door_status == :obstructed
+    assert new_state.door_status == :opening
     assert {:open_door} in actions
   end
 end

@@ -111,11 +111,9 @@ defmodule Elevator.ControllerTest do
       # 2. Verify Logic (Action)
       send(pid, :return_to_base)
 
-      # Pulse 1: Transition to :arriving (Request for F0)
-      assert_receive {:elevator_state, %{phase: :arriving}}
-      # Pulse 2: At-floor stop confirms door opening cycle begins
+      # Pulse 1: Transition to :arriving (Request for F0) and door opening
+      assert_receive {:elevator_state, %{phase: :arriving, door_status: :opening}}
       assert_receive {:"$gen_cast", :open}
-      assert_receive {:elevator_state, %{door_status: :opening}}
     end
 
     test "[S-MOVE-BRAKING]/[S-MOVE-OPENING]: Arrival sequence triggers immediate intent signals",
@@ -203,8 +201,7 @@ defmodule Elevator.ControllerTest do
       assert_receive {:elevator_state, %{phase: :idle, current_floor: 0}}
 
       # 1. Start with doors OPEN
-      send(pid, :motor_stopped)
-      # Wait for the cast :open (initial arrival)
+      send(pid, :return_to_base)
       assert_receive {:"$gen_cast", :open}
       send(pid, :door_opened)
       assert_receive {:elevator_state, %{phase: :docked, door_status: :open}}
@@ -226,8 +223,8 @@ defmodule Elevator.ControllerTest do
       # ASSERT: Hardware receives OPEN command (Reversal)
       assert_receive {:"$gen_cast", :open}
 
-      # ASSERT: Phase reverts to :arriving (The Broker)
-      assert_receive {:elevator_state, %{phase: :arriving, door_status: :obstructed}}
+      # ASSERT: Phase reverts to :arriving (The Broker) and door opens
+      assert_receive {:elevator_state, %{phase: :arriving, door_status: :opening}}
     end
   end
 end
