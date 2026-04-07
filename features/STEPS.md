@@ -20,6 +20,7 @@ This document serves as the "Source of Truth" for all Gherkin steps implemented 
 | `"{field}" includes {value}` | Adds to a list (requests). | `Given "requests" includes floor 5` |
 | `the only request in the queue is "{value}"` | Sets exact request list. | `Given the only request in the queue is "{:car, 3}"` |
 | `approaching floor {n}` | Moves current_floor near target. | `Given the elevator is approaching floor 3` |
+| `is idle at floor {n}` | Sets phase to :idle and current_floor to n. | `Given the elevator is idle at floor 0` |
 
 ## When (Actions/Events)
 
@@ -39,3 +40,5 @@ This document serves as the "Source of Truth" for all Gherkin steps implemented 
 | `the actions should be "{action}"` | Verifies expected outcome list. | `Then the actions should be "{:close_door}"` |
 | `motor MUST stay "{status}" while...` | Safety invariant check. | `Then the motor MUST stay ":stopped" while...` |
 | `should return to floor {n}` | Verifies return to base behavior. | `Then the elevator should return to floor 0` |
+| `should start moving {heading}` | Verifies phase transition to :moving with heading. | `Then the elevator should start moving up` |
+| `floor {n} should be in the pending requests` | Asserts floor n is in the request queue. | `And floor 5 should be in the pending requests` |
