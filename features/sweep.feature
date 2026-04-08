@@ -20,7 +20,7 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Given a sweep with heading up and the elevator at floor 2
     And a car request for floor 5
     And a car request for floor 3
-    When the elevator reaches floor 3
+    When the elevator is at floor 3
     Then the next stop should be floor 3
 
   @S-MOVE-LOOK-HALL-DEFER
@@ -28,14 +28,14 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Given a sweep with heading up and the elevator at floor 2
     And a car request for floor 5
     And a hall request for floor 3
-    When the elevator reaches floor 3
+    When the elevator is at floor 3
     Then the next stop should be floor 5
 
   @S-MOVE-LOOK-HALL-PEAK
   Scenario: Picking up hall requests at the top of the sweep
     Given a sweep with heading up and the elevator at floor 4
     And a hall request for floor 5
-    When the elevator reaches floor 5
+    When the elevator is at floor 5
     Then the next stop should be floor 5
 
   @S-MOVE-LOOK-HALL-DOWN
@@ -43,7 +43,7 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Given a sweep with heading down and the elevator at floor 4
     And a car request for floor 1
     And a hall request for floor 3
-    When the elevator reaches floor 3
+    When the elevator is at floor 3
     Then the next stop should be floor 3
 
   @S-MOVE-LOOK-SERVICE

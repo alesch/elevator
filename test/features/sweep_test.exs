@@ -53,7 +53,7 @@ defmodule Elevator.SweepTest do
   end
 
   # Given a car/hall request for floor X
-  defgiven ~r/^a (?<source>car|hall) request for floor (?<floor>.+)$/,
+  defgiven ~r/^a (?<source>.+) request for floor (?<floor>.+)$/,
            %{source: source_str, floor: floor_str},
            state do
     source = Arguments.parse_source(source_str)
@@ -64,7 +64,7 @@ defmodule Elevator.SweepTest do
 
   # When the elevator reaches floor X
   # When the elevator is at floor X
-  defwhen ~r/^the elevator (?:is at|reaches) floor (?<floor>.+)$/, %{floor: floor_str}, state do
+  defwhen ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, state do
     floor = Arguments.parse_floor(floor_str)
     {:ok, Map.put(state, :current_floor, floor)}
   end
@@ -105,7 +105,7 @@ defmodule Elevator.SweepTest do
   end
 
   # Then the heading should be up
-  defthen ~r/^the heading should be (?<heading>up|down|idle)$/, %{heading: heading_str}, state do
+  defthen ~r/^the heading should be (?<heading>.+)$/, %{heading: heading_str}, state do
     expected_heading = Arguments.parse_heading(heading_str)
 
     # We check what the heading BECOMES when updated from the current position
