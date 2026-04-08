@@ -43,6 +43,22 @@ defmodule Elevator.Gherkin.Arguments do
   end
 
   @doc """
+  Parses a phase argument from Gherkin text to an atom.
+  Supports leading colons (e.g., ":booting", "booting").
+  """
+  def parse_phase(val) when is_binary(val) do
+    val |> String.trim_leading(":") |> String.to_atom()
+  end
+
+  @doc """
+  Parses a button argument from Gherkin text to an atom.
+  Supports leading colons (e.g., ":door_open", "door_open").
+  """
+  def parse_button(val) when is_binary(val) do
+    val |> String.trim_leading(":") |> String.to_atom()
+  end
+
+  @doc """
   Parses a request source from Gherkin text to an atom.
   Supports: "car", "hall".
   Raises `ArgumentError` on failure.

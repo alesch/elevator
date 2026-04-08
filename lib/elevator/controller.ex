@@ -131,36 +131,18 @@ defmodule Elevator.Controller do
 
   @impl true
   @spec handle_cast({:request_floor, atom(), integer()}, map()) :: {:noreply, map()}
-  def handle_cast({:request_floor, source, floor}, %{state: %{phase: :rehoming}} = data) do
-    Logger.warning("Ignoring request #{inspect(source)} to floor #{floor} during REHOMING")
-    {:noreply, data}
-  end
 
   def handle_cast({:request_floor, source, floor}, data) do
-    # SILENT IDEMPOTENCY:
-    # 1. We ignore if it's already in the queue.
-    # 2. We ignore if we are at the floor AND the door is already opening/open.
-    already_queued? = Enum.any?(Core.requests(data.state), fn {_, f} -> f == floor end)
+    :telemetry.execute([:elevator, :controller, :request], %{}, %{source: source, floor: floor})
 
-    already_satisfied? =
-      Core.current_floor(data.state) == floor and
-        Core.door_status(data.state) in [:open, :opening]
+    {new_state, actions} = Core.request_floor(data.state, source, floor)
 
-    if already_queued? or already_satisfied? do
-      # Silent ignore for external inputs
-      {:noreply, data}
-    else
-      :telemetry.execute([:elevator, :controller, :request], %{}, %{source: source, floor: floor})
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
 
-      {new_state, actions} = Core.request_floor(data.state, source, floor)
-
-      new_data =
-        %{data | state: new_state}
-        |> execute_actions(actions)
-        |> broadcast_and_reset_timer()
-
-      {:noreply, new_data}
-    end
+    {:noreply, new_data}
   end
 
   @impl true

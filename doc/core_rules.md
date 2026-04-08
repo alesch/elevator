@@ -14,27 +14,8 @@ This document captures the "Executive Summary" of our current Elevator implement
 * **Rule: Explicit Phase State Machine [R-CORE-STATE]**
   * The Core state includes a `phase` field that identifies the elevator's current operational phase unambiguously. Phase is the primary guard for all event handlers — no phase should need to inspect `motor_status` or `door_status` to determine what to do next.
 
-  | Phase | Meaning | Motor | Door |
-  | :--- | :--- | :--- | :--- |
-  | `:rehoming` | Boot/crash recovery, moving down at `:crawling` speed | `:crawling` | `:closed` |
-  | `:moving` | Traveling to a target floor | `:running` | `:closed` |
-  | `:arriving` | At target: motor stopping → stopped → door opening | transitioning | `:opening` |
-  | `:docked` | At floor, doors open, serving passengers | `:stopped` | `:open` |
-  | `:leaving` | Service complete: door closing | `:stopped` | `:closing` → `:closed` |
-  | `:idle` | At floor, doors closed, no active work | `:stopped` | `:closed` |
-
-  **Phase Transitions Chart:**
-
-  ```text
-  :rehoming  --[motor_stopped]--------------------------> :idle
-  :idle      --[request + heading set]------------------> :moving
-  :moving    --[floor_arrival at target]----------------> :arriving
-  :arriving  --[door_opened]----------------------------> :docked
-  :docked    --[timeout or close_button]----------------> :leaving
-  :leaving   --[door_closed + requests remain]----------> :moving
-  :leaving   --[door_closed + no requests]--------------> :idle
-  :leaving   --[obstruction during close]---------------> :docked
-  ```
+* **Rule: Boot Blocking [R-BOOT-GUARD]**
+  * While in `phase: :booting`, the Core MUST ignore all external floor requests and manual door commands.
 
 ## 2. Movement & Direction Rules (The LOOK Algorithm)
 
@@ -103,7 +84,7 @@ This document captures the "Executive Summary" of our current Elevator implement
     * **Step 2: Decision**:
       * If they match and indicate a valid floor -> Transition directly to `phase: :idle` (Zero-move recovery).
       * If they mismatch or indicate `:unknown` -> Move `:down` at `:crawling` speed until a floor sensor is triggered.
-  * **Request Blocking**: While in `phase: :rehoming`, the Core MUST ignore all floor requests.
+  * **Request Blocking [R-HOME-BLOCK]**: While in `phase: :rehoming`, the Core MUST ignore all floor requests and manual door commands.
   * **Homing Completion**: Once position is verified, the system transitions to `phase: :idle` and updates the `Vault`. No door cycle is triggered.
 
 ## 6. Hardware Layer Protocols
