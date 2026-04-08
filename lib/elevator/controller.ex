@@ -100,33 +100,23 @@ defmodule Elevator.Controller do
     vault_floor = lookup_hardware(data, :vault, &Elevator.Vault.get_floor/1)
     sensor_floor = lookup_hardware(data, :sensor, &Hardware.Sensor.get_floor/1)
 
-    if vault_floor == sensor_floor and vault_floor != nil do
-      # CASE 1: Perfect agreement (Zero-move recovery)
-      :telemetry.execute([:elevator, :controller, :recovery], %{}, %{floor: vault_floor})
-      {new_state, actions} = Core.handle_event(data.state, :recovery_complete, vault_floor)
+    {new_state, actions} =
+      Core.handle_event(data.state, :startup_check, %{vault: vault_floor, sensor: sensor_floor})
 
-      new_data =
-        %{data | state: new_state}
-        |> execute_actions(actions)
+    phase = Core.phase(new_state)
 
-      broadcast_state(new_data.state)
-      {:noreply, new_data}
-    else
-      # CASE 2: Ambiguity or Cold Start (Perform physical homing)
-      :telemetry.execute([:elevator, :controller, :rehoming], %{}, %{
-        direction: :down,
-        status: :crawling
-      })
+    :telemetry.execute([:elevator, :controller, phase], %{}, %{
+      floor: vault_floor,
+      direction: :down,
+      status: :crawling
+    })
 
-      {new_state, actions} = Core.handle_event(data.state, :rehoming_started, nil)
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
 
-      new_data =
-        %{data | state: new_state}
-        |> execute_actions(actions)
-
-      broadcast_state(new_data.state)
-      {:noreply, new_data}
-    end
+    broadcast_state(new_data.state)
+    {:noreply, new_data}
   end
 
   @impl true
@@ -187,13 +177,7 @@ defmodule Elevator.Controller do
       was_rehoming: was_rehoming?
     })
 
-    # Intermediate state to handle manual rehoming logic override
-    # (In a real system, the Brain would handle this internally)
-    {mid_state, _} = Core.process_arrival(data.state, floor)
-    final_heading = if was_rehoming?, do: :idle, else: mid_state.heading
-
-    {final_state, actions} =
-      Core.process_arrival(%{data.state | heading: final_heading}, floor)
+    {final_state, actions} = Core.process_arrival(data.state, floor)
 
     new_data =
       %{data | state: final_state}

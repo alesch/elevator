@@ -62,7 +62,7 @@ defmodule Elevator.TelemetryLogger do
       [:elevator, :controller, :request],
       [:elevator, :controller, :arrival],
       [:elevator, :controller, :rehoming],
-      [:elevator, :controller, :recovery],
+      [:elevator, :controller, :idle],
       [:elevator, :controller, :decision],
       [:elevator, :hardware, :motor, :move],
       [:elevator, :hardware, :motor, :stop],
@@ -95,9 +95,12 @@ defmodule Elevator.TelemetryLogger do
     log_and_broadcast("🧠", "Controller: REHOMING")
   end
 
-  def handle_event([:elevator, :controller, :recovery], _measurements, metadata, _config) do
-    floor = Map.get(metadata, :floor, "???")
-    log_and_broadcast("🧠", "Controller: Recovery at Floor #{floor}")
+  def handle_event([:elevator, :controller, :idle], _measurements, metadata, _config) do
+    if floor = Map.get(metadata, :floor) do
+      log_and_broadcast("🧠", "Controller: Recovery at Floor #{floor}")
+    else
+      log_and_broadcast("🧠", "Controller: IDLE")
+    end
   end
 
   def handle_event([:elevator, :controller, :decision], _measurements, metadata, _config) do

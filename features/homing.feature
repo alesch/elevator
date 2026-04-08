@@ -1,4 +1,3 @@
-@skip
 Feature: Elevator Homing & Recovery
   As an elevator system
   I want to safely re-home the elevator after a reboot or crash
@@ -44,6 +43,7 @@ Feature: Elevator Homing & Recovery
   Scenario: No Door Cycle on Homing Arrival
     Given the "phase" is ":rehoming"
     And "door_status" is ":closed"
+    And the Core receives its very first ":floor_arrival" event
     When the ":motor_stopped" confirmation is received after homing arrival
     Then the "phase" should transition to ":idle"
     And "door_status" should remain ":closed"

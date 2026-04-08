@@ -82,7 +82,9 @@ defmodule Elevator.Core do
   @doc "Returns the current request queue via the LOOK algorithm."
   def requests(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.queue(s, f)
 
-  @doc "Returns the current heading."
+  @doc "Returns the current heading based on Phase or Sweep logic."
+  def heading(%Core{phase: :booting}), do: :idle
+  def heading(%Core{phase: :rehoming, current_floor: :unknown}), do: :down
   def heading(%Core{sweep: s}), do: Elevator.Sweep.heading(s)
 
   @doc "Returns the current operational phase."
@@ -169,6 +171,10 @@ defmodule Elevator.Core do
     %{state | motor_status: :stopping}
   end
 
+  defp do_transit(%Core{phase: :rehoming, motor_status: :stopped, current_floor: :unknown} = state) do
+    %{state | motor_status: :crawling}
+  end
+
   defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: :stopped} = state)
        when is_integer(floor) do
     %{state | phase: :idle}
@@ -183,38 +189,14 @@ defmodule Elevator.Core do
     end
   end
 
-  # [R-MOVE-WAKEUP]: Wakeup: Completely Idle (No Requests)
-  defp do_transit(%Core{phase: :idle} = state) do
-    do_idle_transit(state, heading(state), next_stop(state))
-  end
-
-  # Case: Manual Door Open request while idle
-  defp do_idle_transit(%Core{door_command: :open} = state, :idle, _next) do
-    state
-    |> Map.put(:phase, :arriving)
-    |> Map.put(:door_status, :opening)
-    |> Map.put(:door_command, nil)
-    |> floor_serviced()
-  end
-
-  # Case: Already at the target floor
-  defp do_idle_transit(state, _heading, next) when next == state.current_floor do
-    state
-    |> Map.put(:phase, :arriving)
-    |> Map.put(:door_status, :opening)
-    |> floor_serviced()
-  end
-
-  # Case: Need to Move
-  defp do_idle_transit(state, :idle, _next), do: state
-
-  defp do_idle_transit(state, _heading, _next) do
-    %{state | phase: :moving, motor_status: :running}
-  end
-
   # Rule: Gateway Reversal -> Transition to arriving AND opening doors
   defp do_transit(%Core{phase: :leaving, door_status: :obstructed} = state) do
     %{state | phase: :arriving, door_status: :opening}
+  end
+
+  # [R-MOVE-WAKEUP]: Wakeup: Completely Idle (No Requests)
+  defp do_transit(%Core{phase: :idle} = state) do
+    do_idle_transit(state, heading(state), next_stop(state))
   end
 
   # Rule: Gateway Reversal -> Manual Door Open Command
@@ -263,19 +245,47 @@ defmodule Elevator.Core do
   # Default: Stable
   defp do_transit(state), do: state
 
+  defp do_idle_transit(%Core{door_command: :open} = state, :idle, _next) do
+    state
+    |> Map.put(:phase, :arriving)
+    |> Map.put(:door_status, :opening)
+    |> Map.put(:door_command, nil)
+    |> floor_serviced()
+  end
+
+  defp do_idle_transit(state, _heading, next) when next == state.current_floor do
+    state
+    |> Map.put(:phase, :arriving)
+    |> Map.put(:door_status, :opening)
+    |> floor_serviced()
+  end
+
+  defp do_idle_transit(state, :idle, _next), do: state
+
+  defp do_idle_transit(state, _heading, _next) do
+    %{state | phase: :moving, motor_status: :running}
+  end
+
   # ---------------------------------------------------------------------------
   # ## Data Ingestion Helpers
   # ---------------------------------------------------------------------------
+
+  defp do_ingest_event(state, :startup_check, %{vault: v, sensor: s}) do
+    if v == s and v != nil do
+      # CASE 1: Perfect agreement (Zero-move recovery)
+      %{state | phase: :idle, current_floor: v}
+    else
+      # CASE 2: Ambiguity or Cold Start (Perform physical homing)
+      do_ingest_event(state, :rehoming_started, nil)
+    end
+  end
 
   defp do_ingest_event(state, :recovery_complete, floor) do
     %{state | phase: :idle, current_floor: floor}
   end
 
   defp do_ingest_event(state, :rehoming_started, _) do
-    state
-    |> Map.put(:phase, :rehoming)
-    |> update_in([Access.key(:sweep), Access.key(:heading)], fn _ -> :down end)
-    |> Map.put(:motor_status, :crawling)
+    %{state | phase: :rehoming}
   end
 
   defp do_ingest_event(state, :motor_stopped, _), do: %{state | motor_status: :stopped}
