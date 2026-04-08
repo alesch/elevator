@@ -179,30 +179,33 @@ defmodule Elevator.Core do
     end
   end
 
-  # Rule: Wakeup: Completely Idle (No Requests)
+  # [R-MOVE-WAKEUP]: Wakeup: Completely Idle (No Requests)
   defp do_transit(%Core{phase: :idle} = state) do
-    case heading(state) do
-      :idle ->
-        if state.door_command == :open do
-          state
-          |> Map.put(:phase, :arriving)
-          |> Map.put(:door_status, :opening)
-          |> Map.put(:door_command, nil)
-          |> perform_floor_service()
-        else
-          state
-        end
+    do_idle_transit(state, heading(state), next_stop(state))
+  end
 
-      _heading ->
-        if state.current_floor == next_stop(state) do
-          state
-          |> Map.put(:phase, :arriving)
-          |> Map.put(:door_status, :opening)
-          |> perform_floor_service()
-        else
-          %{state | phase: :moving, motor_status: :running}
-        end
-    end
+  # Case: Manual Door Open request while idle
+  defp do_idle_transit(%Core{door_command: :open} = state, :idle, _next) do
+    state
+    |> Map.put(:phase, :arriving)
+    |> Map.put(:door_status, :opening)
+    |> Map.put(:door_command, nil)
+    |> floor_serviced()
+  end
+
+  # Case: Already at the target floor
+  defp do_idle_transit(state, _heading, next) when next == state.current_floor do
+    state
+    |> Map.put(:phase, :arriving)
+    |> Map.put(:door_status, :opening)
+    |> floor_serviced()
+  end
+
+  # Case: Need to Move
+  defp do_idle_transit(state, :idle, _next), do: state
+
+  defp do_idle_transit(state, _heading, _next) do
+    %{state | phase: :moving, motor_status: :running}
   end
 
   # Rule: Gateway Reversal -> Transition to arriving AND opening doors
@@ -234,9 +237,10 @@ defmodule Elevator.Core do
   defp do_transit(%Core{phase: :arriving, motor_status: :stopped} = state) do
     if state.door_status in [:closed, :obstructed] do
       state
-      |> perform_floor_service()
+      |> floor_serviced()
       |> Map.put(:door_status, :opening)
     else
+      # Stable: Doors are already :opening or :open (waiting for hardware)
       state
     end
   end
@@ -322,10 +326,6 @@ defmodule Elevator.Core do
   # ## Calculation Helpers
   # ---------------------------------------------------------------------------
 
-  defp perform_floor_service(state) do
-    service_sweep_floor(state)
-  end
-
   defp add_sweep_request(state, source, floor) do
     Map.update!(state, :sweep, &Elevator.Sweep.add_request(&1, source, floor))
   end
@@ -334,7 +334,7 @@ defmodule Elevator.Core do
     Map.update!(state, :sweep, &Elevator.Sweep.update_heading(&1, state.current_floor))
   end
 
-  defp service_sweep_floor(state) do
+  defp floor_serviced(state) do
     Map.update!(state, :sweep, &Elevator.Sweep.floor_serviced(&1, state.current_floor))
   end
 
