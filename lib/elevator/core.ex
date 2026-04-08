@@ -22,28 +22,6 @@ defmodule Elevator.Core do
             door_sensor: :clear,
             motor_status: :stopped
 
-  # ---------------------------------------------------------------------------
-  # ## State Factories (Public API)
-  # ---------------------------------------------------------------------------
-
-  @doc "Factory: Returns a fresh Elevator struct."
-  def init, do: %Core{}
-
-  @doc """
-  Factory: Returns an elevator idle at the given floor.
-  Bypasses rehoming by simulating a successful recovery.
-  """
-  def idle_at(floor, _opts \\ []) do
-  end
-
-  @doc "Factory: Returns an elevator docked (door open) at the given floor."
-  def docked_at(_floor) do
-  end
-
-  @doc "Factory: Returns an elevator moving between two floors."
-  def moving_to(_from, _to) do
-  end
-
   @type action ::
           {:set_timer, atom(), integer()}
           | {:cancel_timer, atom()}
@@ -63,6 +41,39 @@ defmodule Elevator.Core do
           door_sensor: :clear | :blocked,
           motor_status: :running | :crawling | :stopping | :stopped
         }
+
+  # ---------------------------------------------------------------------------
+  # ## State Factories (Public API)
+  # ---------------------------------------------------------------------------
+
+  @doc "Factory: Returns a fresh Elevator struct."
+  def init, do: %Core{}
+
+  @doc """
+  Factory: Returns an elevator idle at the given floor.
+  Bypasses rehoming by simulating a successful recovery.
+  """
+  def idle_at(floor) do
+    init()
+    |> handle_event(:recovery_complete, floor)
+    |> elem(0)
+  end
+
+  @doc "Factory: Returns an elevator docked (door open) at the given floor."
+  def docked_at(floor) do
+    idle_at(floor)
+    |> request_floor(:car, floor)
+    |> elem(0)
+    |> handle_event(:door_opened)
+    |> elem(0)
+  end
+
+  @doc "Factory: Returns an elevator moving between two floors."
+  def moving_to(from, to) do
+    idle_at(from)
+    |> request_floor(:car, to)
+    |> elem(0)
+  end
 
   # ---------------------------------------------------------------------------
   # ## Status Accessors (Public)
@@ -88,7 +99,6 @@ defmodule Elevator.Core do
 
   @doc "Returns the next immediate stop according to LOOK."
   def next_stop(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.next_stop(s, f)
-
 
   # ---------------------------------------------------------------------------
   # ## Public API (Entry Points)
@@ -150,12 +160,12 @@ defmodule Elevator.Core do
   defp do_transit(%Core{phase: :booting} = state), do: state
 
   # Rule: Transition from Rehoming to Arriving (Braking)
-  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: m} = state) 
+  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: m} = state)
        when is_integer(floor) and m in [:running, :crawling] do
     %{state | motor_status: :stopping}
   end
 
-  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: :stopped} = state) 
+  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: :stopped} = state)
        when is_integer(floor) do
     %{state | phase: :idle}
   end
@@ -261,9 +271,15 @@ defmodule Elevator.Core do
   end
 
   defp do_ingest_event(state, :motor_stopped, _), do: %{state | motor_status: :stopped}
-  defp do_ingest_event(state, :door_opened, now), do: %{state | door_status: :open, last_activity_at: now}
+
+  defp do_ingest_event(state, :door_opened, now),
+    do: %{state | door_status: :open, last_activity_at: now}
+
   defp do_ingest_event(state, :door_closed, _), do: %{state | door_status: :closed}
-  defp do_ingest_event(state, :door_obstructed, _), do: %{state | door_status: :obstructed, door_sensor: :blocked}
+
+  defp do_ingest_event(state, :door_obstructed, _),
+    do: %{state | door_status: :obstructed, door_sensor: :blocked}
+
   defp do_ingest_event(state, :door_cleared, _), do: %{state | door_sensor: :clear}
 
   defp do_ingest_event(%Core{phase: :idle} = state, :inactivity_timeout, _) do
@@ -353,25 +369,38 @@ defmodule Elevator.Core do
 
   defp update_door_action(actions, old, new) do
     cond do
-      new.door_status in [:opening, :obstructed] and old.door_status not in [:opening, :obstructed] -> actions ++ [{:open_door}]
-      new.door_status == :closing and old.door_status != :closing -> actions ++ [{:close_door}]
-      true -> actions
+      new.door_status in [:opening, :obstructed] and
+          old.door_status not in [:opening, :obstructed] ->
+        actions ++ [{:open_door}]
+
+      new.door_status == :closing and old.door_status != :closing ->
+        actions ++ [{:close_door}]
+
+      true ->
+        actions
     end
   end
 
   defp update_timer_action(actions, old, new) do
     cond do
-      new.door_status == :open and (old.door_status != :open or old.last_activity_at != new.last_activity_at) ->
+      new.door_status == :open and
+          (old.door_status != :open or old.last_activity_at != new.last_activity_at) ->
         actions ++ [{:set_timer, :door_timeout, @door_wait_ms}]
+
       new.door_status != :open and old.door_status == :open ->
         actions ++ [{:cancel_timer, :door_timeout}]
-      true -> actions
+
+      true ->
+        actions
     end
   end
 
   defp enforce_the_golden_rule(state) do
     if state.door_status != :closed and state.motor_status != :stopped do
-      Logger.warning("The Golden Rule: Motor forced stopped. Phase: #{state.phase}, door: #{state.door_status}")
+      Logger.warning(
+        "The Golden Rule: Motor forced stopped. Phase: #{state.phase}, door: #{state.door_status}"
+      )
+
       %{state | motor_status: :stopped}
     else
       state
