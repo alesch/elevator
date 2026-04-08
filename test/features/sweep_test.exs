@@ -1,5 +1,8 @@
 defmodule Elevator.SweepTest do
-  use Cabbage.Feature, file: "sweep.feature"
+  use Cabbage.Feature,
+    file: "sweep.feature",
+    # async: true is actually slower for this feature
+    async: false
 
   alias Elevator.Sweep
   import ExUnit.Assertions
@@ -9,8 +12,9 @@ defmodule Elevator.SweepTest do
   end
 
   # Given a sweep with heading up and the elevator at floor 3
-  defgiven ~r/^a sweep with heading (?<heading>up|down|idle)(?: and the elevator at floor (?<floor>\d+))?$/, 
-           %{heading: heading_str, floor: floor_str}, state do
+  defgiven ~r/^a sweep with heading (?<heading>up|down|idle)(?: and the elevator at floor (?<floor>\d+))?$/,
+           %{heading: heading_str, floor: floor_str},
+           state do
     heading = String.to_existing_atom(heading_str)
     floor = if floor_str, do: String.to_integer(floor_str), else: 0
     {:ok, %{state | sweep: %{state.sweep | heading: heading}, current_floor: floor}}
@@ -27,24 +31,36 @@ defmodule Elevator.SweepTest do
   end
 
   defp do_add_requests(state, floors_str) do
-    floors = floors_str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.map(&String.to_integer/1)
+    floors =
+      floors_str
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.map(&String.to_integer/1)
+
     new_sweep = Enum.reduce(floors, state.sweep, fn f, acc -> Sweep.add_request(acc, :car, f) end)
     {:ok, %{state | sweep: new_sweep}}
   end
 
   # Then the queue should be: 2, 4, 5
   defthen ~r/^the queue should be: (?<floors>.+)$/, %{floors: floors_str}, state do
-    expected_floors = floors_str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.map(&String.to_integer/1)
-    
+    expected_floors =
+      floors_str
+      |> String.split(",")
+      |> Enum.map(&String.trim/1)
+      |> Enum.map(&String.to_integer/1)
+
     # Extract only floors from the requests, using current_floor
-    actual_floors = Sweep.queue(state.sweep, state.current_floor) |> Enum.map(fn {_, f} -> f end) |> Enum.uniq()
-    
+    actual_floors =
+      Sweep.queue(state.sweep, state.current_floor) |> Enum.map(fn {_, f} -> f end) |> Enum.uniq()
+
     assert actual_floors == expected_floors
     {:ok, state}
   end
 
   # Given a car/hall request for floor X
-  defgiven ~r/^a (?<source>car|hall) request for floor (?<floor>\d+)$/, %{source: source_str, floor: floor_str}, state do
+  defgiven ~r/^a (?<source>car|hall) request for floor (?<floor>\d+)$/,
+           %{source: source_str, floor: floor_str},
+           state do
     source = String.to_existing_atom(source_str)
     floor = String.to_integer(floor_str)
     new_sweep = Sweep.add_request(state.sweep, source, floor)
@@ -58,14 +74,17 @@ defmodule Elevator.SweepTest do
     {:ok, Map.put(state, :current_floor, floor)}
   end
 
-
-
   # Given a sweep with car and hall requests for floor 3
-  defgiven ~r/^a sweep with car and hall requests for floor (?<floor>\d+)$/, %{floor: floor_str}, state do
+  defgiven ~r/^a sweep with car and hall requests for floor (?<floor>\d+)$/,
+           %{floor: floor_str},
+           state do
     floor = String.to_integer(floor_str)
-    new_sweep = state.sweep 
-                |> Sweep.add_request(:car, floor)
-                |> Sweep.add_request(:hall, floor)
+
+    new_sweep =
+      state.sweep
+      |> Sweep.add_request(:car, floor)
+      |> Sweep.add_request(:hall, floor)
+
     {:ok, %{state | sweep: new_sweep}}
   end
 
@@ -93,10 +112,10 @@ defmodule Elevator.SweepTest do
   # Then the heading should be up
   defthen ~r/^the heading should be (?<heading>up|down|idle)$/, %{heading: heading_str}, state do
     expected_heading = String.to_existing_atom(heading_str)
-    
+
     # We check what the heading BECOMES when updated from the current position
     actual_sweep = Sweep.update_heading(state.sweep, state.current_floor)
-    
+
     assert actual_sweep.heading == expected_heading
     {:ok, state}
   end
