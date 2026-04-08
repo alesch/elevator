@@ -351,15 +351,17 @@ defmodule Elevator.Core do
 
   defp update_motor_action(actions, old, new) do
     cond do
-      new.motor_status in [:stopping, :stopped] and old.motor_status not in [:stopping, :stopped] ->
+      # Case: Crossing the arrival threshold (Moving -> Stopping)
+      braking?(old, new) ->
         actions ++ [{:stop_motor}]
 
-      new.motor_status == :running and
-          (old.motor_status != :running or heading(old) != heading(new)) ->
+      # Case: Start moving or change direction
+      # Note: The state machine ensures a stop occurs before heading reversals.
+      is_running?(new) and intent_changed?(old, new) ->
         actions ++ [{:move, heading(new)}]
 
-      new.motor_status == :crawling and
-          (old.motor_status != :crawling or heading(old) != heading(new)) ->
+      # Case: Start crawling or change direction (rehoming)
+      is_crawling?(new) and intent_changed?(old, new) ->
         actions ++ [{:crawl, heading(new)}]
 
       true ->
@@ -406,4 +408,22 @@ defmodule Elevator.Core do
       state
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # ## Semantic Motor Helpers
+  # ---------------------------------------------------------------------------
+
+  defp braking?(old, new), do: is_stopping?(new) and is_moving?(old)
+
+  defp intent_changed?(old, new) do
+    motor_status_changed?(old, new) or heading_changed?(old, new)
+  end
+
+  defp is_moving?(state), do: state.motor_status in [:running, :crawling]
+  defp is_stopping?(state), do: state.motor_status in [:stopping, :stopped]
+  defp is_running?(state), do: state.motor_status == :running
+  defp is_crawling?(state), do: state.motor_status == :crawling
+
+  defp motor_status_changed?(old, new), do: old.motor_status != new.motor_status
+  defp heading_changed?(old, new), do: heading(old) != heading(new)
 end
