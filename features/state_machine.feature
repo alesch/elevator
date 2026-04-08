@@ -39,7 +39,7 @@ Feature: Elevator State Machine
     Then the "phase" should become ":leaving"
     And "door_status" should become ":closing"
 
-  @S-PHASE-LEAVE-MOVE @R-CORE-STATE @R-MOVE-SWEEP
+  @S-PHASE-LEAVE-MOVE @R-CORE-STATE @R-MOVE-LOOK
   Scenario: :leaving → :moving
     Given the elevator is in "phase: :leaving"
     And pending work exists in the queue
@@ -47,7 +47,7 @@ Feature: Elevator State Machine
     Then the "phase" should become ":moving"
     And "motor_status" should become ":running"
 
-  @S-PHASE-LEAVE-IDLE @R-CORE-STATE @R-MOVE-IDLE
+  @S-PHASE-LEAVE-IDLE @R-CORE-STATE @R-MOVE-LOOK
   Scenario: :leaving → :idle
     Given the elevator is in "phase: :leaving"
     And no pending requests remain

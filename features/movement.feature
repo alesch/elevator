@@ -48,7 +48,7 @@ Feature: Elevator Movement
     Then a request for floor ground should be added
     And the elevator should return to floor ground
 
-  @S-MOVE-SWEEP-CAR @R-MOVE-SWEEP
+  @S-MOVE-SWEEP-CAR @R-MOVE-LOOK
   Scenario: Stop for car request on the way
     Given the elevator is at floor ground
     And it is moving up to serve a request at floor 5
@@ -56,7 +56,7 @@ Feature: Elevator Movement
     And the elevator arrives at floor 3
     Then the elevator should stop at floor 3
 
-  @S-MOVE-SWEEP-HALL @R-MOVE-SWEEP
+  @S-MOVE-SWEEP-HALL @R-MOVE-LOOK
   Scenario: Defer hall request to the return journey
     Given the elevator is at floor ground
     And it is moving up to serve a request at floor 5
@@ -72,14 +72,14 @@ Feature: Elevator Movement
     Then the elevator should begin opening the doors
     And the request should be fulfilled without any motor movement
 
-  @S-MOVE-MULTI-CAR @R-MOVE-SWEEP
+  @S-MOVE-MULTI-CAR @R-MOVE-LOOK
   Scenario: Multiple car requests are served in order on the way up
     Given the elevator is idle at floor ground
     And passengers inside the car select floors 2, 4, and 5
     When the elevator travels upward
     Then it should stop at floors: 2, 4, 5
 
-  @S-MOVE-MULTI-HALL @R-MOVE-SWEEP
+  @S-MOVE-MULTI-HALL @R-MOVE-LOOK
   Scenario: Multiple hall requests are deferred to the return journey
     Given the elevator is idle at floor ground
     And hall requests are received for floors 2, 4, and 5

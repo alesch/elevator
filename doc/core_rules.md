@@ -40,20 +40,13 @@ This document captures the "Executive Summary" of our current Elevator implement
 
 * **Rule: The Four Rules of LOOK [R-MOVE-LOOK]**
   The `Elevator.Sweep` module implements the **LOOK algorithm** which governs movement and stop priority:
-  1. **Directional Bias**: The elevator travels in its current `heading` as long as there are requests further along that path.
+  1. **Directional Bias**: The elevator travels in its current `heading` as long as there are requests further along that path. Once moving, it satisfies all **Car Requests** in the current direction.
   2. **Stopping on the Way (Directional Asymmetry)**:
-      * **UP Journeys**: Priority is given to **Car Requests**. **Hall Requests** are picked up on the way ONLY if they are at the "peak" (the furthest request) to minimize interruptions for internal passengers.
+      * This results in an ascending sweep optimized for internal passengers and a descending sweep for external arrivals.
+      * **UP Journeys**: Priority is given to **Car Requests**. **Hall Requests** are picked up on the way ONLY if they are at the "peak" (the furthest request).
       * **DOWN Journeys**: Pick up ALL requests (Car and Hall) on the way to maximize efficiency for returning cars.
   3. **The "Look Ahead"**: Before reversing, the system verifies if there are any requests ahead of the current position in the current heading.
-  4. **Reverse on Empty**: If no work remains in the current heading, the elevator reverses to satisfy requests in the opposite direction. If NO work exists altogether, it becomes `:idle`.
-
-* **Rule: Directional Bias (The Sweep) [R-MOVE-SWEEP]**
-  * Once moving in a direction, the elevator satisfies all **Car Requests** in the current direction.
-  * **Hall Requests** follow the directional asymmetry rules defined in **[R-MOVE-LOOK]**.
-  * This results in an ascending sweep optimized for internal passengers and a descending sweep for external arrivals.
-
-* **Rule: Retiring (Idle State) [R-MOVE-IDLE]**
-  * If no requests remain in any direction, the `heading` becomes `:idle`.
+  4. **Reverse on Empty (Idle State)**: If no work remains in the current heading, the elevator reverses to satisfy requests in the opposite direction. If NO work exists altogether, the `heading` becomes `:idle`.
 
 * **Rule: Return to Base [R-MOVE-BASE]**
   * If the state remains `:idle` for more than 5 minutes (300 seconds), an automatic `{:hall, 0}` request is added to the queue.
@@ -140,8 +133,8 @@ This table maps events to rules and state changes.
 | `:arriving` | `:door_opened` | **[R-CORE-STATE]** | `:docked` | `:stopped` | `:open` |
 | `:docked` | `:door_timeout` | **[R-SAFE-TIMEOUT]** | `:leaving` | `:stopped` | `:closing` |
 | `:docked` | `:door_close` | **[R-SAFE-MANUAL]** | `:leaving` | `:stopped` | `:closing` |
-| `:leaving` | `:door_closed` (work) | **[R-MOVE-SWEEP]** | `:moving` | `:running` | `:closed` |
-| `:leaving` | `:door_closed` (idle) | **[R-MOVE-IDLE]** | `:idle` | `:stopped` | `:closed` |
+| `:leaving` | `:door_closed` (work) | **[R-MOVE-LOOK]** | `:moving` | `:running` | `:closed` |
+| `:leaving` | `:door_closed` (idle) | **[R-MOVE-LOOK]** | `:idle` | `:stopped` | `:closed` |
 | `:leaving` | `:door_obstructed` | **[R-SAFE-OBSTRUCT]** | `:arriving` | `:stopped` | `:obstructed` |
 | `:rehoming` | `Init (valid floor)` | **[R-HOME-STRATEGY]** | `:idle` | `:stopped` | `:closed` |
 | `:rehoming` | `Init (unknown)` | **[R-HOME-STRATEGY]** | `:rehoming` | `:crawling` | `:closed` |
