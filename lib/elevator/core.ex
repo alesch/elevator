@@ -106,10 +106,8 @@ defmodule Elevator.Core do
 
   @doc "Adds a floor request and triggers a transit pulse."
   @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
-  def request_floor(%Core{phase: :booting} = state, _source, _floor), do: {state, []}
-
-  @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
-  def request_floor(%Core{phase: :rehoming} = state, _source, _floor), do: {state, []}
+  def request_floor(%Core{phase: phase} = state, _source, _floor) when phase in [:booting, :rehoming],
+    do: {state, []}
 
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
     state
@@ -128,6 +126,9 @@ defmodule Elevator.Core do
 
   @doc "Handles physical button presses and triggers a transit pulse."
   @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
+  def handle_button_press(%Core{phase: phase} = state, _button, _now) when phase in [:booting, :rehoming],
+    do: {state, []}
+
   def handle_button_press(state, button, now) do
     state
     |> do_ingest_button(button, now)
