@@ -108,6 +108,9 @@ defmodule Elevator.Core do
   @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
   def request_floor(%Core{phase: :booting} = state, _source, _floor), do: {state, []}
 
+  @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
+  def request_floor(%Core{phase: :rehoming} = state, _source, _floor), do: {state, []}
+
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
     state
     |> add_sweep_request(source, floor)
