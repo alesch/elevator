@@ -40,6 +40,12 @@ defmodule Elevator.Sweep do
     %Sweep{heading: heading, requests: requests}
   end
 
+  @doc "Returns the sweep heading."
+  def heading(%Sweep{heading: h}), do: h
+
+  @doc "Returns the raw request list."
+  def requests(%Sweep{requests: r}), do: r
+
   @doc "Adds a request to the sweep."
   @spec add_request(t(), source(), floor()) :: t()
   def add_request(%Sweep{requests: reqs} = sweep, source, floor) do

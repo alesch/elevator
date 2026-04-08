@@ -93,7 +93,7 @@ defmodule Elevator.SweepTest do
   # Then there should be no requests for floor 3
   defthen ~r/^there should be no requests for floor (?<floor>.+)$/, %{floor: floor_str}, state do
     floor = Arguments.parse_floor(floor_str)
-    refute Enum.any?(state.sweep.requests, fn {_, f} -> f == floor end)
+    refute Enum.any?(Sweep.requests(state.sweep), fn {_, f} -> f == floor end)
     {:ok, state}
   end
 
@@ -111,7 +111,7 @@ defmodule Elevator.SweepTest do
     # We check what the heading BECOMES when updated from the current position
     actual_sweep = Sweep.update_heading(state.sweep, state.current_floor)
 
-    assert actual_sweep.heading == expected_heading
+    assert Sweep.heading(actual_sweep) == expected_heading
     {:ok, state}
   end
 end
