@@ -371,11 +371,10 @@ defmodule Elevator.Core do
 
   defp update_door_action(actions, old, new) do
     cond do
-      new.door_status in [:opening, :obstructed] and
-          old.door_status not in [:opening, :obstructed] ->
+      door_opening_requested?(old, new) ->
         actions ++ [{:open_door}]
 
-      new.door_status == :closing and old.door_status != :closing ->
+      door_closing_requested?(old, new) ->
         actions ++ [{:close_door}]
 
       true ->
@@ -385,11 +384,10 @@ defmodule Elevator.Core do
 
   defp update_timer_action(actions, old, new) do
     cond do
-      new.door_status == :open and
-          (old.door_status != :open or old.last_activity_at != new.last_activity_at) ->
+      should_reset_timer?(old, new) ->
         actions ++ [{:set_timer, :door_timeout, @door_wait_ms}]
 
-      new.door_status != :open and old.door_status == :open ->
+      should_cancel_timer?(old, new) ->
         actions ++ [{:cancel_timer, :door_timeout}]
 
       true ->
@@ -410,8 +408,28 @@ defmodule Elevator.Core do
   end
 
   # ---------------------------------------------------------------------------
-  # ## Semantic Motor Helpers
+  # ## Semantic Helpers
   # ---------------------------------------------------------------------------
+
+  # --- Door Helpers ---
+
+  defp door_opening_requested?(old, new), do: is_opening?(new) and not is_opening?(old)
+  defp door_closing_requested?(old, new), do: is_closing?(new) and not is_closing?(old)
+
+  defp is_opening?(state), do: state.door_status in [:opening, :obstructed]
+  defp is_closing?(state), do: state.door_status == :closing
+  defp is_open?(state), do: state.door_status == :open
+
+  # --- Timer Helpers ---
+
+  defp should_reset_timer?(old, new) do
+    is_open?(new) and (not is_open?(old) or activity_changed?(old, new))
+  end
+
+  defp should_cancel_timer?(old, new), do: not is_open?(new) and is_open?(old)
+  defp activity_changed?(old, new), do: old.last_activity_at != new.last_activity_at
+
+  # --- Motor Helpers ---
 
   defp braking?(old, new), do: is_stopping?(new) and is_moving?(old)
 
