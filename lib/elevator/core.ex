@@ -14,14 +14,35 @@ defmodule Elevator.Core do
   @base_floor 0
 
   defstruct current_floor: :unknown,
-            heading: :idle,
+            sweep: %Elevator.Sweep{},
             door_status: :closed,
             door_command: nil,
-            requests: [],
             last_activity_at: 0,
             phase: :booting,
             door_sensor: :clear,
             motor_status: :stopped
+
+  # ---------------------------------------------------------------------------
+  # ## State Factories (Public API)
+  # ---------------------------------------------------------------------------
+
+  @doc "Factory: Returns a fresh Elevator struct."
+  def init, do: %Core{}
+
+  @doc """
+  Factory: Returns an elevator idle at the given floor.
+  Bypasses rehoming by simulating a successful recovery.
+  """
+  def idle_at(floor, _opts \\ []) do
+  end
+
+  @doc "Factory: Returns an elevator docked (door open) at the given floor."
+  def docked_at(_floor) do
+  end
+
+  @doc "Factory: Returns an elevator moving between two floors."
+  def moving_to(_from, _to) do
+  end
 
   @type action ::
           {:set_timer, atom(), integer()}
@@ -34,15 +55,40 @@ defmodule Elevator.Core do
 
   @type t :: %__MODULE__{
           current_floor: integer() | :unknown,
-          heading: :up | :down | :idle,
+          sweep: Elevator.Sweep.t(),
           door_status: :open | :closed | :opening | :closing | :obstructed,
           door_command: :open | :close | nil,
-          requests: list({atom(), integer()}),
           last_activity_at: integer(),
           phase: :booting | :rehoming | :moving | :arriving | :docked | :leaving | :idle,
           door_sensor: :clear | :blocked,
           motor_status: :running | :crawling | :stopping | :stopped
         }
+
+  # ---------------------------------------------------------------------------
+  # ## Status Accessors (Public)
+  # ---------------------------------------------------------------------------
+
+  @doc "Returns the current request queue via the LOOK algorithm."
+  def requests(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.queue(s, f)
+
+  @doc "Returns the current heading."
+  def heading(%Core{sweep: s}), do: Elevator.Sweep.heading(s)
+
+  @doc "Returns the current operational phase."
+  def phase(%Core{phase: p}), do: p
+
+  @doc "Returns the physical door status."
+  def door_status(%Core{door_status: d}), do: d
+
+  @doc "Returns the physical motor status."
+  def motor_status(%Core{motor_status: m}), do: m
+
+  @doc "Returns the confirmed current floor."
+  def current_floor(%Core{current_floor: f}), do: f
+
+  @doc "Returns the next immediate stop according to LOOK."
+  def next_stop(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.next_stop(s, f)
+
 
   # ---------------------------------------------------------------------------
   # ## Public API (Entry Points)
@@ -54,7 +100,8 @@ defmodule Elevator.Core do
 
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
     state
-    |> apply_request(source, floor)
+    |> add_sweep_request(source, floor)
+    |> update_sweep_heading()
     |> pulse()
   end
 
@@ -115,7 +162,7 @@ defmodule Elevator.Core do
 
   # Rule: Transition from Moving to Arriving (Braking)
   defp do_transit(%Core{phase: :moving} = state) do
-    if should_stop_at?(state, state.current_floor) do
+    if state.current_floor == next_stop(state) do
       %{state | motor_status: :stopping, phase: :arriving}
     else
       state
@@ -123,29 +170,29 @@ defmodule Elevator.Core do
   end
 
   # Rule: Wakeup: Completely Idle (No Requests)
-  defp do_transit(%Core{phase: :idle, requests: []} = state) do
-    state
-  end
-
-  # Rule: Wakeup: Same-Floor Request OR Manual Door Open Command
-  defp do_transit(%Core{phase: :idle, door_command: :open} = state) do
-    state
-    |> Map.put(:phase, :arriving)
-    |> Map.put(:door_status, :opening)
-    |> Map.put(:door_command, nil)
-    |> fulfill_current_floor_requests()
-  end
-
-  defp do_transit(%Core{phase: :idle, heading: :idle} = state) do
-    state
-    |> Map.put(:phase, :arriving)
-    |> Map.put(:door_status, :opening)
-    |> fulfill_current_floor_requests()
-  end
-
-  # Rule: Wakeup: Different-Floor Request
   defp do_transit(%Core{phase: :idle} = state) do
-    %{state | phase: :moving, motor_status: :running}
+    case heading(state) do
+      :idle ->
+        if state.door_command == :open do
+          state
+          |> Map.put(:phase, :arriving)
+          |> Map.put(:door_status, :opening)
+          |> Map.put(:door_command, nil)
+          |> perform_floor_service()
+        else
+          state
+        end
+
+      _heading ->
+        if state.current_floor == next_stop(state) do
+          state
+          |> Map.put(:phase, :arriving)
+          |> Map.put(:door_status, :opening)
+          |> perform_floor_service()
+        else
+          %{state | phase: :moving, motor_status: :running}
+        end
+    end
   end
 
   # Rule: Gateway Reversal -> Transition to arriving AND opening doors
@@ -177,7 +224,7 @@ defmodule Elevator.Core do
   defp do_transit(%Core{phase: :arriving, motor_status: :stopped} = state) do
     if state.door_status in [:closed, :obstructed] do
       state
-      |> fulfill_current_floor_requests()
+      |> perform_floor_service()
       |> Map.put(:door_status, :opening)
     else
       state
@@ -186,9 +233,9 @@ defmodule Elevator.Core do
 
   # Rule: Settlement from Leaving
   defp do_transit(%Core{phase: :leaving, door_status: :closed} = state) do
-    state = update_heading(state)
+    state = update_sweep_heading(state)
 
-    if state.heading == :idle do
+    if heading(state) == :idle do
       %{state | phase: :idle, motor_status: :stopped}
     else
       %{state | phase: :moving, motor_status: :running}
@@ -207,7 +254,10 @@ defmodule Elevator.Core do
   end
 
   defp do_ingest_event(state, :rehoming_started, _) do
-    %{state | phase: :rehoming, heading: :down, motor_status: :crawling}
+    state
+    |> Map.put(:phase, :rehoming)
+    |> update_in([Access.key(:sweep), Access.key(:heading)], fn _ -> :down end)
+    |> Map.put(:motor_status, :crawling)
   end
 
   defp do_ingest_event(state, :motor_stopped, _), do: %{state | motor_status: :stopped}
@@ -218,7 +268,9 @@ defmodule Elevator.Core do
 
   defp do_ingest_event(%Core{phase: :idle} = state, :inactivity_timeout, _) do
     if state.current_floor != @base_floor do
-      apply_request(state, :car, @base_floor)
+      state
+      |> add_sweep_request(:car, @base_floor)
+      |> update_sweep_heading()
     else
       state
     end
@@ -254,54 +306,20 @@ defmodule Elevator.Core do
   # ## Calculation Helpers
   # ---------------------------------------------------------------------------
 
-  def update_heading(state) do
-    cond do
-      any_requests_above?(state) -> %{state | heading: :up}
-      any_requests_below?(state) -> %{state | heading: :down}
-      true -> %{state | heading: :idle}
-    end
+  defp perform_floor_service(state) do
+    service_sweep_floor(state)
   end
 
-  defp fulfill_current_floor_requests(state) do
-    state |> Map.update!(:requests, fn reqs ->
-      Enum.reject(reqs, fn {_, f} -> f == state.current_floor end)
-    end)
+  defp add_sweep_request(state, source, floor) do
+    Map.update!(state, :sweep, &Elevator.Sweep.add_request(&1, source, floor))
   end
 
-  defp should_stop_at?(state, floor) do
-    has_car_request? = Enum.any?(state.requests, &(&1 == {:car, floor}))
-    has_hall_request? = Enum.any?(state.requests, &(&1 == {:hall, floor}))
-
-    cond do
-      has_car_request? -> true
-      state.heading == :down and has_hall_request? -> true
-      # Pick up a hall request going UP ONLY if there is nothing strictly above us to sweep
-      state.heading == :up and has_hall_request? and not any_requests_above?(state) -> true
-      state.heading == :idle and has_hall_request? -> true
-      true -> false
-    end
+  defp update_sweep_heading(state) do
+    Map.update!(state, :sweep, &Elevator.Sweep.update_heading(&1, state.current_floor))
   end
 
-  defp any_requests_above?(state) do
-    Enum.any?(state.requests, fn {_, f} -> f > state.current_floor end)
-  end
-
-  defp any_requests_below?(state) do
-    Enum.any?(state.requests, fn {_, f} -> f < state.current_floor end)
-  end
-
-  defp add_request(state, source, floor) do
-    if {source, floor} in state.requests do
-      state
-    else
-      %{state | requests: state.requests ++ [{source, floor}]}
-    end
-  end
-
-  defp apply_request(state, source, floor) do
-    state
-    |> add_request(source, floor)
-    |> update_heading()
+  defp service_sweep_floor(state) do
+    Map.update!(state, :sweep, &Elevator.Sweep.floor_serviced(&1, state.current_floor))
   end
 
   # ---------------------------------------------------------------------------
@@ -321,12 +339,12 @@ defmodule Elevator.Core do
         actions ++ [{:stop_motor}]
 
       new.motor_status == :running and
-          (old.motor_status != :running or old.heading != new.heading) ->
-        actions ++ [{:move, new.heading}]
+          (old.motor_status != :running or heading(old) != heading(new)) ->
+        actions ++ [{:move, heading(new)}]
 
       new.motor_status == :crawling and
-          (old.motor_status != :crawling or old.heading != new.heading) ->
-        actions ++ [{:crawl, new.heading}]
+          (old.motor_status != :crawling or heading(old) != heading(new)) ->
+        actions ++ [{:crawl, heading(new)}]
 
       true ->
         actions

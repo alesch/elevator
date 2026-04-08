@@ -139,10 +139,11 @@ defmodule Elevator.Controller do
     # SILENT IDEMPOTENCY:
     # 1. We ignore if it's already in the queue.
     # 2. We ignore if we are at the floor AND the door is already opening/open.
-    already_queued? = Enum.any?(data.state.requests, fn {_, f} -> f == floor end)
+    already_queued? = Enum.any?(Core.requests(data.state), fn {_, f} -> f == floor end)
 
     already_satisfied? =
-      data.state.current_floor == floor and data.state.door_status in [:open, :opening]
+      Core.current_floor(data.state) == floor and
+        Core.door_status(data.state) in [:open, :opening]
 
     if already_queued? or already_satisfied? do
       # Silent ignore for external inputs

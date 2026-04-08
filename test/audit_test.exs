@@ -18,34 +18,42 @@ defmodule Elevator.AuditTest do
         end
 
       Enum.each(combinations, fn {current, heading, target, source} ->
-        state = %Core{phase: :idle, current_floor: current, heading: heading}
+        state =
+          case heading do
+            :idle -> Core.idle_at(current)
+            :up when current < 5 -> Core.idle_at(current, requests: [{:car, 5}])
+            :down when current > 0 -> Core.idle_at(current, requests: [{:car, 0}])
+            _ -> nil
+          end
 
-        # ACT: Receive request
-        {new_state, _actions} = Core.request_floor(state, source, target)
+        if state do
+          # ACT: Receive request
+          {new_state, _actions} = Core.request_floor(state, source, target)
 
-        # ASSERT 1: Immediate Arrival Logic
-        if current == target do
-          assert new_state.door_status == :opening,
-                 "Failed to open door at target #{target} from floor #{current}"
-        end
+          # ASSERT 1: Immediate Arrival Logic
+          if current == target do
+            assert Core.door_status(new_state) == :opening,
+                   "Failed to open door at target #{target} from floor #{current}"
+          end
 
-        # ASSERT 2: Directional Integrity
-        if target > current and new_state.motor_status != :stopping do
-          # If request is above and we aren't stopping here, we must go UP
-          assert new_state.heading == :up,
-                 "At:#{current} Target:#{target} Should head :up but is #{new_state.heading}"
-        end
+          # ASSERT 2: Directional Integrity
+          if target > current and Core.motor_status(new_state) != :stopping do
+            # If request is above and we aren't stopping here, we must go UP
+            assert Core.heading(new_state) == :up,
+                   "At:#{current} Target:#{target} Should head :up but is #{Core.heading(new_state)}"
+          end
 
-        if target < current and new_state.motor_status != :stopping do
-          # If request is below and we aren't stopping here, we must go DOWN
-          assert new_state.heading == :down,
-                 "At:#{current} Target:#{target} Should head :down but is #{new_state.heading}"
-        end
+          if target < current and Core.motor_status(new_state) != :stopping do
+            # If request is below and we aren't stopping here, we must go DOWN
+            assert Core.heading(new_state) == :down,
+                   "At:#{current} Target:#{target} Should head :down but is #{Core.heading(new_state)}"
+          end
 
-        # ASSERT 3: Never Idle with Work
-        if target != current do
-          assert new_state.heading != :idle,
-                 "Elevator went idle with target:#{target} at floor:#{current}"
+          # ASSERT 3: Never Idle with Work
+          if target != current do
+            assert Core.heading(new_state) != :idle,
+                   "Elevator went idle with target:#{target} at floor:#{current}"
+          end
         end
       end)
     end

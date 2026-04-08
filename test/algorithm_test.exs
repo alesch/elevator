@@ -6,13 +6,9 @@ defmodule Elevator.AlgorithmTest do
     # REVISE: Align with [S-MOVE-SWEEP-CAR] (immediate stop) and [S-MOVE-SWEEP-HALL] (deferred sweep).
     test "[S-MOVE-SWEEP-UP]: Pick-up on the way (Hall Request)" do
       # GIVEN: Moving UP to F5, hall request added for F3
-      state = %Core{
-        phase: :idle,
-        current_floor: 1,
-        heading: :up,
-        requests: [{:hall, 5}],
-        motor_status: :running
-      }
+      state = Core.idle_at(1, requests: [{:hall, 5}])
+      # Pulse it to moving
+      {state, _} = Core.pulse(state)
 
       {state, _} = Core.request_floor(state, :hall, 3)
 
@@ -20,9 +16,9 @@ defmodule Elevator.AlgorithmTest do
       {new_state, actions} = Core.process_arrival(state, 3)
 
       # THEN: Elevator must stop at F3 (it is in the current heading)
-      assert new_state.phase == :arriving
-      assert new_state.motor_status == :stopping
-      assert {:hall, 3} in new_state.requests
+      assert Core.phase(new_state) == :arriving
+      assert Core.motor_status(new_state) == :stopping
+      assert {:hall, 3} in Core.requests(new_state)
       assert {:stop_motor} in actions
     end
   end
@@ -30,39 +26,29 @@ defmodule Elevator.AlgorithmTest do
   describe "[S-REQ-HONOR-ALL]: Honor All Requests" do
     test "Car request on the path — elevator stops" do
       # GIVEN: Moving :up, car request for F3 on the path
-      state = %Core{
-        phase: :idle,
-        current_floor: 1,
-        heading: :up,
-        requests: [{:car, 3}],
-        motor_status: :running
-      }
+      state = Core.idle_at(1, requests: [{:car, 3}])
+      {state, _} = Core.pulse(state)
 
       # WHEN: Sensor confirms arrival at F3
       {new_state, actions} = Core.process_arrival(state, 3)
 
       # THEN: Elevator stops at F3
-      assert new_state.phase == :arriving
-      assert new_state.motor_status == :stopping
+      assert Core.phase(new_state) == :arriving
+      assert Core.motor_status(new_state) == :stopping
       assert {:stop_motor} in actions
     end
 
     test "Hall request on the path — elevator stops" do
       # GIVEN: Moving :up, hall request for F4 on the path
-      state = %Core{
-        phase: :idle,
-        current_floor: 2,
-        heading: :up,
-        requests: [{:hall, 4}],
-        motor_status: :running
-      }
+      state = Core.idle_at(2, requests: [{:hall, 4}])
+      {state, _} = Core.pulse(state)
 
       # WHEN: Sensor confirms arrival at F4
       {new_state, actions} = Core.process_arrival(state, 4)
 
       # THEN: Elevator stops at F4
-      assert new_state.phase == :arriving
-      assert new_state.motor_status == :stopping
+      assert Core.phase(new_state) == :arriving
+      assert Core.motor_status(new_state) == :stopping
       assert {:stop_motor} in actions
     end
   end
@@ -70,24 +56,24 @@ defmodule Elevator.AlgorithmTest do
   describe "Wake Up Logic ([S-MOVE-WAKEUP])" do
     test "[S-MOVE-WAKEUP]: Context-Aware Wake Up (Idle at F5 heads DOWN for F1)" do
       # Arrange: Elevator is idle at Floor 5
-      state = %Core{phase: :idle, current_floor: 5, heading: :idle}
+      state = Core.idle_at(5)
 
       # Act: Request comes in for Floor 1
       {new_state, _} = Core.request_floor(state, :hall, 1)
 
       # Assert: Heading correctly switches to :down
-      assert new_state.heading == :down
+      assert Core.heading(new_state) == :down
     end
 
     test "Idle elevator at F1 heads UP for F3" do
       # Arrange: Elevator is idle at Floor 1
-      state = %Core{phase: :idle, current_floor: 1, heading: :idle}
+      state = Core.idle_at(1)
 
       # Act: Request comes in for Floor 3
       {new_state, _} = Core.request_floor(state, :hall, 3)
 
       # Assert: Heading correctly switches to :up
-      assert new_state.heading == :up
+      assert Core.heading(new_state) == :up
     end
   end
 
@@ -95,74 +81,72 @@ defmodule Elevator.AlgorithmTest do
     # REVISE: Align with [S-MOVE-MULTI-CAR] (ascending: 2, 4, 5) and [S-MOVE-MULTI-HALL] (descending: 5, 4, 2).
     test "Elevator stops at each floor in ascending order when heading up" do
       # GIVEN: Idle at F0, three car requests
-      state = %Core{phase: :idle, current_floor: 0, heading: :idle, door_status: :closed}
+      state = Core.idle_at(0)
       {state, _} = Core.request_floor(state, :car, 2)
       {state, _} = Core.request_floor(state, :car, 4)
       {state, _} = Core.request_floor(state, :car, 6)
 
       # Pulse settlement: the first request_floor starts the move
-      assert state.heading == :up
-      assert state.phase == :moving
+      assert Core.heading(state) == :up
+      assert Core.phase(state) == :moving
 
       # ARRIVE at F2 — must stop
       {state, _} = Core.process_arrival(state, 2)
-      assert state.phase == :arriving
-      assert state.motor_status == :stopping
+      assert Core.phase(state) == :arriving
+      assert Core.motor_status(state) == :stopping
 
       # Clear F2 (motor stopped), then simulate door cycle completing → back to :moving
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
-      refute {:car, 2} in state.requests
+      refute {:car, 2} in Core.requests(state)
       state = %{state | phase: :leaving, door_status: :closed}
       # Pulse 2: settle transition from leaving to moving
       {state, _} = Core.pulse(state)
-      assert state.phase == :moving
+      assert Core.phase(state) == :moving
 
       # ARRIVE at F4 — must stop
       {state, _} = Core.process_arrival(state, 4)
-      assert state.phase == :arriving
-      assert state.motor_status == :stopping
+      assert Core.phase(state) == :arriving
+      assert Core.motor_status(state) == :stopping
 
       # Clear F4, simulate door cycle
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
-      refute {:car, 4} in state.requests
+      refute {:car, 4} in Core.requests(state)
       state = %{state | phase: :leaving, door_status: :closed}
       {state, _} = Core.pulse(state)
-      assert state.phase == :moving
+      assert Core.phase(state) == :moving
 
       # ARRIVE at F6 — must stop
       {state, _} = Core.process_arrival(state, 6)
-      assert state.phase == :arriving
-      assert state.motor_status == :stopping
+      assert Core.phase(state) == :arriving
+      assert Core.motor_status(state) == :stopping
 
       # All requests fulfilled
       {final_state, _} = Core.handle_event(state, :motor_stopped, 0)
-      assert final_state.requests == []
+      assert Core.requests(final_state) == []
     end
   end
 
   describe "[S-REQ-SYNC]: Request Fulfillment (Internal State Sync)" do
     test "clears requests during arrival to ensure correct heading choice" do
       # GIVEN: Arriving at F3 (from a move up), two requests in queue
-      state = %Core{
-        phase: :arriving,
-        current_floor: 3,
-        heading: :up,
-        motor_status: :stopping,
-        requests: [{:car, 3}, {:car, 0}]
-      }
+      state = Core.moving_to(0, 3) 
+      # Now it's moving. Arrive it.
+      {state, _} = Core.process_arrival(state, 3)
+      # Now it's arriving at 3. Add a request for 0.
+      {state, _} = Core.request_floor(state, :car, 0)
 
       # WHEN: Motor confirms stopped (fulfills F3 request)
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
 
       # THEN: F3 cleared, F0 remains
-      refute {:car, 3} in state.requests
-      assert {:car, 0} in state.requests
+      refute {:car, 3} in Core.requests(state)
+      assert {:car, 0} in Core.requests(state)
 
       # WHEN: Request for F0 triggers heading update
       {state, _} = Core.request_floor(state, :car, 0)
 
       # THEN: Heading is :down (only remaining work is below)
-      assert state.heading == :down
+      assert Core.heading(state) == :down
     end
   end
 end

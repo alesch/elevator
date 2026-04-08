@@ -10,26 +10,14 @@ defmodule Elevator.MovementWakeupTest do
   setup do
     # Initial state for our tests. Core starts in :booting by default,
     # but our scenario starts with "Given the elevator is idle".
-    {:ok, %{state: %Core{}, actions: []}}
+    {:ok, %{state: Core.init(), actions: []}}
   end
 
   # @S-MOVE-WAKEUP
   # Given the elevator is idle at floor <current>
   defgiven ~r/^the elevator is idle at floor (?<current>.+)$/, %{current: current}, context do
     floor = Args.parse_floor(current)
-
-    # We initialize the state to match the "idle" requirement.
-    # In a real system, it would have reached :idle via the booting/recovery sequence.
-    new_internal_state = %{
-      context.state
-      | phase: :idle,
-        current_floor: floor,
-        door_status: :closed,
-        motor_status: :stopped,
-        sweep: %Elevator.Sweep{heading: :idle}
-    }
-
-    {:ok, %{context | state: new_internal_state}}
+    {:ok, %{context | state: Core.idle_at(floor)}}
   end
 
   # When a request for floor <target> is received
@@ -96,28 +84,18 @@ defmodule Elevator.MovementWakeupTest do
            %{target: target},
            context do
     floor = Args.parse_floor(target)
-    # Positioning the elevator just before the target floor
-    new_internal_state = %{
-      context.state
-      | phase: :moving,
-        current_floor: floor - 1,
-        sweep: %Elevator.Sweep{heading: :up},
-        motor_status: :running
-    }
+    # Reach moving state naturally
+    new_internal_state = Core.moving_to(floor - 1, floor)
 
     {:ok, %{context | state: new_internal_state}}
   end
 
   # And a request for floor 3 is active
   defgiven ~r/^a request for floor (?<target>.+) is active$/, %{target: target}, context do
+    # This is redundantly covered by moving_to, but let's ensure it's in the queue
     floor = Args.parse_floor(target)
-
-    new_internal_state = %{
-      context.state
-      | sweep: %Elevator.Sweep{context.state.sweep | requests: [{:car, floor}]}
-    }
-
-    {:ok, %{context | state: new_internal_state}}
+    assert {:car, floor} in Core.requests(context.state)
+    {:ok, context}
   end
 
   # When the sensor confirms arrival at floor 3
