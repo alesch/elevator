@@ -7,6 +7,7 @@ defmodule Elevator.Controller do
   require Logger
   alias Elevator.Core
   alias Elevator.Hardware
+  alias __MODULE__, as: Controller
 
   # 5 minutes
   @default_return_to_base_ms 300_000
@@ -18,37 +19,37 @@ defmodule Elevator.Controller do
   @doc "Starts a new elevator controller process."
   @spec start_link(keyword()) :: GenServer.on_start()
   def start_link(opts \\ []) do
-    name = Keyword.get(opts, :name, __MODULE__)
-    GenServer.start_link(__MODULE__, opts, name: name)
+    name = Keyword.get(opts, :name, Controller)
+    GenServer.start_link(Controller, opts, name: name)
   end
 
   @doc "Adds a floor request asynchronously."
   @spec request_floor(pid() | atom(), atom(), integer()) :: :ok
-  def request_floor(pid \\ __MODULE__, source, floor) do
+  def request_floor(pid \\ Controller, source, floor) do
     GenServer.cast(pid, {:request_floor, source, floor})
   end
 
   @doc "Triggers a manual door opening command."
   @spec open_door(pid() | atom()) :: :ok
-  def open_door(pid \\ __MODULE__) do
+  def open_door(pid \\ Controller) do
     GenServer.cast(pid, :manual_open_door)
   end
 
   @doc "Triggers a manual door closing command."
   @spec close_door(pid() | atom()) :: :ok
-  def close_door(pid \\ __MODULE__) do
+  def close_door(pid \\ Controller) do
     GenServer.cast(pid, :manual_close_door)
   end
 
   @doc "Fetches the current state snapshot."
   @spec get_state(pid() | atom()) :: Elevator.Core.t()
-  def get_state(pid \\ __MODULE__) do
+  def get_state(pid \\ Controller) do
     GenServer.call(pid, :get_state)
   end
 
   @doc "Fetches the internal timer reference (Diagnostics only)."
   @spec get_timer_ref(pid() | atom()) :: reference() | nil
-  def get_timer_ref(pid \\ __MODULE__) do
+  def get_timer_ref(pid \\ Controller) do
     GenServer.call(pid, :get_timer_ref)
   end
 
