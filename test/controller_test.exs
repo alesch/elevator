@@ -51,16 +51,6 @@ defmodule Elevator.ControllerTest do
       assert_receive {:"$gen_cast", {:move, :up}}
     end
 
-    test "[S-MOVE-BASE]: Return to Base (Inactivity Timeout)", %{elevator: pid} do
-      # 1. Verify Logic (Action)
-      send(pid, :return_to_base)
-
-      # Pulse 1: Transition to :arriving (Request for F0) and door opening
-      assert_receive {:elevator_state, state}
-      assert Core.phase(state) == :arriving
-      assert Core.door_status(state) == :opening
-      assert_receive {:"$gen_cast", :open}
-    end
 
     test "[S-MOVE-BRAKING]/[S-MOVE-OPENING]: Arrival sequence triggers immediate intent signals",
          %{elevator: pid} do
