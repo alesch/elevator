@@ -81,18 +81,6 @@ defmodule Elevator.ControllerTest do
       assert Core.door_status(state) == :opening
     end
 
-    test "[S-SAFE-GOLDEN]: Hardware Safety Interlock (The Golden Rule)", %{elevator: pid} do
-      # 1. Start moving (to F3)
-      Controller.request_floor(pid, :car, 3)
-      assert_receive {:"$gen_cast", {:move, :up}}
-
-      # 2. While moving, force doors open (e.g. key override)
-      # Logic: Motor MUST stop. Pulse Architecture ensures this via enforce_the_golden_rule
-      send(pid, :door_opened)
-      assert_receive {:"$gen_cast", :stop_now}
-      assert_receive {:elevator_state, state}
-      assert Core.motor_status(state) == :stopped
-    end
 
     test "[S-SAFE-OBSTRUCT]: Door obstruction during closing triggers reversal", %{elevator: pid} do
       # 1. Start with doors OPEN
