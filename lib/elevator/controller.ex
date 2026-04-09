@@ -126,7 +126,11 @@ defmodule Elevator.Controller do
 
   def handle_cast({:request_floor, source, floor}, data) do
     data
-    |> pulse_and_commit(:request_floor, %{source: source, floor: floor}, Core.request_floor(data.state, source, floor))
+    |> pulse_and_commit(
+      :request_floor,
+      %{source: source, floor: floor},
+      Core.request_floor(data.state, source, floor)
+    )
   end
 
   @impl true
@@ -135,7 +139,11 @@ defmodule Elevator.Controller do
     now = System.system_time(:millisecond)
 
     data
-    |> pulse_and_commit(:manual_open_door, %{}, Core.handle_button_press(data.state, :door_open, now))
+    |> pulse_and_commit(
+      :manual_open_door,
+      %{},
+      Core.handle_button_press(data.state, :door_open, now)
+    )
   end
 
   @impl true
@@ -144,7 +152,11 @@ defmodule Elevator.Controller do
     now = System.system_time(:millisecond)
 
     data
-    |> pulse_and_commit(:manual_close_door, %{}, Core.handle_button_press(data.state, :door_close, now))
+    |> pulse_and_commit(
+      :manual_close_door,
+      %{},
+      Core.handle_button_press(data.state, :door_close, now)
+    )
   end
 
   @impl true
@@ -267,8 +279,8 @@ defmodule Elevator.Controller do
   end
 
   defp do_execute({:cancel_timer, _id}, acc) do
-    # We use a simplified timer model: instead of explicitly canceling timers, 
-    # we rely on the Core (Brain) to be idempotent and ignore timeout messages 
+    # We use a simplified timer model: instead of explicitly canceling timers,
+    # we rely on the Core (Brain) to be idempotent and ignore timeout messages
     # that arrive late or are no longer relevant to the current phase.
     acc
   end
@@ -305,7 +317,6 @@ defmodule Elevator.Controller do
   defp broadcast_state(state) do
     Phoenix.PubSub.broadcast(Elevator.PubSub, "elevator:status", {:elevator_state, state})
   end
-
 
   # Dispatch logic: Priority to explicit deps (Test Way) -> Discovery (Industrial Way)
   @spec lookup_hardware(t(), atom(), (pid() | atom() -> term())) :: term()
