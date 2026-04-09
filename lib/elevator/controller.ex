@@ -166,17 +166,6 @@ defmodule Elevator.Controller do
   @impl true
   @spec handle_info({:floor_arrival, integer()}, map()) :: {:noreply, map()}
   def handle_info({:floor_arrival, floor}, data) do
-    # 1. Persist the arrival
-    lookup_hardware(data, :vault, &Elevator.Vault.put_floor(&1, floor))
-
-    # 2. Update functional state
-    was_rehoming? = data.state.phase == :rehoming
-
-    :telemetry.execute([:elevator, :controller, :arrival], %{}, %{
-      floor: floor,
-      was_rehoming: was_rehoming?
-    })
-
     {final_state, actions} = Core.process_arrival(data.state, floor)
 
     new_data =
@@ -337,6 +326,10 @@ defmodule Elevator.Controller do
         {:cancel_timer, _id} ->
           # MVP uses process mailboxes as queues; cancellation is not strictly required
           # if the Brain is idempotent to late timeouts.
+          acc
+
+        {:persist_arrival, floor} ->
+          lookup_hardware(acc, :vault, &Elevator.Vault.put_floor(&1, floor))
           acc
       end
     end)

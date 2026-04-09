@@ -30,6 +30,7 @@ defmodule Elevator.Core do
           | {:stop_motor}
           | {:open_door}
           | {:close_door}
+          | {:persist_arrival, integer()}
 
   @type t :: %__MODULE__{
           current_floor: integer() | :unknown,
@@ -108,8 +109,9 @@ defmodule Elevator.Core do
 
   @doc "Adds a floor request and triggers a transit pulse."
   @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
-  def request_floor(%Core{phase: phase} = state, _source, _floor) when phase in [:booting, :rehoming],
-    do: {state, []}
+  def request_floor(%Core{phase: phase} = state, _source, _floor)
+      when phase in [:booting, :rehoming],
+      do: {state, []}
 
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
     state
@@ -121,15 +123,20 @@ defmodule Elevator.Core do
   @doc "Processes physical arrival at a floor and triggers a transit pulse."
   @spec process_arrival(t(), integer()) :: {t(), [action()]}
   def process_arrival(%Core{} = state, floor) do
-    state
-    |> Map.put(:current_floor, floor)
-    |> pulse()
+    new_state =
+      state
+      |> Map.put(:current_floor, floor)
+      |> transit()
+      |> enforce_the_golden_rule()
+
+    {new_state, derive_actions(state, new_state)}
   end
 
   @doc "Handles physical button presses and triggers a transit pulse."
   @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
-  def handle_button_press(%Core{phase: phase} = state, _button, _now) when phase in [:booting, :rehoming],
-    do: {state, []}
+  def handle_button_press(%Core{phase: phase} = state, _button, _now)
+      when phase in [:booting, :rehoming],
+      do: {state, []}
 
   def handle_button_press(state, button, now) do
     state
@@ -171,7 +178,9 @@ defmodule Elevator.Core do
     %{state | motor_status: :stopping}
   end
 
-  defp do_transit(%Core{phase: :rehoming, motor_status: :stopped, current_floor: :unknown} = state) do
+  defp do_transit(
+         %Core{phase: :rehoming, motor_status: :stopped, current_floor: :unknown} = state
+       ) do
     %{state | motor_status: :crawling}
   end
 
@@ -361,6 +370,15 @@ defmodule Elevator.Core do
     |> update_motor_action(old, new)
     |> update_door_action(old, new)
     |> update_timer_action(old, new)
+    |> update_persistence_action(old, new)
+  end
+
+  defp update_persistence_action(actions, old, new) do
+    if has_arrived?(old, new) do
+      actions ++ [{:persist_arrival, new.current_floor}]
+    else
+      actions
+    end
   end
 
   defp update_motor_action(actions, old, new) do
@@ -458,6 +476,9 @@ defmodule Elevator.Core do
 
   defp motor_status_changed?(old, new), do: old.motor_status != new.motor_status
   defp heading_changed?(old, new), do: heading(old) != heading(new)
+  defp floor_changed?(old, new), do: old.current_floor != new.current_floor
+
+  defp has_arrived?(old, new), do: floor_changed?(old, new) and known_position?(new.current_floor)
 
   # --- Startup Helpers ---
 
