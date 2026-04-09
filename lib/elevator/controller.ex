@@ -4,7 +4,6 @@ defmodule Elevator.Controller do
   Handles concurrency, state persistence, and discovery-based behavior.
   """
   use GenServer
-  require Logger
   alias Elevator.Core
   alias Elevator.Hardware
   alias __MODULE__, as: Controller
@@ -116,6 +115,8 @@ defmodule Elevator.Controller do
 
     data
     |> pulse_and_commit(
+      :homing_check,
+      %{},
       Core.handle_event(data.state, :startup_check, %{vault: vault_floor, sensor: sensor_floor})
     )
   end
@@ -124,10 +125,8 @@ defmodule Elevator.Controller do
   @spec handle_cast({:request_floor, atom(), integer()}, t()) :: {:noreply, t()}
 
   def handle_cast({:request_floor, source, floor}, data) do
-    :telemetry.execute([:elevator, :controller, :request], %{}, %{source: source, floor: floor})
-
     data
-    |> pulse_and_commit(Core.request_floor(data.state, source, floor))
+    |> pulse_and_commit(:request_floor, %{source: source, floor: floor}, Core.request_floor(data.state, source, floor))
   end
 
   @impl true
@@ -136,7 +135,7 @@ defmodule Elevator.Controller do
     now = System.system_time(:millisecond)
 
     data
-    |> pulse_and_commit(Core.handle_button_press(data.state, :door_open, now))
+    |> pulse_and_commit(:manual_open_door, %{}, Core.handle_button_press(data.state, :door_open, now))
   end
 
   @impl true
@@ -145,14 +144,14 @@ defmodule Elevator.Controller do
     now = System.system_time(:millisecond)
 
     data
-    |> pulse_and_commit(Core.handle_button_press(data.state, :door_close, now))
+    |> pulse_and_commit(:manual_close_door, %{}, Core.handle_button_press(data.state, :door_close, now))
   end
 
   @impl true
   @spec handle_info({:floor_arrival, integer()}, t()) :: {:noreply, t()}
   def handle_info({:floor_arrival, floor}, data) do
     data
-    |> pulse_and_commit(Core.process_arrival(data.state, floor))
+    |> pulse_and_commit(:floor_arrival, %{floor: floor}, Core.process_arrival(data.state, floor))
   end
 
   @impl true
@@ -161,58 +160,58 @@ defmodule Elevator.Controller do
     now = System.system_time(:millisecond)
 
     data
-    |> pulse_and_commit(Core.handle_event(data.state, :door_opened, now))
+    |> pulse_and_commit(:door_opened, %{}, Core.handle_event(data.state, :door_opened, now))
   end
 
   @impl true
   @spec handle_info(:door_closed, t()) :: {:noreply, t()}
   def handle_info(:door_closed, data) do
     data
-    |> pulse_and_commit(Core.handle_event(data.state, :door_closed))
+    |> pulse_and_commit(:door_closed, %{}, Core.handle_event(data.state, :door_closed))
   end
 
   @impl true
   @spec handle_info(:motor_stopped, t()) :: {:noreply, t()}
   def handle_info(:motor_stopped, data) do
     data
-    |> pulse_and_commit(Core.handle_event(data.state, :motor_stopped))
+    |> pulse_and_commit(:motor_stopped, %{}, Core.handle_event(data.state, :motor_stopped))
   end
 
   @impl true
   @spec handle_info(:door_obstructed, t()) :: {:noreply, t()}
   def handle_info(:door_obstructed, data) do
     data
-    |> pulse_and_commit(Core.handle_event(data.state, :door_obstructed))
+    |> pulse_and_commit(:door_obstructed, %{}, Core.handle_event(data.state, :door_obstructed))
   end
 
   @impl true
   @spec handle_info(:door_cleared, t()) :: {:noreply, t()}
   def handle_info(:door_cleared, data) do
     data
-    |> pulse_and_commit(Core.handle_event(data.state, :door_cleared))
+    |> pulse_and_commit(:door_cleared, %{}, Core.handle_event(data.state, :door_cleared))
   end
 
   @impl true
   @spec handle_info({:timeout, atom()}, t()) :: {:noreply, t()}
   def handle_info({:timeout, id}, data) do
-    Logger.info("Controller: Timer expired for #{id}")
+    :telemetry.execute([:elevator, :controller, :timer_expired], %{}, %{id: id})
     now = System.system_time(:millisecond)
 
     data
-    |> pulse_and_commit(Core.handle_event(data.state, id, now))
+    |> pulse_and_commit(:timeout, %{id: id}, Core.handle_event(data.state, id, now))
   end
 
   @impl true
   @spec handle_info(:return_to_base, t()) :: {:noreply, t()}
   def handle_info(:return_to_base, data) do
     data
-    |> pulse_and_commit(Core.request_floor(data.state, :hall, 0))
+    |> pulse_and_commit(:return_to_base, %{}, Core.request_floor(data.state, :hall, 0))
   end
 
   @impl true
   @spec handle_info(term(), t()) :: {:noreply, t()}
   def handle_info(msg, state) do
-    Logger.warning("Controller: Unexpected message #{inspect(msg)} in state: #{inspect(state)}")
+    :telemetry.execute([:elevator, :controller, :unexpected_message], %{}, %{message: msg})
     {:noreply, state}
   end
 
@@ -280,12 +279,14 @@ defmodule Elevator.Controller do
   end
 
   defp do_execute(unknown, acc) do
-    Logger.warning("Controller: Received unhandled action: #{inspect(unknown)}")
+    :telemetry.execute([:elevator, :controller, :unhandled_action], %{}, %{action: unknown})
     acc
   end
 
-  @spec pulse_and_commit(t(), {Core.t(), [Core.action()]}) :: {:noreply, t()}
-  defp pulse_and_commit(data, {new_state, actions}) do
+  @spec pulse_and_commit(t(), atom(), map(), {Core.t(), [Core.action()]}) :: {:noreply, t()}
+  defp pulse_and_commit(data, event, metadata, {new_state, actions}) do
+    :telemetry.execute([:elevator, :controller, :event], %{}, Map.put(metadata, :type, event))
+
     new_data =
       %{data | state: new_state}
       |> execute_actions(actions)
@@ -321,7 +322,7 @@ defmodule Elevator.Controller do
   end
 
   defp log_hardware_failure(key) do
-    Logger.warning("Hardware Link Failure: No :#{key} found via injection or registry.")
+    :telemetry.execute([:elevator, :controller, :hardware_failure], %{}, %{key: key})
     nil
   end
 
