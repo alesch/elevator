@@ -271,7 +271,7 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   defp do_ingest_event(state, :startup_check, %{vault: v, sensor: s}) do
-    if v == s and v != nil do
+    if warm_start?(v, s) do
       # CASE 1: Perfect agreement (Zero-move recovery)
       %{state | phase: :idle, current_floor: v}
     else
@@ -458,4 +458,12 @@ defmodule Elevator.Core do
 
   defp motor_status_changed?(old, new), do: old.motor_status != new.motor_status
   defp heading_changed?(old, new), do: heading(old) != heading(new)
+
+  # --- Startup Helpers ---
+
+  defp warm_start?(v, s), do: v == s and known_position?(v)
+
+  defp known_position?(nil), do: false
+  defp known_position?(:unknown), do: false
+  defp known_position?(_), do: true
 end

@@ -21,7 +21,9 @@ defmodule Elevator.HomingTest do
     {:ok, %{context | vault: floor}}
   end
 
-  defgiven ~r/^the Elevator Sensor is currently at "Floor (?<floor>.+)"$/, %{floor: floor_str}, context do
+  defgiven ~r/^the Elevator Sensor is currently at "Floor (?<floor>.+)"$/,
+           %{floor: floor_str},
+           context do
     floor = Args.parse_floor(floor_str)
     {:ok, %{context | sensor: floor}}
   end
@@ -53,10 +55,12 @@ defmodule Elevator.HomingTest do
 
   defwhen ~r/^the system (starts|reboots)$/, _vars, context do
     # This is the "Decision Point" being refactored from Controller to Core
-    {new_state, actions} = Core.handle_event(context.state, :startup_check, %{
-      vault: context.vault,
-      sensor: context.sensor
-    })
+    {new_state, actions} =
+      Core.handle_event(context.state, :startup_check, %{
+        vault: context.vault,
+        sensor: context.sensor
+      })
+
     {:ok, %{context | state: new_state, actions: actions}}
   end
 
@@ -66,7 +70,9 @@ defmodule Elevator.HomingTest do
     {:ok, %{context | state: new_state, actions: actions}}
   end
 
-  defwhen ~r/^the ":motor_stopped" confirmation is received after homing arrival$/, _vars, context do
+  defwhen ~r/^the ":motor_stopped" confirmation is received after homing arrival$/,
+          _vars,
+          context do
     {new_state, actions} = Core.handle_event(context.state, :motor_stopped)
     {:ok, %{context | state: new_state, actions: actions}}
   end
@@ -101,7 +107,9 @@ defmodule Elevator.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^the "phase" should transition ":rehoming" -> ":idle" immediately$/, _vars, context do
+  defthen ~r/^the "phase" should transition ":rehoming" -> ":idle" immediately$/,
+          _vars,
+          context do
     assert Core.phase(context.state) == :idle
     {:ok, context}
   end
@@ -111,7 +119,9 @@ defmodule Elevator.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^the elevator should move until the first physical sensor confirms arrival$/, _vars, context do
+  defthen ~r/^the elevator should move until the first physical sensor confirms arrival$/,
+          _vars,
+          context do
     assert {:crawl, :down} in context.actions
     {:ok, context}
   end
@@ -148,7 +158,9 @@ defmodule Elevator.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^the "(?<attr>.+)" should immediately become "(?<val>.+)"$/, %{attr: attr_str, val: val_str}, context do
+  defthen ~r/^the "(?<attr>.+)" should immediately become "(?<val>.+)"$/,
+          %{attr: attr_str, val: val_str},
+          context do
     expected = val_str |> String.trim_leading(":") |> String.to_atom()
 
     case attr_str do
@@ -159,7 +171,9 @@ defmodule Elevator.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^"(?<attr>.+)" should become "(?<val>.+)"$/, %{attr: attr_str, val: val_str}, context do
+  defthen ~r/^"(?<attr>.+)" should become "(?<val>.+)"$/,
+          %{attr: attr_str, val: val_str},
+          context do
     expected = val_str |> String.trim_leading(":") |> String.to_atom()
     assert Map.get(context.state, String.to_atom(attr_str)) == expected
     {:ok, context}
