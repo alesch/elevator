@@ -12,6 +12,20 @@ defmodule Elevator.Controller do
   # 5 minutes
   @default_return_to_base_ms 300_000
 
+  @type deps :: %{
+          optional(:motor) => pid() | atom(),
+          optional(:door) => pid() | atom(),
+          optional(:sensor) => pid() | atom(),
+          optional(:vault) => pid() | atom()
+        }
+
+  @type t :: %{
+          state: Elevator.Core.t(),
+          timer_ms: integer(),
+          timer: reference() | nil,
+          deps: deps()
+        }
+
   # ---------------------------------------------------------------------------
   # ## Public API
   # ---------------------------------------------------------------------------
@@ -70,7 +84,7 @@ defmodule Elevator.Controller do
   # ---------------------------------------------------------------------------
 
   @impl true
-  @spec init(keyword()) :: {:ok, map(), {:continue, :homing_check}}
+  @spec init(keyword()) :: {:ok, t(), {:continue, :homing_check}}
   def init(opts) do
     # Register brain only if it's a named process (Supervisor/Production)
     if Keyword.get(opts, :name) != nil do
@@ -95,7 +109,7 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_continue(:homing_check, map()) :: {:noreply, map()}
+  @spec handle_continue(:homing_check, t()) :: {:noreply, t()}
   def handle_continue(:homing_check, data) do
     vault_floor = lookup_hardware(data, :vault, &Elevator.Vault.get_floor/1)
     sensor_floor = lookup_hardware(data, :sensor, &Hardware.Sensor.get_floor/1)
@@ -107,7 +121,7 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_cast({:request_floor, atom(), integer()}, map()) :: {:noreply, map()}
+  @spec handle_cast({:request_floor, atom(), integer()}, t()) :: {:noreply, t()}
 
   def handle_cast({:request_floor, source, floor}, data) do
     :telemetry.execute([:elevator, :controller, :request], %{}, %{source: source, floor: floor})
@@ -117,7 +131,7 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_cast(:manual_open_door, map()) :: {:noreply, map()}
+  @spec handle_cast(:manual_open_door, t()) :: {:noreply, t()}
   def handle_cast(:manual_open_door, data) do
     now = System.system_time(:millisecond)
 
@@ -126,7 +140,7 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_cast(:manual_close_door, map()) :: {:noreply, map()}
+  @spec handle_cast(:manual_close_door, t()) :: {:noreply, t()}
   def handle_cast(:manual_close_door, data) do
     now = System.system_time(:millisecond)
 
@@ -135,14 +149,14 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_info({:floor_arrival, integer()}, map()) :: {:noreply, map()}
+  @spec handle_info({:floor_arrival, integer()}, t()) :: {:noreply, t()}
   def handle_info({:floor_arrival, floor}, data) do
     data
     |> pulse_and_commit(Core.process_arrival(data.state, floor))
   end
 
   @impl true
-  @spec handle_info(:door_opened, data :: map()) :: {:noreply, map()}
+  @spec handle_info(:door_opened, t()) :: {:noreply, t()}
   def handle_info(:door_opened, data) do
     now = System.system_time(:millisecond)
 
@@ -151,35 +165,35 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_info(:door_closed, map()) :: {:noreply, map()}
+  @spec handle_info(:door_closed, t()) :: {:noreply, t()}
   def handle_info(:door_closed, data) do
     data
     |> pulse_and_commit(Core.handle_event(data.state, :door_closed))
   end
 
   @impl true
-  @spec handle_info(:motor_stopped, map()) :: {:noreply, map()}
+  @spec handle_info(:motor_stopped, t()) :: {:noreply, t()}
   def handle_info(:motor_stopped, data) do
     data
     |> pulse_and_commit(Core.handle_event(data.state, :motor_stopped))
   end
 
   @impl true
-  @spec handle_info(:door_obstructed, map()) :: {:noreply, map()}
+  @spec handle_info(:door_obstructed, t()) :: {:noreply, t()}
   def handle_info(:door_obstructed, data) do
     data
     |> pulse_and_commit(Core.handle_event(data.state, :door_obstructed))
   end
 
   @impl true
-  @spec handle_info(:door_cleared, map()) :: {:noreply, map()}
+  @spec handle_info(:door_cleared, t()) :: {:noreply, t()}
   def handle_info(:door_cleared, data) do
     data
     |> pulse_and_commit(Core.handle_event(data.state, :door_cleared))
   end
 
   @impl true
-  @spec handle_info({:timeout, atom()}, map()) :: {:noreply, map()}
+  @spec handle_info({:timeout, atom()}, t()) :: {:noreply, t()}
   def handle_info({:timeout, id}, data) do
     Logger.info("Controller: Timer expired for #{id}")
     now = System.system_time(:millisecond)
@@ -189,27 +203,27 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_info(:return_to_base, map()) :: {:noreply, map()}
+  @spec handle_info(:return_to_base, t()) :: {:noreply, t()}
   def handle_info(:return_to_base, data) do
     data
     |> pulse_and_commit(Core.request_floor(data.state, :hall, 0))
   end
 
   @impl true
-  @spec handle_info(term(), map()) :: {:noreply, map()}
+  @spec handle_info(term(), t()) :: {:noreply, t()}
   def handle_info(msg, state) do
     Logger.warning("Controller: Unexpected message #{inspect(msg)} in state: #{inspect(state)}")
     {:noreply, state}
   end
 
   @impl true
-  @spec handle_call(:get_state, GenServer.from(), map()) :: {:reply, Elevator.Core.t(), map()}
+  @spec handle_call(:get_state, GenServer.from(), t()) :: {:reply, Elevator.Core.t(), t()}
   def handle_call(:get_state, _from, data) do
     {:reply, data.state, data}
   end
 
   @impl true
-  @spec handle_call(:get_timer_ref, GenServer.from(), map()) :: {:reply, reference() | nil, map()}
+  @spec handle_call(:get_timer_ref, GenServer.from(), t()) :: {:reply, reference() | nil, t()}
   def handle_call(:get_timer_ref, _from, data) do
     {:reply, data.timer, data}
   end
@@ -218,7 +232,7 @@ defmodule Elevator.Controller do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec execute_actions(map(), [Core.action()]) :: map()
+  @spec execute_actions(t(), [Core.action()]) :: t()
   defp execute_actions(data, actions) do
     Enum.reduce(actions, data, &do_execute/2)
   end
@@ -270,7 +284,7 @@ defmodule Elevator.Controller do
     acc
   end
 
-  @spec pulse_and_commit(map(), {Core.t(), [Core.action()]}) :: {:noreply, map()}
+  @spec pulse_and_commit(t(), {Core.t(), [Core.action()]}) :: {:noreply, t()}
   defp pulse_and_commit(data, {new_state, actions}) do
     new_data =
       %{data | state: new_state}
@@ -280,6 +294,7 @@ defmodule Elevator.Controller do
     {:noreply, new_data}
   end
 
+  @spec broadcast_and_reset_timer(t()) :: t()
   defp broadcast_and_reset_timer(data) do
     broadcast_state(data.state)
     reset_inactivity_timer(data)
@@ -309,7 +324,7 @@ defmodule Elevator.Controller do
   end
 
   # Dispatch logic: Priority to explicit deps (Test Way) -> Discovery (Industrial Way)
-  @spec lookup_hardware(map(), atom(), (pid() -> term())) :: term()
+  @spec lookup_hardware(t(), atom(), (pid() | atom() -> term())) :: term()
   defp lookup_hardware(data, key, func) do
     target = Map.get(data.deps, key) || registry_lookup(key)
     if target, do: func.(target), else: log_hardware_failure(key)
@@ -327,7 +342,7 @@ defmodule Elevator.Controller do
     nil
   end
 
-  @spec reset_inactivity_timer(map()) :: map()
+  @spec reset_inactivity_timer(t()) :: t()
   defp reset_inactivity_timer(%{timer: timer, timer_ms: ms} = data) do
     if timer, do: Process.cancel_timer(timer)
     %{data | timer: schedule_return_to_base(ms)}

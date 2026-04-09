@@ -22,11 +22,15 @@ defmodule Elevator.Core do
             door_sensor: :clear,
             motor_status: :stopped
 
+  @type direction :: :up | :down | :idle
+  @type startup_payload :: %{vault: integer() | nil, sensor: integer() | nil}
+  @type event_payload :: integer() | startup_payload() | nil
+
   @type action ::
           {:set_timer, atom(), integer()}
           | {:cancel_timer, atom()}
-          | {:move, atom()}
-          | {:crawl, atom()}
+          | {:move, direction()}
+          | {:crawl, direction()}
           | {:stop_motor}
           | {:open_door}
           | {:close_door}
@@ -48,12 +52,14 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @doc "Factory: Returns a fresh Elevator struct."
+  @spec init() :: t()
   def init, do: %Core{}
 
   @doc """
   Factory: Returns an elevator idle at the given floor.
   Bypasses rehoming by simulating a successful recovery.
   """
+  @spec idle_at(integer()) :: t()
   def idle_at(floor) do
     init()
     |> handle_event(:recovery_complete, floor)
@@ -61,6 +67,7 @@ defmodule Elevator.Core do
   end
 
   @doc "Factory: Returns an elevator docked (door open) at the given floor."
+  @spec docked_at(integer()) :: t()
   def docked_at(floor) do
     idle_at(floor)
     |> request_floor(:car, floor)
@@ -70,6 +77,7 @@ defmodule Elevator.Core do
   end
 
   @doc "Factory: Returns an elevator moving between two floors."
+  @spec moving_to(integer(), integer()) :: t()
   def moving_to(from, to) do
     idle_at(from)
     |> request_floor(:car, to)
@@ -81,26 +89,33 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @doc "Returns the current request queue via the LOOK algorithm."
+  @spec requests(t()) :: [Elevator.Sweep.request()]
   def requests(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.queue(s, f)
 
   @doc "Returns the current heading based on Phase or Sweep logic."
+  @spec heading(t()) :: direction()
   def heading(%Core{phase: :booting}), do: :idle
   def heading(%Core{phase: :rehoming, current_floor: :unknown}), do: :down
   def heading(%Core{sweep: s}), do: Elevator.Sweep.heading(s)
 
   @doc "Returns the current operational phase."
+  @spec phase(t()) :: atom()
   def phase(%Core{phase: p}), do: p
 
   @doc "Returns the physical door status."
+  @spec door_status(t()) :: atom()
   def door_status(%Core{door_status: d}), do: d
 
   @doc "Returns the physical motor status."
+  @spec motor_status(t()) :: atom()
   def motor_status(%Core{motor_status: m}), do: m
 
   @doc "Returns the confirmed current floor."
+  @spec current_floor(t()) :: integer() | :unknown
   def current_floor(%Core{current_floor: f}), do: f
 
   @doc "Returns the next immediate stop according to LOOK."
+  @spec next_stop(t()) :: integer() | nil
   def next_stop(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.next_stop(s, f)
 
   # ---------------------------------------------------------------------------
@@ -145,7 +160,7 @@ defmodule Elevator.Core do
   end
 
   @doc "Central event handler for component confirmations and triggers a transit pulse."
-  @spec handle_event(t(), atom(), integer() | map() | nil) :: {t(), [action()]}
+  @spec handle_event(t(), atom(), event_payload()) :: {t(), [action()]}
   def handle_event(state, event, payload \\ nil) do
     state
     |> do_ingest_event(event, payload)
@@ -156,6 +171,8 @@ defmodule Elevator.Core do
   # ## The Engine (Pulse)
   # ---------------------------------------------------------------------------
 
+  @doc "Internal pulse implementation (Transition + Action Derivation)."
+  @spec pulse(t()) :: {t(), [action()]}
   def pulse(state) do
     new_state = state |> transit() |> enforce_the_golden_rule()
     {new_state, derive_actions(state, new_state)}
