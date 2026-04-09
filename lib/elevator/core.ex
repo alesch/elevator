@@ -145,7 +145,7 @@ defmodule Elevator.Core do
   end
 
   @doc "Central event handler for component confirmations and triggers a transit pulse."
-  @spec handle_event(t(), atom(), integer() | nil) :: {t(), [action()]}
+  @spec handle_event(t(), atom(), integer() | map() | nil) :: {t(), [action()]}
   def handle_event(state, event, payload \\ nil) do
     state
     |> do_ingest_event(event, payload)

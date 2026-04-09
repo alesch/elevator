@@ -100,23 +100,10 @@ defmodule Elevator.Controller do
     vault_floor = lookup_hardware(data, :vault, &Elevator.Vault.get_floor/1)
     sensor_floor = lookup_hardware(data, :sensor, &Hardware.Sensor.get_floor/1)
 
-    {new_state, actions} =
+    data
+    |> pulse_and_commit(
       Core.handle_event(data.state, :startup_check, %{vault: vault_floor, sensor: sensor_floor})
-
-    phase = Core.phase(new_state)
-
-    :telemetry.execute([:elevator, :controller, phase], %{}, %{
-      floor: vault_floor,
-      direction: :down,
-      status: :crawling
-    })
-
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-
-    broadcast_state(new_data.state)
-    {:noreply, new_data}
+    )
   end
 
   @impl true
@@ -125,121 +112,70 @@ defmodule Elevator.Controller do
   def handle_cast({:request_floor, source, floor}, data) do
     :telemetry.execute([:elevator, :controller, :request], %{}, %{source: source, floor: floor})
 
-    {new_state, actions} = Core.request_floor(data.state, source, floor)
-
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.request_floor(data.state, source, floor))
   end
 
   @impl true
   @spec handle_cast(:manual_open_door, map()) :: {:noreply, map()}
   def handle_cast(:manual_open_door, data) do
     now = System.system_time(:millisecond)
-    {new_state, actions} = Core.handle_button_press(data.state, :door_open, now)
 
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_button_press(data.state, :door_open, now))
   end
 
   @impl true
   @spec handle_cast(:manual_close_door, map()) :: {:noreply, map()}
   def handle_cast(:manual_close_door, data) do
     now = System.system_time(:millisecond)
-    {new_state, actions} = Core.handle_button_press(data.state, :door_close, now)
 
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_button_press(data.state, :door_close, now))
   end
 
   @impl true
   @spec handle_info({:floor_arrival, integer()}, map()) :: {:noreply, map()}
   def handle_info({:floor_arrival, floor}, data) do
-    {final_state, actions} = Core.process_arrival(data.state, floor)
-
-    new_data =
-      %{data | state: final_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.process_arrival(data.state, floor))
   end
 
   @impl true
   @spec handle_info(:door_opened, data :: map()) :: {:noreply, map()}
   def handle_info(:door_opened, data) do
     now = System.system_time(:millisecond)
-    {new_state, actions} = Core.handle_event(data.state, :door_opened, now)
 
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_event(data.state, :door_opened, now))
   end
 
   @impl true
   @spec handle_info(:door_closed, map()) :: {:noreply, map()}
   def handle_info(:door_closed, data) do
-    {new_state, actions} = Core.handle_event(data.state, :door_closed, nil)
-
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_event(data.state, :door_closed))
   end
 
   @impl true
   @spec handle_info(:motor_stopped, map()) :: {:noreply, map()}
   def handle_info(:motor_stopped, data) do
-    {new_state, actions} = Core.handle_event(data.state, :motor_stopped, nil)
-
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_event(data.state, :motor_stopped))
   end
 
   @impl true
   @spec handle_info(:door_obstructed, map()) :: {:noreply, map()}
   def handle_info(:door_obstructed, data) do
-    {new_state, actions} = Core.handle_event(data.state, :door_obstructed, nil)
-
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_event(data.state, :door_obstructed))
   end
 
   @impl true
   @spec handle_info(:door_cleared, map()) :: {:noreply, map()}
   def handle_info(:door_cleared, data) do
-    {new_state, actions} = Core.handle_event(data.state, :door_cleared, nil)
-
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_event(data.state, :door_cleared))
   end
 
   @impl true
@@ -247,27 +183,16 @@ defmodule Elevator.Controller do
   def handle_info({:timeout, id}, data) do
     Logger.info("Controller: Timer expired for #{id}")
     now = System.system_time(:millisecond)
-    {new_state, actions} = Core.handle_event(data.state, id, now)
 
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.handle_event(data.state, id, now))
   end
 
   @impl true
   @spec handle_info(:return_to_base, map()) :: {:noreply, map()}
   def handle_info(:return_to_base, data) do
-    {new_state, actions} = Core.request_floor(data.state, :hall, 0)
-
-    new_data =
-      %{data | state: new_state}
-      |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
-
-    {:noreply, new_data}
+    data
+    |> pulse_and_commit(Core.request_floor(data.state, :hall, 0))
   end
 
   @impl true
@@ -329,8 +254,9 @@ defmodule Elevator.Controller do
   end
 
   defp do_execute({:cancel_timer, _id}, acc) do
-    # MVP uses process mailboxes as queues; cancellation is not strictly required
-    # if the Brain is idempotent to late timeouts.
+    # We use a simplified timer model: instead of explicitly canceling timers, 
+    # we rely on the Core (Brain) to be idempotent and ignore timeout messages 
+    # that arrive late or are no longer relevant to the current phase.
     acc
   end
 
@@ -342,6 +268,16 @@ defmodule Elevator.Controller do
   defp do_execute(unknown, acc) do
     Logger.warning("Controller: Received unhandled action: #{inspect(unknown)}")
     acc
+  end
+
+  @spec pulse_and_commit(map(), {Core.t(), [Core.action()]}) :: {:noreply, map()}
+  defp pulse_and_commit(data, {new_state, actions}) do
+    new_data =
+      %{data | state: new_state}
+      |> execute_actions(actions)
+      |> broadcast_and_reset_timer()
+
+    {:noreply, new_data}
   end
 
   defp broadcast_and_reset_timer(data) do
