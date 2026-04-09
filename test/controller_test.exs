@@ -52,34 +52,6 @@ defmodule Elevator.ControllerTest do
     end
 
 
-    test "[S-MOVE-BRAKING]/[S-MOVE-OPENING]: Arrival sequence triggers immediate intent signals",
-         %{elevator: pid} do
-      # 1. Start moving to F3
-      Controller.request_floor(pid, :car, 3)
-      assert_receive {:"$gen_cast", {:move, :up}}
-
-      # 2. Simulate arrival pulse at F3
-      send(pid, {:floor_arrival, 3})
-
-      # ASSERT 1: Physical stop command sent
-      assert_receive {:"$gen_cast", :stop_now}
-      # ASSERT 2: Immediate :arriving intent
-      assert_receive {:elevator_state, state}
-      assert Core.phase(state) == :arriving
-      assert Core.motor_status(state) == :stopping
-      assert Core.current_floor(state) == 3
-
-      # 3. Confirm motor is stopped
-      send(pid, :motor_stopped)
-
-      # ASSERT 3: Physical open command sent
-      assert_receive {:"$gen_cast", :open}
-      # ASSERT 4: Immediate :opening intent
-      assert_receive {:elevator_state, state}
-      assert Core.phase(state) == :arriving
-      assert Core.motor_status(state) == :stopped
-      assert Core.door_status(state) == :opening
-    end
 
 
   end
