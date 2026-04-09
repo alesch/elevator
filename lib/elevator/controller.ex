@@ -94,7 +94,7 @@ defmodule Elevator.Controller do
     timer_ms = Keyword.get(opts, :timer_ms, @default_return_to_base_ms)
 
     data = %{
-      state: build_initial_state(opts),
+      state: Core.init(),
       timer_ms: timer_ms,
       timer: schedule_return_to_base(timer_ms),
       deps: %{
@@ -305,23 +305,6 @@ defmodule Elevator.Controller do
     Phoenix.PubSub.broadcast(Elevator.PubSub, "elevator:status", {:elevator_state, state})
   end
 
-  @spec build_initial_state(keyword()) :: Elevator.Core.t()
-  defp build_initial_state(opts) do
-    opts
-    |> create_base_state()
-    |> position_at_provided_floor(opts)
-  end
-
-  defp create_base_state(_opts), do: %Core{}
-
-  @spec position_at_provided_floor(Core.t(), keyword()) :: Core.t()
-  defp position_at_provided_floor(state, opts) do
-    if floor = Keyword.get(opts, :current_floor) do
-      %{state | current_floor: floor}
-    else
-      state
-    end
-  end
 
   # Dispatch logic: Priority to explicit deps (Test Way) -> Discovery (Industrial Way)
   @spec lookup_hardware(t(), atom(), (pid() | atom() -> term())) :: term()
