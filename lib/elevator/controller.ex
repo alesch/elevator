@@ -295,44 +295,53 @@ defmodule Elevator.Controller do
 
   @spec execute_actions(map(), [Core.action()]) :: map()
   defp execute_actions(data, actions) do
-    if actions != [], do: Logger.info("Controller executing actions: #{inspect(actions)}")
+    Enum.reduce(actions, data, &do_execute/2)
+  end
 
-    Enum.reduce(actions, data, fn action, acc ->
-      case action do
-        {:move, dir} ->
-          lookup_hardware(acc, :motor, &Hardware.Motor.move(&1, dir))
-          acc
+  defp do_execute({:move, dir}, acc) do
+    lookup_hardware(acc, :motor, &Hardware.Motor.move(&1, dir))
+    acc
+  end
 
-        {:crawl, dir} ->
-          lookup_hardware(acc, :motor, &Hardware.Motor.crawl(&1, dir))
-          acc
+  defp do_execute({:crawl, dir}, acc) do
+    lookup_hardware(acc, :motor, &Hardware.Motor.crawl(&1, dir))
+    acc
+  end
 
-        {:stop_motor} ->
-          lookup_hardware(acc, :motor, &Hardware.Motor.stop/1)
-          acc
+  defp do_execute({:stop_motor}, acc) do
+    lookup_hardware(acc, :motor, &Hardware.Motor.stop/1)
+    acc
+  end
 
-        {:open_door} ->
-          lookup_hardware(acc, :door, &Hardware.Door.open/1)
-          acc
+  defp do_execute({:open_door}, acc) do
+    lookup_hardware(acc, :door, &Hardware.Door.open/1)
+    acc
+  end
 
-        {:close_door} ->
-          lookup_hardware(acc, :door, &Hardware.Door.close/1)
-          acc
+  defp do_execute({:close_door}, acc) do
+    lookup_hardware(acc, :door, &Hardware.Door.close/1)
+    acc
+  end
 
-        {:set_timer, id, ms} ->
-          Process.send_after(self(), {:timeout, id}, ms)
-          acc
+  defp do_execute({:set_timer, id, ms}, acc) do
+    Process.send_after(self(), {:timeout, id}, ms)
+    acc
+  end
 
-        {:cancel_timer, _id} ->
-          # MVP uses process mailboxes as queues; cancellation is not strictly required
-          # if the Brain is idempotent to late timeouts.
-          acc
+  defp do_execute({:cancel_timer, _id}, acc) do
+    # MVP uses process mailboxes as queues; cancellation is not strictly required
+    # if the Brain is idempotent to late timeouts.
+    acc
+  end
 
-        {:persist_arrival, floor} ->
-          lookup_hardware(acc, :vault, &Elevator.Vault.put_floor(&1, floor))
-          acc
-      end
-    end)
+  defp do_execute({:persist_arrival, floor}, acc) do
+    lookup_hardware(acc, :vault, &Elevator.Vault.put_floor(&1, floor))
+    acc
+  end
+
+  defp do_execute(unknown, acc) do
+    Logger.warning("Controller: Received unhandled action: #{inspect(unknown)}")
+    acc
   end
 
   defp broadcast_and_reset_timer(data) do
