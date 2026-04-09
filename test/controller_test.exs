@@ -3,8 +3,8 @@ defmodule Elevator.ControllerTest do
   Functional Tests for the Elevator Controller Architecture.
   """
   use ExUnit.Case, async: false
-  alias Elevator.{Controller, Vault}
-  alias Elevator.Hardware.{Door, Sensor}
+  alias Elevator.{Controller, Vault, Core}
+  alias Elevator.Hardware.Sensor
 
   setup do
     # Start dependencies with name: nil to allow parallel isolation
@@ -38,7 +38,7 @@ defmodule Elevator.ControllerTest do
 
       state = Controller.get_state(pid)
       # Normalized: Reaches :idle immediately due to setup pre-seeding vault to F0
-      assert state.phase == :idle
+      assert Core.phase(state) == :idle
     end
 
     test "[S-SYS-PUBSUB]: Observable State Change — any state change is broadcast over PubSub", %{
@@ -56,15 +56,17 @@ defmodule Elevator.ControllerTest do
 
       _ = Controller.get_state(pid)
 
-      # Mandatory boot handshake
-      send(pid, {:recovery_complete, 0})
-      assert_receive {:elevator_state, %{phase: :idle}}
+      # Wait for initial broadcast from handle_continue
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :idle
 
       # WHEN: A state-changing event occurs (floor request)
       Controller.request_floor(pid, :car, 3)
 
       # THEN: New state is broadcast on "elevator:status"
-      assert_receive {:elevator_state, %{phase: :moving, heading: :up}}
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :moving
+      assert Core.heading(state) == :up
     end
 
     test "Requesting a floor via cast (Asynchronous)", %{vault: vault, sensor: sensor} do
@@ -79,13 +81,13 @@ defmodule Elevator.ControllerTest do
 
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
-      send(pid, {:recovery_complete, 0})
 
       # Cast is "fire and forget"
       Controller.request_floor(pid, :car, 4)
       state = Controller.get_state(pid)
-      assert state.heading == :up
-      assert {:car, 4} in state.requests
+      
+      assert Core.heading(state) == :up
+      assert {:car, 4} in Core.requests(state)
 
       # Verify physical commands
       assert_receive {:"$gen_cast", {:move, :up}}
@@ -106,13 +108,14 @@ defmodule Elevator.ControllerTest do
 
       # Barrier to ensure handle_continue finishes
       _ = Controller.get_state(pid)
-      send(pid, {:recovery_complete, 0})
 
       # 2. Verify Logic (Action)
       send(pid, :return_to_base)
 
       # Pulse 1: Transition to :arriving (Request for F0) and door opening
-      assert_receive {:elevator_state, %{phase: :arriving, door_status: :opening}}
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :arriving
+      assert Core.door_status(state) == :opening
       assert_receive {:"$gen_cast", :open}
     end
 
@@ -131,7 +134,6 @@ defmodule Elevator.ControllerTest do
         )
 
       _ = Controller.get_state(pid)
-      send(pid, {:recovery_complete, 0})
 
       # 1. Start moving to F3
       Controller.request_floor(pid, :car, 3)
@@ -143,7 +145,10 @@ defmodule Elevator.ControllerTest do
       # ASSERT 1: Physical stop command sent
       assert_receive {:"$gen_cast", :stop_now}
       # ASSERT 2: Immediate :arriving intent
-      assert_receive {:elevator_state, %{motor_status: :stopping, current_floor: 3}}
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :arriving
+      assert Core.motor_status(state) == :stopping
+      assert Core.current_floor(state) == 3
 
       # 3. Confirm motor is stopped
       send(pid, :motor_stopped)
@@ -151,7 +156,10 @@ defmodule Elevator.ControllerTest do
       # ASSERT 3: Physical open command sent
       assert_receive {:"$gen_cast", :open}
       # ASSERT 4: Immediate :opening intent
-      assert_receive {:elevator_state, %{motor_status: :stopped, door_status: :opening}}
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :arriving
+      assert Core.motor_status(state) == :stopped
+      assert Core.door_status(state) == :opening
     end
 
     test "[S-SAFE-GOLDEN]: Hardware Safety Interlock (The Golden Rule)", %{
@@ -168,7 +176,6 @@ defmodule Elevator.ControllerTest do
         )
 
       _ = Controller.get_state(pid)
-      send(pid, {:recovery_complete, 0})
 
       # 1. Start moving (to F3)
       Controller.request_floor(pid, :car, 3)
@@ -178,7 +185,8 @@ defmodule Elevator.ControllerTest do
       # Logic: Motor MUST stop. Pulse Architecture ensures this via enforce_the_golden_rule
       send(pid, :door_opened)
       assert_receive {:"$gen_cast", :stop_now}
-      assert_receive {:elevator_state, %{motor_status: :stopped}}
+      assert_receive {:elevator_state, state}
+      assert Core.motor_status(state) == :stopped
     end
 
     test "[S-SAFE-OBSTRUCT]: Door obstruction during closing triggers reversal", %{
@@ -196,26 +204,32 @@ defmodule Elevator.ControllerTest do
 
       _ = Controller.get_state(pid)
 
-      # 0. Hardware Recovery (Mandatory to exit :booting)
-      send(pid, {:recovery_complete, 0})
-      assert_receive {:elevator_state, %{phase: :idle, current_floor: 0}}
+      # Wait for initial broadcast
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :idle
+      assert Core.current_floor(state) == 0
 
       # 1. Start with doors OPEN
       send(pid, :return_to_base)
       assert_receive {:"$gen_cast", :open}
       send(pid, :door_opened)
-      assert_receive {:elevator_state, %{phase: :docked, door_status: :open}}
+      
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :docked
+      assert Core.door_status(state) == :open
 
       # 2. Trigger a close (by requesting another floor)
       Controller.request_floor(pid, :car, 3)
       
-      # Pulse 1: Heading shifts up
-      assert_receive {:elevator_state, %{heading: :up}}
+      # Pulse: Heading shifts up
+      assert_receive {:elevator_state, state}
+      assert Core.heading(state) == :up
       
       # Step 2: Simulate timeout fires → begins closing
       send(pid, {:timeout, :door_timeout})
       assert_receive {:"$gen_cast", :close}
-      assert_receive {:elevator_state, %{door_status: :closing}}
+      assert_receive {:elevator_state, state}
+      assert Core.door_status(state) == :closing
 
       # 3. Simulate obstruction
       send(pid, :door_obstructed)
@@ -224,7 +238,9 @@ defmodule Elevator.ControllerTest do
       assert_receive {:"$gen_cast", :open}
 
       # ASSERT: Phase reverts to :arriving (The Broker) and door opens
-      assert_receive {:elevator_state, %{phase: :arriving, door_status: :opening}}
+      assert_receive {:elevator_state, state}
+      assert Core.phase(state) == :arriving
+      assert Core.door_status(state) == :opening
     end
   end
 end
