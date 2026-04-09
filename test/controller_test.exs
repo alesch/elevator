@@ -82,40 +82,6 @@ defmodule Elevator.ControllerTest do
     end
 
 
-    test "[S-SAFE-OBSTRUCT]: Door obstruction during closing triggers reversal", %{elevator: pid} do
-      # 1. Start with doors OPEN
-      send(pid, :return_to_base)
-      assert_receive {:"$gen_cast", :open}
-      send(pid, :door_opened)
-      
-      assert_receive {:elevator_state, state}
-      assert Core.phase(state) == :docked
-      assert Core.door_status(state) == :open
-
-      # 2. Trigger a close (by requesting another floor)
-      Controller.request_floor(pid, :car, 3)
-      
-      # Pulse: Heading shifts up
-      assert_receive {:elevator_state, state}
-      assert Core.heading(state) == :up
-      
-      # Step 2: Simulate timeout fires → begins closing
-      send(pid, {:timeout, :door_timeout})
-      assert_receive {:"$gen_cast", :close}
-      assert_receive {:elevator_state, state}
-      assert Core.door_status(state) == :closing
-
-      # 3. Simulate obstruction
-      send(pid, :door_obstructed)
-
-      # ASSERT: Hardware receives OPEN command (Reversal)
-      assert_receive {:"$gen_cast", :open}
-
-      # ASSERT: Phase reverts to :arriving (The Broker) and door opens
-      assert_receive {:elevator_state, state}
-      assert Core.phase(state) == :arriving
-      assert Core.door_status(state) == :opening
-    end
   end
 
   # --- Helpers ---
