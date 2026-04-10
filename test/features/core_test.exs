@@ -1,6 +1,6 @@
-defmodule Elevator.Features.StateMachineTest do
+defmodule Elevator.Features.CoreTest do
   use Cabbage.Feature,
-    file: "state_machine.feature",
+    file: "core.feature",
     async: false
 
   alias Elevator.Core
@@ -14,7 +14,7 @@ defmodule Elevator.Features.StateMachineTest do
 
   # --- Given Steps ---
 
-  defgiven ~r/^the elevator is "(?<phase>.+)" and doors are "(?<door>.+)"$/,
+  defgiven ~r/^the core is "(?<phase>.+)" and doors are "(?<door>.+)"$/,
            %{phase: phase_str, door: _door_str},
            context do
     phase = Arguments.parse_phase(phase_str)
@@ -25,7 +25,7 @@ defmodule Elevator.Features.StateMachineTest do
     {:ok, %{context | state: state}}
   end
 
-  defgiven ~r/^the elevator is in "phase: (?<phase>.+)"$/, %{phase: phase_str}, context do
+  defgiven ~r/^the core is in "phase: (?<phase>.+)"$/, %{phase: phase_str}, context do
     phase = Arguments.parse_phase(phase_str)
     state = case phase do
       :moving -> 
@@ -83,7 +83,7 @@ defmodule Elevator.Features.StateMachineTest do
     {:ok, %{context | state: state, actions: actions}}
   end
 
-  defwhen ~r/^the elevator arrives at floor (?<floor>.+)$/, %{floor: floor_str}, context do
+  defwhen ~r/^the core arrives at floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Arguments.parse_floor(floor_str)
     {state, actions} = Core.process_arrival(context.state, floor)
     {:ok, %{context | state: state, actions: actions}}
