@@ -11,7 +11,7 @@ Feature: Elevator System Behavior
     Then a "Logger.warning" should be logged for the audit trail
     And the hardware timer should NOT be re-triggered
 
-  @S-REQ-SPAM @R-REQ-TAGS
+  @S-REQ-SPAM
   Scenario: Button Spamming (Silent Idempotency)
     Given the "requests" list already contains a request for Floor 3
     When an additional external request for Floor 3 is received
@@ -25,7 +25,7 @@ Feature: Elevator System Behavior
     Then the new state should be broadcast over PubSub
     And the topic should be "elevator:status"
 
-  @S-REQ-CONCURRENCY @R-REQ-TAGS
+  @S-REQ-CONCURRENCY
   Scenario: Concurrent Requests (Race Condition Safety)
     Given the elevator is ":idle"
     When multiple hall requests for different floors arrive simultaneously
