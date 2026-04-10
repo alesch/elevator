@@ -111,14 +111,16 @@ def render_markdown(grouped_steps):
             continue
             
         print(f"## {step_type.capitalize()} Steps\n")
+        print("| Step | Source |")
+        print("| :--- | :--- |")
         
         # Sort alphabetically and handle unique (text, file) pairs
         sorted_steps = sorted(grouped_steps[step_type], key=lambda x: x['text'])
         for step in sorted_steps:
             # Italicize placeholders: <name> -> _\<name\>_
             display_text = re.sub(r'<([^>]+)>', r'_\<\1\>_', step['text'])
-            # Format: - text    (file:line)
-            print(f"- {display_text}    ({step['file']}:{step['line']})")
+            # Format: | _text_ | file:line |
+            print(f"| {display_text} | {step['file']}:{step['line']} |")
         print()
 
 # -----------------------------------------------------------------------------
