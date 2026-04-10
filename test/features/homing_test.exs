@@ -1,4 +1,4 @@
-defmodule Elevator.HomingTest do
+defmodule Elevator.Features.HomingTest do
   use Cabbage.Feature,
     file: "homing.feature"
 

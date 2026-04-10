@@ -1,4 +1,4 @@
-defmodule Elevator.MovementWakeupTest do
+defmodule Elevator.Features.MovementTest do
   use Cabbage.Feature,
     file: "movement_wakeup.feature",
     scenarios: ["Wake up from idle state", "Arrival at target floor"]
@@ -58,11 +58,11 @@ defmodule Elevator.MovementWakeupTest do
   defthen ~r/^the request should be fulfilled without any motor movement$/, _vars, context do
     # Fulfillment: No requests for current floor
     current_floor = Core.current_floor(context.state)
-    assert Enum.all?(Core.requests(context.state), fn {_, f} -> f != current_floor end)
+    assert request_fulfilled?(context.state, current_floor)
 
     # Motor check: Should remain stopped
     assert Core.motor_status(context.state) == :stopped
-    refute Enum.any?(context.actions, fn a -> match?({:move, _}, a) end)
+    refute motor_moving?(context.actions)
 
     {:ok, context}
   end
@@ -128,4 +128,18 @@ defmodule Elevator.MovementWakeupTest do
     assert {:car, floor} in Core.requests(context.state)
     {:ok, context}
   end
+end
+
+# --- Helpers ---
+
+defp request_fulfilled?(state, floor) do
+  Enum.all?(Core.requests(state), fn {_, f} -> f != floor end)
+end
+
+defp motor_moving?(actions) do
+  Enum.any?(actions, fn
+    {:move, _} -> true
+    {:crawl, _} -> true
+    _ -> false
+  end)
 end

@@ -1,4 +1,4 @@
-defmodule Elevator.SweepTest do
+defmodule Elevator.Features.SweepTest do
   use Cabbage.Feature,
     file: "sweep.feature",
     # async: true is actually slower for this feature

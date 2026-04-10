@@ -1,4 +1,4 @@
-defmodule Elevator.SafetyTest do
+defmodule Elevator.Features.SafetyTest do
   use Cabbage.Feature,
     file: "safety.feature"
 
