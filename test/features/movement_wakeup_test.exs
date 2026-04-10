@@ -128,18 +128,20 @@ defmodule Elevator.Features.MovementTest do
     assert {:car, floor} in Core.requests(context.state)
     {:ok, context}
   end
-end
 
-# --- Helpers ---
+  #
+  # --- Helpers ---
+  #
 
-defp request_fulfilled?(state, floor) do
-  Enum.all?(Core.requests(state), fn {_, f} -> f != floor end)
-end
+  defp request_fulfilled?(state, floor) do
+    Enum.all?(Core.requests(state), fn {_, f} -> f != floor end)
+  end
 
-defp motor_moving?(actions) do
-  Enum.any?(actions, fn
-    {:move, _} -> true
-    {:crawl, _} -> true
-    _ -> false
-  end)
+  defp motor_moving?(actions) do
+    Enum.any?(actions, fn
+      {:move, _} -> true
+      {:crawl, _} -> true
+      _ -> false
+    end)
+  end
 end

@@ -9,13 +9,13 @@ defmodule Elevator.Sweep do
 
   ## Algorithm Deep Dive
 
-  1. **Look-Ahead Logic**: 
+  1. **Look-Ahead Logic**:
      The elevator "looks ahead" along its current heading. If it sees a request, it keeps going. However, to be efficient, it only stops for Hall requests if they are at the "peak" (the furthest point) of the current sweep. Car requests are ALWAYS stops.
 
-  2. **Directional Asymmetry**: 
+  2. **Directional Asymmetry**:
      As per our business rules [R-MOVE-LOOK], hall requests are deferred on UP journeys (unless they are the peak), but are picked up normally on DOWN journeys to maximize throughput.
 
-  3. **The Return Journey**: 
+  3. **The Return Journey**:
      Anything "behind" us or "deferred" gets moved to the end of the queue and is sorted in the reverse direction, forming the next sweep.
   """
   alias __MODULE__, as: Sweep
@@ -60,13 +60,25 @@ defmodule Elevator.Sweep do
   @spec queue(t(), floor()) :: [request()]
   def queue(%Sweep{heading: :idle, requests: []}, _current_floor), do: []
 
-  def queue(%Sweep{heading: :idle, requests: _requests} = sweep, current_floor) do
-    # If idle but has work, we calculate the heading for the journey
-    heading = calculate_heading(sweep, current_floor)
-    queue(%{sweep | heading: heading}, current_floor)
+  def queue(%Sweep{requests: []}, _), do: []
+
+  def queue(%Sweep{heading: :idle, requests: reqs} = sweep, current_floor) do
+    case calculate_heading(sweep, current_floor) do
+      :idle ->
+        # No moving required.
+        reqs
+
+      new_heading ->
+        # Apply LOOK algorithm using the initial heading.
+        calculate_look_queue(reqs, current_floor, new_heading)
+    end
   end
 
   def queue(%Sweep{heading: heading, requests: requests}, current_floor) do
+    calculate_look_queue(requests, current_floor, heading)
+  end
+
+  defp calculate_look_queue(requests, current_floor, heading) do
     # The LOOK Algorithm "Story":
     # 1. We split the universe into what's "Ahead" and what's "Behind" us.
     {ahead, behind} = split_by_heading(requests, current_floor, heading)
@@ -110,7 +122,7 @@ defmodule Elevator.Sweep do
     Enum.split_with(requests, fn {_, f} -> f <= current_floor end)
   end
 
-  # Example: 
+  # Example:
   #   If `ahead` is `[{:hall, 3}, {:car, 5}, {:hall, 5}]` and heading is :up:
   #   1. `peak_floor` becomes 5.
   #   2. `split_with` groups `{:car, 5}` and `{:hall, 5}` as immediate stops.
