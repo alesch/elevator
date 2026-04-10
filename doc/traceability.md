@@ -11,13 +11,11 @@ This table maps every Business Rule defined in [`doc/core_rules.md`](core_rules.
 | **[R-MOVE-INTENT]** | Intent vs. Action | (Implicitly covered by all Movement scenarios) |
 | **[R-MOVE-LOOK]** | The Four Rules of LOOK | `[S-MOVE-LOOK-UP]`, `[S-MOVE-LOOK-DOWN]`, `[S-MOVE-LOOK-CAR]`, `[S-MOVE-LOOK-HALL-DEFER]`, `[S-MOVE-LOOK-HALL-PEAK]`, `[S-MOVE-LOOK-HALL-DOWN]`, `[S-MOVE-LOOK-SERVICE]`, `[S-MOVE-LOOK-NEXT]`, `[S-MOVE-SWEEP-CAR]`, `[S-MOVE-SWEEP-HALL]`, `[S-MOVE-MULTI-CAR]`, `[S-MOVE-MULTI-HALL]`, `[S-PHASE-LEAVE-MOVE]`, `[S-PHASE-LEAVE-IDLE]` |
 | **[R-MOVE-BASE]** | Return to Base | `[S-MOVE-BASE]` |
-| **[R-MOVE-WAKEUP]** | Context-Aware Wake Up | `[S-MOVE-WAKEUP]`, `[S-MOVE-SAME-FLOOR]` |
 | **[R-SAFE-GOLDEN]** | The Golden Rule (Structural Safety) | `[S-SAFE-GOLDEN]` |
 | **[R-SAFE-ARRIVAL]** | Asynchronous Arrival Protocol | `[S-MOVE-BRAKING]`, `[S-MOVE-OPENING]`, `[S-SAFE-SERVICE-DELAY]` |
 | **[R-SAFE-TIMEOUT]** | Automatic Door Closing (Timer) | `[S-MOVE-DOCKED]`, `[S-SAFE-TIMEOUT]` |
 | **[R-SAFE-MANUAL]** | Manual Door Override | `[S-MANUAL-OPEN-IDLE]`, `[S-MANUAL-OPEN-WIN]`, `[S-MANUAL-RESET-TIMER]`, `[S-MANUAL-CLOSE]`, `[S-MANUAL-EXTEND]` |
 | **[R-SAFE-OBSTRUCT]** | Door Obstruction | `[S-MOVE-OBSTRUCT]`, `[S-SAFE-OBSTRUCT]`, `[S-SAFE-CLEARED]`, `[S-PHASE-LEAVE-DOCK]` |
-| **[R-REQ-TAGS]** | Tagged Requests | `[S-REQ-SPAM]`, `[S-REQ-CONCURRENCY]`, `[S-REQ-HONOR-ALL]`, `[S-REQ-SYNC]` |
 | **[R-HOME-VAULT]** | State Persistence (Vault Backup) | `[S-HOME-ANCHOR]` |
 | **[R-HOME-STRATEGY]** | Homing Procedure (Power-On Safety) | `[S-HOME-COLD]`, `[S-HOME-ZERO]`, `[S-HOME-MOVE]`, `[S-HOME-ANCHOR]`, `[S-HOME-NO-DOOR]`, `[S-HOME-BLOCK-REQ]`, `[S-HOME-BLOCK-REQ]` |
 | **[R-HW-MOTOR]** | Motor Protocols | `[S-HW-MOTOR]` |

@@ -108,4 +108,22 @@ Following the refactoring to an Autonomous Core, safety is no longer "checked" b
 
 The Core enforces a hard constraint: **The motor MUST be in the `:stopped` status unless the `door_status` is confirmed to be `:closed`.**
 
-If any event (like a manual door opening or an obstruction) violates this, the `apply_constraints/1` pipeline automatically corrects the intent by stopping the motor before the Controller can even dispatch the command to hardware.
+## Technical State Transition Matrix
+
+This table maps events to rules and state changes.
+
+| Phase | Event | Rule | New Phase | Motor | Door |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `:idle` | `{:hall, F}` or `{:car, F}` | **[R-MOVE-WAKEUP]** | `:moving` | `:running` | `:closed` |
+| `:moving` | `Arrival(Target)` | **[R-SAFE-ARRIVAL]** | `:arriving` | `:stopping` | `:closed` |
+| `:arriving` | `:motor_stopped` | **[R-SAFE-ARRIVAL]** | `:arriving` | `:stopped` | `:opening` |
+| `:arriving` | `:door_opened` | **[R-CORE-STATE]** | `:docked` | `:stopped` | `:open` |
+| `:docked` | `:door_timeout` | **[R-SAFE-TIMEOUT]** | `:leaving` | `:stopped` | `:closing` |
+| `:docked` | `:door_close` | **[R-SAFE-MANUAL]** | `:leaving` | `:stopped` | `:closing` |
+| `:leaving` | `:door_closed` (work) | **[R-MOVE-LOOK]** | `:moving` | `:running` | `:closed` |
+| `:leaving` | `:door_closed` (idle) | **[R-MOVE-LOOK]** | `:idle` | `:stopped` | `:closed` |
+| `:leaving` | `:door_obstructed` | **[R-SAFE-OBSTRUCT]** | `:arriving` | `:stopped` | `:obstructed` |
+| `:rehoming` | `Init (valid floor)` | **[R-HOME-STRATEGY]** | `:idle` | `:stopped` | `:closed` |
+| `:rehoming` | `Init (unknown)` | **[R-HOME-STRATEGY]** | `:rehoming` | `:crawling` | `:closed` |
+| `:rehoming` | `Arrival(Any)` | **[R-HOME-STRATEGY]** | `:rehoming` | `:stopping` | `:closed` |
+| `:rehoming` | `:motor_stopped` | **[R-HOME-STRATEGY]** | `:idle` | `:stopped` | `:closed` |
