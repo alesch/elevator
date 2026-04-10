@@ -24,17 +24,19 @@ defmodule Elevator.Features.SweepTest do
   # When requests are added for floors: 5, 2, 4
   # Given requests for floors: 2, 5
   defgiven ~r/^requests for floors: (?<floors>.+)$/, %{floors: floors_str}, context do
-    do_add_requests(context, floors_str)
+    floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
+
+    Enum.reduce(floors, {:ok, context}, fn floor, {:ok, ctx} ->
+      do_add_request(ctx, floor, :car)
+    end)
   end
 
   defwhen ~r/^requests are added for floors: (?<floors>.+)$/, %{floors: floors_str}, context do
-    do_add_requests(context, floors_str)
-  end
-
-  defp do_add_requests(context, floors_str) do
     floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
-    new_sweep = Enum.reduce(floors, context.sweep, fn f, acc -> Sweep.add_request(acc, :car, f) end)
-    {:ok, %{context | sweep: new_sweep}}
+
+    Enum.reduce(floors, {:ok, context}, fn floor, {:ok, ctx} ->
+      do_add_request(ctx, floor, :car)
+    end)
   end
 
   # Then the queue should be: 2, 4, 5
@@ -58,6 +60,12 @@ defmodule Elevator.Features.SweepTest do
            context do
     source = Arguments.parse_source(source_str)
     floor = Arguments.parse_floor(floor_str)
+    do_add_request(context, floor, source)
+  end
+
+  # --- Helpers ---
+
+  defp do_add_request(context, floor, source) do
     new_sweep = Sweep.add_request(context.sweep, source, floor)
     {:ok, %{context | sweep: new_sweep}}
   end
