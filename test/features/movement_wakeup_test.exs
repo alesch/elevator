@@ -1,7 +1,6 @@
 defmodule Elevator.Features.MovementTest do
   use Cabbage.Feature,
-    file: "movement_wakeup.feature",
-    scenarios: ["Wake up from idle state", "Arrival at target floor"]
+    file: "movement_wakeup.feature"
 
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
