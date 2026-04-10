@@ -71,3 +71,12 @@ Feature: Elevator Sweep Algorithm (LOOK)
     And a car request for floor 3
     Then the next stop should be floor 3
     And the heading should be idle
+
+  @S-MOVE-LOOK-UP-SKIP
+  Scenario: Defer Hall Request on the way up (Asymmetry Rule)
+    Given a sweep with heading up and the elevator at floor 1
+    And a hall request for floor 5
+    When the elevator is at floor 3
+    And a hall request for floor 3 is added
+    Then the next stop should be floor 5
+    And the queue should be: 5, 3

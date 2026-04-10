@@ -31,9 +31,13 @@ defmodule Elevator.AuditTest do
           {new_state, _actions} = Core.request_floor(state, source, target)
 
           # ASSERT 1: Immediate Arrival Logic
-          if current == target do
+          # Exception: Asymmetry Rule ([R-MOVE-LOOK]) defers Hall requests on UP journeys.
+          should_stop =
+            current == target and (heading == :idle or source == :car or heading == :down)
+
+          if should_stop do
             assert Core.door_status(new_state) == :opening,
-                   "Failed to open door at target #{target} from floor #{current}"
+                   "Failed to open door at target #{target} from floor #{current} (h:#{heading} s:#{source})"
           end
 
           # ASSERT 2: Directional Integrity

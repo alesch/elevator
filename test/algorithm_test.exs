@@ -4,23 +4,6 @@ defmodule Elevator.AlgorithmTest do
 
   describe "LOOK Algorithm ([S-MOVE-SWEEP-CAR] & [S-MOVE-SWEEP-HALL])" do
     # REVISE: Align with [S-MOVE-SWEEP-CAR] (immediate stop) and [S-MOVE-SWEEP-HALL] (deferred sweep).
-    test "[S-MOVE-SWEEP-UP]: Pick-up on the way (Hall Request)" do
-      # GIVEN: Moving UP to F5, hall request added for F3
-      state = Core.idle_at(1) |> Core.request_floor(:hall, 5) |> elem(0)
-      # Pulse it to moving
-      {state, _} = Core.pulse(state)
-
-      {state, _} = Core.request_floor(state, :hall, 3)
-
-      # WHEN: Sensor confirms arrival at F3
-      {new_state, actions} = Core.process_arrival(state, 3)
-
-      # THEN: Elevator must stop at F3 (it is in the current heading)
-      assert Core.phase(new_state) == :arriving
-      assert Core.motor_status(new_state) == :stopping
-      assert {:hall, 3} in Core.requests(new_state)
-      assert {:stop_motor} in actions
-    end
   end
 
   describe "[S-REQ-HONOR-ALL]: Honor All Requests" do
