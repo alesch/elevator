@@ -47,7 +47,7 @@ defmodule Elevator.Features.HomingTest do
 
   defgiven ~r/^"door_status" is ":closed"$/, _vars, context do
     # Assuming it's already closed in Core.init()
-    assert context.state.door_status == :closed
+    assert Core.door_status(context.state) == :closed
     {:ok, context}
   end
 
@@ -98,12 +98,17 @@ defmodule Elevator.Features.HomingTest do
 
   defthen ~r/^"motor_speed" should be "(?<speed>.+)"$/, %{speed: speed_str}, context do
     expected = speed_str |> String.trim_leading(":") |> String.to_atom()
-    assert context.state.motor_status == expected
+    case expected do
+      :running -> assert Enum.any?(context.actions, &match?({:move, _}, &1))
+      :crawling -> assert Enum.any?(context.actions, &match?({:crawl, _}, &1))
+      :stopping -> assert {:stop_motor} in context.actions
+      :stopped -> assert Core.motor_status(context.state) == :stopped
+    end
     {:ok, context}
   end
 
   defthen ~r/^"current_floor" should be ":unknown"$/, _vars, context do
-    assert context.state.current_floor == :unknown
+    assert Core.current_floor(context.state) == :unknown
     {:ok, context}
   end
 
@@ -127,12 +132,12 @@ defmodule Elevator.Features.HomingTest do
   end
 
   defthen ~r/^motor_status" should become ":stopping"$/, _vars, context do
-    assert context.state.motor_status == :stopping
+    assert {:stop_motor} in context.actions
     {:ok, context}
   end
 
   defthen ~r/^"door_status" should stay ":closed"$/, _vars, context do
-    assert context.state.door_status == :closed
+    assert Core.door_status(context.state) == :closed
     {:ok, context}
   end
 
@@ -149,7 +154,7 @@ defmodule Elevator.Features.HomingTest do
   end
 
   defthen ~r/^"door_status" should remain ":closed"$/, _vars, context do
-    assert context.state.door_status == :closed
+    assert Core.door_status(context.state) == :closed
     {:ok, context}
   end
 
@@ -165,7 +170,13 @@ defmodule Elevator.Features.HomingTest do
 
     case attr_str do
       "heading" -> assert Core.heading(context.state) == expected
-      _ -> assert Map.get(context.state, String.to_atom(attr_str)) == expected
+      "motor_status" -> 
+        case expected do
+          :running -> assert Enum.any?(context.actions, &match?({:move, _}, &1))
+          :crawling -> assert Enum.any?(context.actions, &match?({:crawl, _}, &1))
+          :stopping -> assert {:stop_motor} in context.actions
+          :stopped -> assert Core.motor_status(context.state) == :stopped
+        end
     end
 
     {:ok, context}
@@ -175,7 +186,12 @@ defmodule Elevator.Features.HomingTest do
           %{attr: attr_str, val: val_str},
           context do
     expected = val_str |> String.trim_leading(":") |> String.to_atom()
-    assert Map.get(context.state, String.to_atom(attr_str)) == expected
+    case attr_str do
+      "motor_status" -> 
+        case expected do
+          :stopping -> assert {:stop_motor} in context.actions
+        end
+    end
     {:ok, context}
   end
 

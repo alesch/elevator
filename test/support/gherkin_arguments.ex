@@ -42,12 +42,55 @@ defmodule Elevator.Gherkin.Arguments do
           "Invalid heading: #{inspect(val)}. Expected 'up', 'down', or 'idle'."
   end
 
+  @valid_phases [:booting, :idle, :moving, :arriving, :docked, :leaving, :rehoming]
+
   @doc """
   Parses a phase argument from Gherkin text to an atom.
+  Validates against the allowed FICS core phases.
   Supports leading colons (e.g., ":booting", "booting").
   """
   def parse_phase(val) when is_binary(val) do
-    val |> String.trim_leading(":") |> String.to_atom()
+    phase = val |> String.trim_leading(":") |> String.downcase() |> String.to_atom()
+    if phase in @valid_phases do
+      phase
+    else
+      raise ArgumentError, "Invalid phase: #{inspect(val)}. Expected one of: #{inspect(@valid_phases)}"
+    end
+  end
+
+  @doc """
+  Parses a generic event argument from Gherkin text to an atom.
+  """
+  def parse_event(val) when is_binary(val) do
+    val |> String.trim_leading(":") |> String.downcase() |> String.to_atom()
+  end
+
+  @valid_motor_statuses [:stopped, :running, :stopping, :crawling]
+
+  @doc """
+  Parses a motor status argument from Gherkin text to an atom.
+  """
+  def parse_motor_status(val) when is_binary(val) do
+    status = val |> String.trim_leading(":") |> String.downcase() |> String.to_atom()
+    if status in @valid_motor_statuses do
+      status
+    else
+      raise ArgumentError, "Invalid motor status: #{inspect(val)}. Expected one of: #{inspect(@valid_motor_statuses)}"
+    end
+  end
+
+  @valid_door_statuses [:closed, :opening, :open, :closing, :obstructed]
+
+  @doc """
+  Parses a door status argument from Gherkin text to an atom.
+  """
+  def parse_door_status(val) when is_binary(val) do
+    status = val |> String.trim_leading(":") |> String.downcase() |> String.to_atom()
+    if status in @valid_door_statuses do
+      status
+    else
+      raise ArgumentError, "Invalid door status: #{inspect(val)}. Expected one of: #{inspect(@valid_door_statuses)}"
+    end
   end
 
   @doc """

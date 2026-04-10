@@ -60,7 +60,7 @@ defmodule Elevator.Features.SafetyTest do
     # If ignored, no actions (like :open_door or :close_door) are returned
     assert context.actions == []
     # And last_activity_at should still be 0 (initial state value)
-    assert context.state.last_activity_at == 0
+    assert context.state.logic.last_activity_at == 0
     {:ok, context}
   end
 end

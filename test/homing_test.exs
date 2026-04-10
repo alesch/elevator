@@ -3,7 +3,7 @@ defmodule Elevator.HomingTest do
   Verifies the Smart Homing logic using Real Components (No manual mocks).
   """
   use ExUnit.Case, async: false
-  alias Elevator.{Controller, Vault}
+  alias Elevator.{Controller, Core, Vault}
   alias Elevator.Hardware.{Door, Motor, Sensor}
 
   setup do
@@ -39,8 +39,8 @@ defmodule Elevator.HomingTest do
     _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
-    assert state.phase == :idle
-    assert state.current_floor == 0
+    assert Core.phase(state) == :idle
+    assert Core.current_floor(state) == 0
 
     # Motor should still be stopped
     assert Motor.get_state(motor).status == :stopped
@@ -69,7 +69,7 @@ defmodule Elevator.HomingTest do
 
     # Controller should be :rehoming (auto-triggered by mismatch)
     state = Controller.get_state(ctrl)
-    assert state.phase == :rehoming
+    assert Core.phase(state) == :rehoming
 
     # Motor should be moving :down at :crawling speed
     motor_state = Motor.get_state(motor)
@@ -99,7 +99,7 @@ defmodule Elevator.HomingTest do
 
     # 2. Verification
     _ = Controller.get_state(ctrl)
-    assert Controller.get_state(ctrl).phase == :rehoming
+    assert Core.phase(Controller.get_state(ctrl)) == :rehoming
     assert Motor.get_state(motor).status == :crawling
 
     # 3. [S-HOME-ANCHOR]: Floor arrival during rehoming — anchor (brake), phase stays :rehoming
@@ -107,7 +107,7 @@ defmodule Elevator.HomingTest do
     _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
-    assert state.phase == :rehoming
+    assert Core.phase(state) == :rehoming
     assert state.current_floor == 0
     assert state.motor_status == :stopping
     assert Vault.get_floor(vault) == 0
@@ -121,7 +121,7 @@ defmodule Elevator.HomingTest do
     _ = Controller.get_state(ctrl)
 
     state = Controller.get_state(ctrl)
-    assert state.phase == :idle
+    assert Core.phase(state) == :idle
     assert state.door_status == :closed
   end
 
@@ -142,14 +142,14 @@ defmodule Elevator.HomingTest do
       )
 
     _ = Controller.get_state(ctrl)
-    assert Controller.get_state(ctrl).phase == :rehoming
+    assert Core.phase(Controller.get_state(ctrl)) == :rehoming
 
     # 2. Send a request
     Controller.request_floor(ctrl, :car, 2)
 
     # 3. Verify it was ignored
     state = Controller.get_state(ctrl)
-    assert state.requests == []
-    assert state.phase == :rehoming
+    assert Core.requests(state) == []
+    assert Core.phase(state) == :rehoming
   end
 end

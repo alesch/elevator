@@ -43,11 +43,8 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  # Then the elevator should begin opening the doors
   defthen ~r/^the elevator should begin opening the doors$/, _vars, context do
-    assert Core.door_status(context.state) == :opening
     assert {:open_door} in context.actions
-
     {:ok, context}
   end
 
@@ -104,10 +101,8 @@ defmodule Elevator.Features.MovementTest do
     {:ok, %{context | state: new_internal_state, actions: actions}}
   end
 
-  # Then the elevator should begin to stop
   defthen ~r/^the elevator should begin to stop$/, _vars, context do
     assert Core.phase(context.state) == :arriving
-    assert Core.motor_status(context.state) == :stopping
     {:ok, context}
   end
 

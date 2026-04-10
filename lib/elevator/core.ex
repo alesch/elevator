@@ -1,7 +1,7 @@
 defmodule Elevator.Core do
   @moduledoc """
   The internal state of the elevator box.
-  Uses a declarative Pulse Architecture for state transitions.
+  Uses a pure FICS Architecture (Reality, Transient Signals, Logic Meaning).
   """
   alias __MODULE__, as: Core
   require Logger
@@ -13,14 +13,18 @@ defmodule Elevator.Core do
   @door_wait_ms 5000
   @base_floor 0
 
-  defstruct current_floor: :unknown,
-            sweep: %Elevator.Sweep{},
-            door_status: :closed,
-            door_command: nil,
-            last_activity_at: 0,
-            phase: :booting,
-            door_sensor: :clear,
-            motor_status: :stopped
+  defstruct hardware: %{
+              door_status: :closed,
+              motor_status: :stopped,
+              door_sensor: :clear,
+              current_floor: :unknown
+            },
+            signal: nil,
+            logic: %{
+              phase: :booting,
+              sweep: %Elevator.Sweep{},
+              last_activity_at: 0
+            }
 
   @type direction :: :up | :down | :idle
   @type startup_payload :: %{vault: integer() | nil, sensor: integer() | nil}
@@ -36,16 +40,28 @@ defmodule Elevator.Core do
           | {:close_door}
           | {:persist_arrival, integer()}
 
-  @type t :: %__MODULE__{
-          current_floor: integer() | :unknown,
-          sweep: Elevator.Sweep.t(),
-          door_status: :open | :closed | :opening | :closing | :obstructed,
-          door_command: :open | :close | nil,
-          last_activity_at: integer(),
-          phase: :booting | :rehoming | :moving | :arriving | :docked | :leaving | :idle,
-          door_sensor: :clear | :blocked,
-          motor_status: :running | :crawling | :stopping | :stopped
-        }
+  @type t :: %__MODULE__{}
+
+  # ---------------------------------------------------------------------------
+  # ## Status Accessors (Public)
+  # ---------------------------------------------------------------------------
+
+  def phase(%Core{logic: %{phase: p}}), do: p
+  def door_status(%Core{hardware: %{door_status: d}}), do: d
+  def motor_status(%Core{hardware: %{motor_status: m}}), do: m
+  def current_floor(%Core{hardware: %{current_floor: f}}), do: f
+
+  def requests(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
+    if is_integer(f), do: Elevator.Sweep.queue(s, f), else: []
+  end
+
+  def heading(%Core{logic: %{phase: :booting}}), do: :idle
+  def heading(%Core{logic: %{phase: :rehoming}, hardware: %{current_floor: :unknown}}), do: :down
+  def heading(%Core{logic: %{sweep: s}}), do: Elevator.Sweep.heading(s)
+
+  def next_stop(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
+    if is_integer(f), do: Elevator.Sweep.next_stop(s, f), else: nil
+  end
 
   # ---------------------------------------------------------------------------
   # ## State Factories (Public API)
@@ -72,7 +88,9 @@ defmodule Elevator.Core do
     idle_at(floor)
     |> request_floor(:car, floor)
     |> elem(0)
-    |> handle_event(:door_opened)
+    |> handle_event(:motor_stopped, nil)
+    |> elem(0)
+    |> handle_event(:door_opened, 0)
     |> elem(0)
   end
 
@@ -82,74 +100,30 @@ defmodule Elevator.Core do
     idle_at(from)
     |> request_floor(:car, to)
     |> elem(0)
+    |> handle_event(:motor_running, nil)
+    |> elem(0)
   end
-
-  # ---------------------------------------------------------------------------
-  # ## Status Accessors (Public)
-  # ---------------------------------------------------------------------------
-
-  @doc "Returns the current request queue via the LOOK algorithm."
-  @spec requests(t()) :: [Elevator.Sweep.request()]
-  def requests(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.queue(s, f)
-
-  @doc "Returns the current heading based on Phase or Sweep logic."
-  @spec heading(t()) :: direction()
-  def heading(%Core{phase: :booting}), do: :idle
-  def heading(%Core{phase: :rehoming, current_floor: :unknown}), do: :down
-  def heading(%Core{sweep: s}), do: Elevator.Sweep.heading(s)
-
-  @doc "Returns the current operational phase."
-  @spec phase(t()) :: atom()
-  def phase(%Core{phase: p}), do: p
-
-  @doc "Returns the physical door status."
-  @spec door_status(t()) :: atom()
-  def door_status(%Core{door_status: d}), do: d
-
-  @doc "Returns the physical motor status."
-  @spec motor_status(t()) :: atom()
-  def motor_status(%Core{motor_status: m}), do: m
-
-  @doc "Returns the confirmed current floor."
-  @spec current_floor(t()) :: integer() | :unknown
-  def current_floor(%Core{current_floor: f}), do: f
-
-  @doc "Returns the next immediate stop according to LOOK."
-  @spec next_stop(t()) :: integer() | nil
-  def next_stop(%Core{sweep: s, current_floor: f}), do: Elevator.Sweep.next_stop(s, f)
 
   # ---------------------------------------------------------------------------
   # ## Public API (Entry Points)
   # ---------------------------------------------------------------------------
 
-  @doc "Adds a floor request and triggers a transit pulse."
-  @spec request_floor(t(), atom(), integer()) :: {t(), [action()]}
-  def request_floor(%Core{phase: phase} = state, _source, _floor)
+  def request_floor(%Core{logic: %{phase: phase}} = state, _source, _floor)
       when phase in [:booting, :rehoming],
       do: {state, []}
 
   def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
     state
-    |> add_sweep_request(source, floor)
-    |> update_sweep_heading()
+    |> Map.put(:signal, {:request, source, floor})
     |> pulse()
   end
 
-  @doc "Processes physical arrival at a floor and triggers a transit pulse."
-  @spec process_arrival(t(), integer()) :: {t(), [action()]}
   def process_arrival(%Core{} = state, floor) do
-    new_state =
-      state
-      |> Map.put(:current_floor, floor)
-      |> transit()
-      |> enforce_the_golden_rule()
-
-    {new_state, derive_actions(state, new_state)}
+    state
+    |> handle_event(:arrival, floor)
   end
 
-  @doc "Handles physical button presses and triggers a transit pulse."
-  @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
-  def handle_button_press(%Core{phase: phase} = state, _button, _now)
+  def handle_button_press(%Core{logic: %{phase: phase}} = state, _button, _now)
       when phase in [:booting, :rehoming],
       do: {state, []}
 
@@ -159,8 +133,6 @@ defmodule Elevator.Core do
     |> pulse()
   end
 
-  @doc "Central event handler for component confirmations and triggers a transit pulse."
-  @spec handle_event(t(), atom(), event_payload()) :: {t(), [action()]}
   def handle_event(state, event, payload \\ nil) do
     state
     |> do_ingest_event(event, payload)
@@ -171,163 +143,24 @@ defmodule Elevator.Core do
   # ## The Engine (Pulse)
   # ---------------------------------------------------------------------------
 
-  @doc "Internal pulse implementation (Transition + Action Derivation)."
-  @spec pulse(t()) :: {t(), [action()]}
   def pulse(state) do
-    new_state = state |> transit() |> enforce_the_golden_rule()
-    {new_state, derive_actions(state, new_state)}
+    state_ready = ingest_signals(state)
+    new_state = state_ready |> transit()
+
+    actions = derive_actions(state, new_state)
+
+    final_state = %{new_state | signal: nil}
+    {final_state, actions}
   end
 
-  # ---------------------------------------------------------------------------
-  # ## Rules (The Brain)
-  # ---------------------------------------------------------------------------
-
-  defp transit(%Core{} = state) do
-    state |> do_transit()
-  end
-
-  # Rule: Transition from Booting to Idle via Recovery
-  defp do_transit(%Core{phase: :booting} = state), do: state
-
-  # Rule: Transition from Rehoming to Arriving (Braking)
-  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: m} = state)
-       when is_integer(floor) and m in [:running, :crawling] do
-    %{state | motor_status: :stopping}
-  end
-
-  defp do_transit(
-         %Core{phase: :rehoming, motor_status: :stopped, current_floor: :unknown} = state
-       ) do
-    %{state | motor_status: :crawling}
-  end
-
-  defp do_transit(%Core{phase: :rehoming, current_floor: floor, motor_status: :stopped} = state)
-       when is_integer(floor) do
-    %{state | phase: :idle}
-  end
-
-  # Rule: Transition from Moving to Arriving (Braking)
-  defp do_transit(%Core{phase: :moving} = state) do
-    if state.current_floor == next_stop(state) do
-      %{state | motor_status: :stopping, phase: :arriving}
-    else
-      state
-    end
-  end
-
-  # Rule: Gateway Reversal -> Transition to arriving AND opening doors
-  defp do_transit(%Core{phase: :leaving, door_status: :obstructed} = state) do
-    %{state | phase: :arriving, door_status: :opening}
-  end
-
-  # [R-MOVE-WAKEUP]: Wakeup: Completely Idle (No Requests)
-  defp do_transit(%Core{phase: :idle} = state) do
-    do_idle_transit(state, heading(state), next_stop(state))
-  end
-
-  # Rule: Gateway Reversal -> Manual Door Open Command
-  defp do_transit(%Core{phase: :leaving, door_command: :open} = state) do
-    %{state | phase: :arriving, door_status: :opening, door_command: nil}
-  end
-
-  # Rule: Transition door to closing when leaving
-  defp do_transit(%Core{phase: :leaving, door_status: :open} = state) do
-    %{state | door_status: :closing}
-  end
-
-  # Rule: Gateway Exit -> Transition to :docked when doors are open
-  defp do_transit(%Core{phase: :arriving, door_status: :open} = state) do
-    %{state | phase: :docked}
-  end
-
-  # Rule: Door Command Close (Timeout or Button) -> Transition to leaving
-  defp do_transit(%Core{phase: :docked, door_command: :close} = state) do
-    %{state | phase: :leaving, door_status: :closing, door_command: nil}
-  end
-
-  # Rule: Gateway Settle -> Initiate door opening once motor stops
-  defp do_transit(%Core{phase: :arriving, motor_status: :stopped} = state) do
-    if state.door_status in [:closed, :obstructed] do
-      state
-      |> floor_serviced()
-      |> Map.put(:door_status, :opening)
-    else
-      # Stable: Doors are already :opening or :open (waiting for hardware)
-      state
-    end
-  end
-
-  # Rule: Settlement from Leaving
-  defp do_transit(%Core{phase: :leaving, door_status: :closed} = state) do
-    state = update_sweep_heading(state)
-
-    if heading(state) == :idle do
-      %{state | phase: :idle, motor_status: :stopped}
-    else
-      %{state | phase: :moving, motor_status: :running}
-    end
-  end
-
-  # Default: Stable
-  defp do_transit(state), do: state
-
-  defp do_idle_transit(%Core{door_command: :open} = state, :idle, _next) do
+  defp ingest_signals(%Core{signal: {:request, source, floor}} = state) do
     state
-    |> Map.put(:phase, :arriving)
-    |> Map.put(:door_status, :opening)
-    |> Map.put(:door_command, nil)
-    |> floor_serviced()
+    |> add_sweep_request(source, floor)
+    |> update_sweep_heading()
   end
 
-  defp do_idle_transit(state, _heading, next) when next == state.current_floor do
-    state
-    |> Map.put(:phase, :arriving)
-    |> Map.put(:door_status, :opening)
-    |> floor_serviced()
-  end
-
-  defp do_idle_transit(state, :idle, _next), do: state
-
-  defp do_idle_transit(state, _heading, _next) do
-    %{state | phase: :moving, motor_status: :running}
-  end
-
-  # ---------------------------------------------------------------------------
-  # ## Data Ingestion Helpers
-  # ---------------------------------------------------------------------------
-
-  defp do_ingest_event(state, :startup_check, %{vault: v, sensor: s}) do
-    if warm_start?(v, s) do
-      # CASE 1: Perfect agreement (Zero-move recovery)
-      %{state | phase: :idle, current_floor: v}
-    else
-      # CASE 2: Ambiguity or Cold Start (Perform physical homing)
-      do_ingest_event(state, :rehoming_started, nil)
-    end
-  end
-
-  defp do_ingest_event(state, :recovery_complete, floor) do
-    %{state | phase: :idle, current_floor: floor}
-  end
-
-  defp do_ingest_event(state, :rehoming_started, _) do
-    %{state | phase: :rehoming}
-  end
-
-  defp do_ingest_event(state, :motor_stopped, _), do: %{state | motor_status: :stopped}
-
-  defp do_ingest_event(state, :door_opened, now),
-    do: %{state | door_status: :open, last_activity_at: now}
-
-  defp do_ingest_event(state, :door_closed, _), do: %{state | door_status: :closed}
-
-  defp do_ingest_event(state, :door_obstructed, _),
-    do: %{state | door_status: :obstructed, door_sensor: :blocked}
-
-  defp do_ingest_event(state, :door_cleared, _), do: %{state | door_sensor: :clear}
-
-  defp do_ingest_event(%Core{phase: :idle} = state, :inactivity_timeout, _) do
-    if state.current_floor != @base_floor do
+  defp ingest_signals(%Core{signal: :inactivity_timeout} = state) do
+    if current_floor(state) != @base_floor do
       state
       |> add_sweep_request(:car, @base_floor)
       |> update_sweep_heading()
@@ -336,54 +169,220 @@ defmodule Elevator.Core do
     end
   end
 
-  defp do_ingest_event(%Core{phase: :docked} = state, :door_timeout, _) do
-    %{state | door_command: :close}
+  defp ingest_signals(state), do: state
+
+  # ---------------------------------------------------------------------------
+  # ## Hardware Ingestion Layer
+  # ---------------------------------------------------------------------------
+
+  defp do_ingest_event(state, :startup_check, %{vault: v, sensor: s}) do
+    if warm_start?(v, s) do
+      state
+      |> put_in([Access.key(:hardware), :current_floor], v)
+      |> Map.put(:signal, :warm_start)
+    else
+      Map.put(state, :signal, :rehoming_started)
+    end
+  end
+
+  defp do_ingest_event(state, :recovery_complete, floor) do
+    state
+    |> put_in([Access.key(:hardware), :current_floor], floor)
+    |> Map.put(:signal, :recovery_complete)
+  end
+
+  defp do_ingest_event(state, :arrival, floor), do: put_in(state.hardware.current_floor, floor)
+
+  defp do_ingest_event(state, :motor_stopped, _),
+    do: put_in(state.hardware.motor_status, :stopped)
+
+  defp do_ingest_event(state, :motor_running, _),
+    do: put_in(state.hardware.motor_status, :running)
+
+  defp do_ingest_event(state, :door_opened, now) do
+    state
+    |> put_in([Access.key(:hardware), :door_status], :open)
+    |> put_in([Access.key(:logic), :last_activity_at], now)
+  end
+
+  defp do_ingest_event(state, :door_closed, _), do: put_in(state.hardware.door_status, :closed)
+
+  defp do_ingest_event(state, :door_obstructed, _) do
+    state
+    |> put_in([Access.key(:hardware), :door_status], :obstructed)
+    |> put_in([Access.key(:hardware), :door_sensor], :blocked)
+  end
+
+  defp do_ingest_event(state, :door_cleared, _), do: put_in(state.hardware.door_sensor, :clear)
+
+  defp do_ingest_event(%Core{logic: %{phase: :idle}} = state, :inactivity_timeout, _) do
+    %{state | signal: :inactivity_timeout}
+  end
+
+  defp do_ingest_event(%Core{logic: %{phase: :docked}} = state, :door_timeout, _) do
+    %{state | signal: :door_timeout}
   end
 
   defp do_ingest_event(state, _, _), do: state
 
-  defp do_ingest_button(%Core{phase: :docked} = state, :door_open, now) do
-    %{state | last_activity_at: now}
+  # Buttons
+  defp do_ingest_button(%Core{logic: %{phase: :docked}} = state, :door_open, now) do
+    state
+    |> put_in([Access.key(:logic), :last_activity_at], now)
+    |> Map.put(:signal, :door_open)
   end
 
-  defp do_ingest_button(%Core{phase: :idle} = state, :door_open, _now) do
-    %{state | door_command: :open}
-  end
-
-  defp do_ingest_button(%Core{phase: :leaving} = state, :door_open, _now) do
-    %{state | door_command: :open}
+  defp do_ingest_button(%Core{logic: %{phase: phase}} = state, :door_open, _now)
+       when phase in [:idle, :leaving] do
+    Map.put(state, :signal, :door_open)
   end
 
   defp do_ingest_button(state, :door_open, _now), do: state
 
   defp do_ingest_button(%Core{} = state, :door_close, _now) do
-    %{state | door_command: :close}
+    Map.put(state, :signal, :door_close)
   end
 
   defp do_ingest_button(state, _, _), do: state
+
+  # ---------------------------------------------------------------------------
+  # ## Logical Transit Rules
+  # ---------------------------------------------------------------------------
+
+  defp transit(%Core{} = state), do: do_transit(state)
+
+  # Booting
+  defp do_transit(%Core{logic: %{phase: :booting}, signal: :warm_start} = state) do
+    put_in(state.logic.phase, :idle)
+  end
+
+  defp do_transit(%Core{logic: %{phase: :booting}, signal: :recovery_complete} = state) do
+    put_in(state.logic.phase, :idle)
+  end
+
+  defp do_transit(%Core{logic: %{phase: :booting}, signal: :rehoming_started} = state) do
+    put_in(state.logic.phase, :rehoming)
+  end
+
+  # Rehoming
+  defp do_transit(
+         %Core{
+           logic: %{phase: :rehoming},
+           hardware: %{current_floor: floor, motor_status: :stopped}
+         } = state
+       )
+       when is_integer(floor) do
+    put_in(state.logic.phase, :idle)
+  end
+
+  # Idle
+  defp do_transit(%Core{logic: %{phase: :idle}, signal: sig} = state) do
+    nxt = next_stop(state)
+    has_work = not is_nil(nxt)
+
+    cond do
+      has_work and nxt == current_floor(state) ->
+        state |> put_in([Access.key(:logic), :phase], :arriving) |> floor_serviced()
+
+      has_work ->
+        put_in(state.logic.phase, :moving)
+
+      sig == :door_open ->
+        state |> put_in([Access.key(:logic), :phase], :arriving) |> floor_serviced()
+
+      true ->
+        state
+    end
+  end
+
+  # Moving -> Arriving
+  defp do_transit(%Core{logic: %{phase: :moving}} = state) do
+    if current_floor(state) == next_stop(state) do
+      put_in(state.logic.phase, :arriving)
+    else
+      state
+    end
+  end
+
+  # Arriving -> Docked
+  defp do_transit(%Core{logic: %{phase: :arriving}, hardware: %{door_status: :open}} = state) do
+    state
+    |> put_in([Access.key(:logic), :phase], :docked)
+    |> floor_serviced()
+  end
+
+  # Docked -> Leaving
+  defp do_transit(%Core{logic: %{phase: :docked}, signal: sig} = state)
+       when sig in [:door_timeout, :door_close] do
+    put_in(state.logic.phase, :leaving)
+  end
+
+  # Leaving -> Arriving (Obstruction or Open)
+  defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{door_sensor: :blocked}} = state) do
+    put_in(state.logic.phase, :arriving)
+  end
+
+  defp do_transit(%Core{logic: %{phase: :leaving}, signal: :door_open} = state) do
+    put_in(state.logic.phase, :arriving)
+  end
+
+  # Leaving -> Settle
+  defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{door_status: :closed}} = state) do
+    state = update_sweep_heading(state)
+
+    if heading(state) == :idle do
+      put_in(state.logic.phase, :idle)
+    else
+      put_in(state.logic.phase, :moving)
+    end
+  end
+
+  # Default
+  defp do_transit(state), do: state
 
   # ---------------------------------------------------------------------------
   # ## Calculation Helpers
   # ---------------------------------------------------------------------------
 
   defp add_sweep_request(state, source, floor) do
-    Map.update!(state, :sweep, &Elevator.Sweep.add_request(&1, source, floor))
+    Map.update!(state, :logic, fn logic ->
+      Map.update!(logic, :sweep, &Elevator.Sweep.add_request(&1, source, floor))
+    end)
   end
 
   defp update_sweep_heading(state) do
-    Map.update!(state, :sweep, &Elevator.Sweep.update_heading(&1, state.current_floor))
+    f = current_floor(state)
+
+    if is_integer(f) do
+      Map.update!(state, :logic, fn logic ->
+        Map.update!(logic, :sweep, &Elevator.Sweep.update_heading(&1, f))
+      end)
+    else
+      state
+    end
   end
 
   defp floor_serviced(state) do
-    Map.update!(state, :sweep, &Elevator.Sweep.floor_serviced(&1, state.current_floor))
+    f = current_floor(state)
+
+    if is_integer(f) do
+      Map.update!(state, :logic, fn logic ->
+        Map.update!(logic, :sweep, &Elevator.Sweep.floor_serviced(&1, f))
+      end)
+    else
+      state
+    end
   end
 
+  defp warm_start?(v, s), do: v == s and is_integer(v)
+
   # ---------------------------------------------------------------------------
-  # ## Action Derivation & Safety
+  # ## Action Derivation
   # ---------------------------------------------------------------------------
 
   defp derive_actions(old, new) do
     []
+    |> verify_golden_rule(new)
     |> update_motor_action(old, new)
     |> update_door_action(old, new)
     |> update_timer_action(old, new)
@@ -391,27 +390,35 @@ defmodule Elevator.Core do
   end
 
   defp update_persistence_action(actions, old, new) do
-    if has_arrived?(old, new) do
-      actions ++ [{:persist_arrival, new.current_floor}]
+    if old.hardware.current_floor != new.hardware.current_floor and
+         is_integer(new.hardware.current_floor) do
+      actions ++ [{:persist_arrival, new.hardware.current_floor}]
     else
       actions
     end
   end
 
   defp update_motor_action(actions, old, new) do
+    entered_arriving = new.logic.phase == :arriving and old.logic.phase != :arriving
+    entered_idle = new.logic.phase == :idle and old.logic.phase != :idle
+    entered_rehoming = new.logic.phase == :rehoming and old.logic.phase != :rehoming
+    entered_moving = new.logic.phase == :moving and old.logic.phase != :moving
+
     cond do
-      # Case: Crossing the arrival threshold (Moving -> Stopping)
-      braking?(old, new) ->
+      entered_arriving and new.hardware.motor_status != :stopped ->
         actions ++ [{:stop_motor}]
 
-      # Case: Start moving or change direction
-      # Note: The state machine ensures a stop occurs before heading reversals.
-      is_running?(new) and intent_changed?(old, new) ->
+      entered_idle and new.hardware.motor_status != :stopped ->
+        actions ++ [{:stop_motor}]
+
+      entered_rehoming ->
+        actions ++ [{:crawl, heading(new)}]
+
+      entered_moving ->
         actions ++ [{:move, heading(new)}]
 
-      # Case: Start crawling or change direction (rehoming)
-      is_crawling?(new) and intent_changed?(old, new) ->
-        actions ++ [{:crawl, heading(new)}]
+      new.logic.phase == :moving and heading(old) != heading(new) ->
+        actions ++ [{:move, heading(new)}]
 
       true ->
         actions
@@ -419,11 +426,17 @@ defmodule Elevator.Core do
   end
 
   defp update_door_action(actions, old, new) do
+    old_ready_open = old.logic.phase == :arriving and old.hardware.motor_status == :stopped
+    new_ready_open = new.logic.phase == :arriving and new.hardware.motor_status == :stopped
+
+    old_ready_close = old.logic.phase == :leaving
+    new_ready_close = new.logic.phase == :leaving
+
     cond do
-      door_opening_requested?(old, new) ->
+      new_ready_open and not old_ready_open and new.hardware.door_status != :open ->
         actions ++ [{:open_door}]
 
-      door_closing_requested?(old, new) ->
+      new_ready_close and not old_ready_close and new.hardware.door_status != :closed ->
         actions ++ [{:close_door}]
 
       true ->
@@ -432,11 +445,18 @@ defmodule Elevator.Core do
   end
 
   defp update_timer_action(actions, old, new) do
+    entered_docked = new.logic.phase == :docked and old.logic.phase != :docked
+
+    docked_activity =
+      new.logic.phase == :docked and new.logic.last_activity_at != old.logic.last_activity_at
+
+    left_docked = old.logic.phase == :docked and new.logic.phase != :docked
+
     cond do
-      should_reset_timer?(old, new) ->
+      entered_docked or docked_activity ->
         actions ++ [{:set_timer, :door_timeout, @door_wait_ms}]
 
-      should_cancel_timer?(old, new) ->
+      left_docked ->
         actions ++ [{:cancel_timer, :door_timeout}]
 
       true ->
@@ -444,64 +464,15 @@ defmodule Elevator.Core do
     end
   end
 
-  defp enforce_the_golden_rule(state) do
-    if state.door_status != :closed and state.motor_status != :stopped do
-      Logger.warning(
-        "The Golden Rule: Motor forced stopped. Phase: #{state.phase}, door: #{state.door_status}"
-      )
+  defp verify_golden_rule(actions, new) do
+    cond do
+      new.hardware.door_status != :closed and
+          new.hardware.motor_status not in [:stopped, :stopping] ->
+        Logger.error("CRITICAL SAFETY BREACH: Golden Rule Violated.")
+        actions ++ [{:stop_motor}]
 
-      %{state | motor_status: :stopped}
-    else
-      state
+      true ->
+        actions
     end
   end
-
-  # ---------------------------------------------------------------------------
-  # ## Semantic Helpers
-  # ---------------------------------------------------------------------------
-
-  # --- Door Helpers ---
-
-  defp door_opening_requested?(old, new), do: is_opening?(new) and not is_opening?(old)
-  defp door_closing_requested?(old, new), do: is_closing?(new) and not is_closing?(old)
-
-  defp is_opening?(state), do: state.door_status in [:opening, :obstructed]
-  defp is_closing?(state), do: state.door_status == :closing
-  defp is_open?(state), do: state.door_status == :open
-
-  # --- Timer Helpers ---
-
-  defp should_reset_timer?(old, new) do
-    is_open?(new) and (not is_open?(old) or activity_changed?(old, new))
-  end
-
-  defp should_cancel_timer?(old, new), do: not is_open?(new) and is_open?(old)
-  defp activity_changed?(old, new), do: old.last_activity_at != new.last_activity_at
-
-  # --- Motor Helpers ---
-
-  defp braking?(old, new), do: is_stopping?(new) and is_moving?(old)
-
-  defp intent_changed?(old, new) do
-    motor_status_changed?(old, new) or heading_changed?(old, new)
-  end
-
-  defp is_moving?(state), do: state.motor_status in [:running, :crawling]
-  defp is_stopping?(state), do: state.motor_status in [:stopping, :stopped]
-  defp is_running?(state), do: state.motor_status == :running
-  defp is_crawling?(state), do: state.motor_status == :crawling
-
-  defp motor_status_changed?(old, new), do: old.motor_status != new.motor_status
-  defp heading_changed?(old, new), do: heading(old) != heading(new)
-  defp floor_changed?(old, new), do: old.current_floor != new.current_floor
-
-  defp has_arrived?(old, new), do: floor_changed?(old, new) and known_position?(new.current_floor)
-
-  # --- Startup Helpers ---
-
-  defp warm_start?(v, s), do: v == s and known_position?(v)
-
-  defp known_position?(nil), do: false
-  defp known_position?(:unknown), do: false
-  defp known_position?(_), do: true
 end
