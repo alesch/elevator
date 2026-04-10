@@ -21,8 +21,8 @@ defmodule Elevator.AuditTest do
         state =
           case heading do
             :idle -> Core.idle_at(current)
-            :up when current < 5 -> Core.idle_at(current, requests: [{:car, 5}])
-            :down when current > 0 -> Core.idle_at(current, requests: [{:car, 0}])
+            :up when current < 5 -> Core.idle_at(current) |> Core.request_floor(:car, 5) |> elem(0)
+            :down when current > 0 -> Core.idle_at(current) |> Core.request_floor(:car, 0) |> elem(0)
             _ -> nil
           end
 

@@ -62,7 +62,9 @@ defmodule Elevator.PhaseTransitionsTest do
   test "[S-PHASE-LEAVE-MOVE]: :leaving → :moving when door closes and requests remain" do
     # Start at 3, docking. Request 5.
     state = 
-      Core.idle_at(3, requests: [{:car, 5}])
+      Core.idle_at(3)
+      |> Core.request_floor(:car, 5)
+      |> elem(0)
       |> Core.request_floor(:car, 3) # arrive at 3
       |> elem(0)
       |> Core.handle_event(:motor_stopped, nil)

@@ -6,7 +6,7 @@ defmodule Elevator.AlgorithmTest do
     # REVISE: Align with [S-MOVE-SWEEP-CAR] (immediate stop) and [S-MOVE-SWEEP-HALL] (deferred sweep).
     test "[S-MOVE-SWEEP-UP]: Pick-up on the way (Hall Request)" do
       # GIVEN: Moving UP to F5, hall request added for F3
-      state = Core.idle_at(1, requests: [{:hall, 5}])
+      state = Core.idle_at(1) |> Core.request_floor(:hall, 5) |> elem(0)
       # Pulse it to moving
       {state, _} = Core.pulse(state)
 
@@ -26,7 +26,7 @@ defmodule Elevator.AlgorithmTest do
   describe "[S-REQ-HONOR-ALL]: Honor All Requests" do
     test "Car request on the path — elevator stops" do
       # GIVEN: Moving :up, car request for F3 on the path
-      state = Core.idle_at(1, requests: [{:car, 3}])
+      state = Core.idle_at(1) |> Core.request_floor(:car, 3) |> elem(0)
       {state, _} = Core.pulse(state)
 
       # WHEN: Sensor confirms arrival at F3
@@ -40,7 +40,7 @@ defmodule Elevator.AlgorithmTest do
 
     test "Hall request on the path — elevator stops" do
       # GIVEN: Moving :up, hall request for F4 on the path
-      state = Core.idle_at(2, requests: [{:hall, 4}])
+      state = Core.idle_at(2) |> Core.request_floor(:hall, 4) |> elem(0)
       {state, _} = Core.pulse(state)
 
       # WHEN: Sensor confirms arrival at F4
