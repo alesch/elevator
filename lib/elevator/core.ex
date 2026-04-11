@@ -85,6 +85,9 @@ defmodule Elevator.Core do
   @spec booting() :: t()
   def booting, do: %Core{}
 
+  @deprecated "Use booting/0 instead"
+  def init, do: booting()
+
   @doc """
   Factory: Returns an elevator in :rehoming phase.
   Drives from booting() via a mismatched :startup_check.
