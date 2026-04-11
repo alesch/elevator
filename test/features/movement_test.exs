@@ -4,7 +4,7 @@ defmodule Elevator.Features.MovementTest do
 
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
-  import_steps Elevator.Gherkin.Steps
+  import_steps(Elevator.Gherkin.Steps)
   import ExUnit.Assertions
 
   setup do
@@ -30,34 +30,35 @@ defmodule Elevator.Features.MovementTest do
 
   # --- Then Steps ---
 
-
   defthen ~r/^(floor )?(?<target>\w+) is in the pending requests$/, %{target: target}, context do
     case target do
-      "ground" -> # handled by parse_floor
+      # handled by parse_floor
+      "ground" ->
         nil
+
       _ ->
         nil
     end
+
     floor = Args.parse_floor(target)
-    assert {:car, floor} in Core.requests(context.state) or {:hall, floor} in Core.requests(context.state)
+
+    assert {:car, floor} in Core.requests(context.state) or
+             {:hall, floor} in Core.requests(context.state)
+
     {:ok, context}
   end
 
-  defthen ~r/^the request for floor (?<target>.+) is still pending$/, %{target: target}, context do
+  defthen ~r/^the request for floor (?<target>.+) is still pending$/,
+          %{target: target},
+          context do
     floor = Args.parse_floor(target)
     assert {:car, floor} in Core.requests(context.state)
     {:ok, context}
   end
 
-  defthen ~r/^the request (for the current_floor )?is fulfilled/, _vars, context do
-    current_floor = Core.current_floor(context.state)
-    assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == current_floor end)
-    {:ok, context}
-  end
-
-  defthen ~r/^floor (?<target>.+) is fulfilled$/, %{target: target}, context do
+  defthen ~r/^the request for floor (?<target>.+) is fulfilled$/, %{target: target}, context do
     floor = Args.parse_floor(target)
-    assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == floor end)
+    assert request_fulfilled?(context.state, floor)
     {:ok, context}
   end
 
@@ -68,9 +69,15 @@ defmodule Elevator.Features.MovementTest do
 
   defthen ~r/^the request is fulfilled without any motor movement$/, _vars, context do
     c_floor = Core.current_floor(context.state)
-    assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == c_floor end)
-    assert Core.motor_status(context.state) == :stopped
-    refute Enum.any?(context.actions, fn {:move, _} -> true; {:crawl, _} -> true; _ -> false end)
+    assert request_fulfilled?(context.state, c_floor)
+    assert not motor_moving?(context.state)
+
+    refute Enum.any?(context.actions, fn
+             {:move, _} -> true
+             {:crawl, _} -> true
+             _ -> false
+           end)
+
     {:ok, context}
   end
 
@@ -124,9 +131,9 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  defgiven ~r/^the elevator is stopping at a floor$/, _vars, context do
+  defgiven ~r/^the elevator is stopping at floor (?<floor>.+)$/, %{floor: floor_str}, context do
+    floor = Args.parse_floor(floor_str)
     # Reach stopping via process_arrival
-    floor = 3
     s = Core.moving_to(floor - 1, floor)
     {s, _} = Core.handle_event(s, :motor_running)
     {s, _} = Core.process_arrival(s, floor)
@@ -153,7 +160,9 @@ defmodule Elevator.Features.MovementTest do
     {:ok, %{context | state: s}}
   end
 
-  defgiven ~r/^it is moving up to serve a request at floor (?<target>.+)$/, %{target: target}, context do
+  defgiven ~r/^it is moving up to serve a request at floor (?<target>.+)$/,
+           %{target: target},
+           context do
     t_floor = Args.parse_floor(target)
     c_floor = Core.current_floor(context.state)
     s = Core.moving_to(c_floor, t_floor)
@@ -180,7 +189,9 @@ defmodule Elevator.Features.MovementTest do
     {:ok, %{context | state: s, actions: actions}}
   end
 
-  defwhen ~r/^a passenger inside the car selects floor (?<floor>.+)$/, %{floor: floor_str}, context do
+  defwhen ~r/^a passenger inside the car selects floor (?<floor>.+)$/,
+          %{floor: floor_str},
+          context do
     floor = Args.parse_floor(floor_str)
     {s, actions} = Core.request_floor(context.state, :car, floor)
     {:ok, %{context | state: s, actions: actions}}
@@ -199,28 +210,40 @@ defmodule Elevator.Features.MovementTest do
   end
 
   defwhen ~r/^the elevator passes floor (?<floor>.+)$/, %{floor: floor_str}, context do
-    # Passing a floor means arriving but NOT stopping. 
+    # Passing a floor means arriving but NOT stopping.
     # Use process_arrival and we'll check if it stayed in :moving.
     floor = Args.parse_floor(floor_str)
     {s, actions} = Core.process_arrival(context.state, floor)
     {:ok, %{context | state: s, actions: actions}}
   end
 
-  defwhen ~r/^passengers inside the car select floors (?<floors>.+)$/, %{floors: floors_str}, context do
-    floors = String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
-    s = Enum.reduce(floors, context.state, fn f, acc ->
-      {new_s, _} = Core.request_floor(acc, :car, f)
-      new_s
-    end)
+  defwhen ~r/^passengers inside the car select floors (?<floors>.+)$/,
+          %{floors: floors_str},
+          context do
+    floors =
+      String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
+
+    s =
+      Enum.reduce(floors, context.state, fn f, acc ->
+        {new_s, _} = Core.request_floor(acc, :car, f)
+        new_s
+      end)
+
     {:ok, %{context | state: s}}
   end
 
-  defwhen ~r/^hall requests are received for floors (?<floors>.+)$/, %{floors: floors_str}, context do
-    floors = String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
-    s = Enum.reduce(floors, context.state, fn f, acc ->
-      {new_s, _} = Core.request_floor(acc, :hall, f)
-      new_s
-    end)
+  defwhen ~r/^hall requests are received for floors (?<floors>.+)$/,
+          %{floors: floors_str},
+          context do
+    floors =
+      String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
+
+    s =
+      Enum.reduce(floors, context.state, fn f, acc ->
+        {new_s, _} = Core.request_floor(acc, :hall, f)
+        new_s
+      end)
+
     {:ok, %{context | state: s}}
   end
 
@@ -229,7 +252,9 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  defwhen ~r/^the elevator travels upward, passing floors 2 and 4 to reach floor 5$/, _vars, context do
+  defwhen ~r/^the elevator travels upward, passing floors 2 and 4 to reach floor 5$/,
+          _vars,
+          context do
     # Simulation: Pass 2, Pass 4, Arrive at 5
     s = context.state
     {s, _} = Core.process_arrival(s, 2)
@@ -253,7 +278,10 @@ defmodule Elevator.Features.MovementTest do
 
   defthen ~r/^the elevator should return to floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
-    assert Core.heading(context.state) == (if floor < Core.current_floor(context.state), do: :down, else: :up)
+
+    assert Core.heading(context.state) ==
+             if(floor < Core.current_floor(context.state), do: :down, else: :up)
+
     {:ok, context}
   end
 
@@ -262,7 +290,9 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  defthen ~r/^the elevator should not stop at floor (?<floor>.+)$/, %{floor: _floor_str}, context do
+  defthen ~r/^the elevator should not stop at floor (?<floor>.+)$/,
+          %{floor: _floor_str},
+          context do
     assert Core.phase(context.state) == :moving
     {:ok, context}
   end
@@ -274,8 +304,9 @@ defmodule Elevator.Features.MovementTest do
   end
 
   defthen ~r/^it should stop at floors: (?<floors>.+)$/, %{floors: floors_str}, context do
-    floors = String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
-    
+    floors =
+      String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
+
     # We simulate the trip
     Enum.reduce(floors, context.state, fn f, acc ->
       {new_s, _} = Core.process_arrival(acc, f)
@@ -287,13 +318,14 @@ defmodule Elevator.Features.MovementTest do
       {new_s, _} = Core.handle_event(new_s, :door_closed, 0)
       new_s
     end)
+
     {:ok, context}
   end
 
-  defgiven ~r/^a request for the current_floor is pending$/, _vars, context do
+  defgiven ~r/^a request for floor (?<floor>.+) is pending$/, %{floor: floor_str}, context do
     # Current floor should have a request
-    current_floor = Core.current_floor(context.state)
-    {s, _} = Core.request_floor(context.state, :car, current_floor)
+    floor = Args.parse_floor(floor_str)
+    {s, _} = Core.request_floor(context.state, :car, floor)
     {:ok, %{context | state: s}}
   end
 

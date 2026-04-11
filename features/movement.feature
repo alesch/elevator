@@ -14,8 +14,8 @@ Feature: Elevator Movement
 
     Examples:
       | current | target | heading |
-      | ground  |      3 | up      |
-      |       5 |      1 | down    |
+      | ground  | 3      | up      |
+      | 5       | 1      | down    |
 
   @S-MOVE-BRAKING @R-SAFE-ARRIVAL
   Scenario: Arrival at target floor
@@ -28,11 +28,11 @@ Feature: Elevator Movement
 
   @S-MOVE-OPENING @R-SAFE-ARRIVAL
   Scenario: Doors start opening after motor stops
-    Given the elevator is stopping at a floor
-    And a request for the current_floor is pending
+    Given the elevator is stopping at floor 3
+    And a request for floor 3 is pending
     When the motor confirms it has stopped
     Then the door_status is :opening
-    And the request for the current_floor is fulfilled
+    And the request for floor 3 is fulfilled
 
   @S-MOVE-DOCKED @R-CORE-STATE @R-SAFE-TIMEOUT
   Scenario: Doors are fully open
@@ -40,7 +40,7 @@ Feature: Elevator Movement
     And the doors are opening
     When the door confirms it has fully opened
     Then the phase is :docked
-    And current_floor is 3
+    And current floor is 3
     And the door_status is :open
     And the door timeout timer is set for 5 seconds
 
@@ -60,7 +60,7 @@ Feature: Elevator Movement
     And the elevator arrives at floor 3
     Then the phase is :arriving
     And motor_status is :stopping
-    And the current_floor is 3
+    And the current floor is 3
 
   @S-MOVE-SWEEP-HALL @R-MOVE-LOOK
   Scenario: Defer hall request to the return journey
@@ -69,12 +69,12 @@ Feature: Elevator Movement
     When a hall request is received for floor 3
     And the elevator passes floor 3
     Then the phase is :moving
-    And current_floor is 3
+    And current floor is 3
     And floor 5 is in the pending requests
     And floor 3 is in the pending requests
 
   @S-MOVE-SAME-FLOOR @R-MOVE-WAKEUP
-  Scenario: Request on the current_floor
+  Scenario: Request on the current floor
     Given the elevator is idle at floor 3
     When a request for floor 3 is received
     Then the door_status is :opening
@@ -86,9 +86,9 @@ Feature: Elevator Movement
     And passengers inside the car select floors 2, 4, and 5
     When the elevator travels upward
     Then the phase is :docked
-    And current_floor is 5
-    And floor 4 is fulfilled
-    And floor 2 is fulfilled
+    And current floor is 5
+    And the request for floor 4 is fulfilled
+    And the request for floor 2 is fulfilled
 
   @S-MOVE-MULTI-HALL @R-MOVE-LOOK
   Scenario: Multiple hall requests are deferred to the return journey
@@ -96,9 +96,9 @@ Feature: Elevator Movement
     And hall requests are received for floors 2, 4, and 5
     When the elevator travels upward, passing floors 2 and 4 to reach floor 5
     Then the phase is :docked
-    And current_floor is 2
-    And floor 5 is fulfilled
-    And floor 4 is fulfilled
+    And current floor is 2
+    And the request for floor 5 is fulfilled
+    And the request for floor 4 is fulfilled
 
   @S-MOVE-OBSTRUCT @R-SAFE-OBSTRUCT
   Scenario: Door obstruction during closing sequence
