@@ -188,14 +188,12 @@ defmodule Elevator.Core do
   defp ingest_signals(%Core{signal: {:request, source, floor}} = state) do
     state
     |> add_sweep_request(source, floor)
-    |> update_sweep_heading()
   end
 
   defp ingest_signals(%Core{signal: :inactivity_timeout} = state) do
     if current_floor(state) != @base_floor do
       state
       |> add_sweep_request(:car, @base_floor)
-      |> update_sweep_heading()
     else
       state
     end
@@ -287,7 +285,11 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @spec transit(t()) :: t()
-  defp transit(%Core{} = state), do: do_transit(state)
+  defp transit(%Core{} = state) do
+    state
+    |> do_transit()
+    |> update_sweep_heading()
+  end
 
   @spec do_transit(t()) :: t()
   # Booting
@@ -299,7 +301,6 @@ defmodule Elevator.Core do
     state
     |> put_in([Access.key(:logic), :phase], :rehoming)
     |> add_sweep_request(:car, 0)
-    |> update_sweep_heading()
   end
 
   # Rehoming
@@ -366,8 +367,6 @@ defmodule Elevator.Core do
 
   # Leaving -> Settle
   defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{door_status: :closed}} = state) do
-    state = update_sweep_heading(state)
-
     if heading(state) == :idle do
       put_in(state.logic.phase, :idle)
     else
