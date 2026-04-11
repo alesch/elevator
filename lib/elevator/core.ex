@@ -93,7 +93,7 @@ defmodule Elevator.Core do
   @spec idle_at(integer()) :: t()
   def idle_at(floor) do
     init()
-    |> handle_event(:recovery_complete, floor)
+    |> handle_event(:startup_check, %{vault: floor, sensor: floor})
     |> elem(0)
   end
 
@@ -202,16 +202,10 @@ defmodule Elevator.Core do
     if warm_start?(v, s) do
       state
       |> put_in([Access.key(:hardware), :current_floor], v)
-      |> Map.put(:signal, :warm_start)
+      |> Map.put(:signal, :recovery_complete)
     else
       Map.put(state, :signal, :rehoming_started)
     end
-  end
-
-  defp do_ingest_event(state, :recovery_complete, floor) do
-    state
-    |> put_in([Access.key(:hardware), :current_floor], floor)
-    |> Map.put(:signal, :recovery_complete)
   end
 
   defp do_ingest_event(state, :arrival, floor), do: put_in(state.hardware.current_floor, floor)
@@ -285,10 +279,6 @@ defmodule Elevator.Core do
 
   @spec do_transit(t()) :: t()
   # Booting
-  defp do_transit(%Core{logic: %{phase: :booting}, signal: :warm_start} = state) do
-    put_in(state.logic.phase, :idle)
-  end
-
   defp do_transit(%Core{logic: %{phase: :booting}, signal: :recovery_complete} = state) do
     put_in(state.logic.phase, :idle)
   end

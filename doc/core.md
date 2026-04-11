@@ -1,61 +1,18 @@
-# Technical Specification: Elevator Core (The Brain)
+# Elevator Core (The Brain)
 
 The `Elevator.Core` is the **Functional Core** of the system. It contains the pure, side-effect-free decision logic (the "Brain"). It manages the internal state and dictates movement and safety through a set of declarative actions.
 
 ## State Machine
 
-The core operates as an explicit **Phase State Machine**:
+The core is governed by a formal Phase State Machine. To ensure consistency across the system, all phases and transitions are defined in a single source of truth:
 
-| Phase | Description | Expected Motor | Expected Door |
-| :--- | :--- | :--- | :--- |
-| **`:booting`** | Initial synchronization; waiting for hardware discovery. External requests are ignored in this phase. | `:stopped` | `:closed` |
-| **`:idle`** | At floor, stationary, no active work. | `:stopped` | `:closed` |
-| **`:rehoming`** | Recovering position by moving down slowly. | `:crawling` | `:closed` |
-| **`:moving`** | Traveling Toward a target floor at high speed. | `:running` | `:closed` |
-| **`:arriving`** | Target reached: motor braking and/or door opening. | `:stopping` | `:opening` |
-| **`:docked`** | At floor, doors open, serving passengers. | `:stopped` | `:open` |
-| **`:leaving`** | Service complete: door is closing. | `:stopped` | `:closing` |
+---
+> See [states.md](doc/states.md) for the formal Phase Definitions, Transition Ledger, and State Diagrams.
+---
 
-### Phase Transitions
+### Phase Gating
 
-```mermaid
-stateDiagram-v2
-    booting: :booting
-    rehoming: :rehoming
-    idle: :idle
-    moving: :moving
-    arriving: :arriving
-    docked: :docked
-    leaving: :leaving
-
-    booting --> :idle : recovery_complete
-    booting --> :rehoming : rehoming_started
-    rehoming --> :idle : recovery_complete / motor_stopped
-    idle --> :moving : request_floor (different floor)
-    idle --> :arriving : request_floor (same floor)
-    moving --> :arriving : process_arrival (target floor)
-    arriving --> :docked : door_opened
-    docked --> :leaving : door_timeout / door_close
-    leaving --> :moving : door_closed (if requests remain)
-    leaving --> :idle : door_closed (if no requests)
-    leaving --> :arriving : door_obstructed
-```
-
-### Transition Ledger
-
-| From Phase | Trigger (Input) | To Phase | Action (Side Effect) |
-| :--- | :--- | :--- | :--- |
-| **`:booting`** | `handle_event(:recovery_complete)` | **`:idle`** | None |
-| **`:booting`** | `handle_event(:rehoming_started)` | **`:rehoming`** | `{:crawl, :down}` |
-| **`:idle`** | `request_floor` (same) | **`:arriving`** | `{:open_door}` |
-| **`:idle`** | `request_floor` (diff) | **`:moving`** | `{:move, dir}` |
-| **`:rehoming`** | `process_arrival` (F0) | **`:idle`** | `{:stop_motor}` |
-| **`:moving`** | `process_arrival` (target) | **`:arriving`** | `{:stop_motor}` |
-| **`:arriving`** | `handle_event(:door_opened)` | **`:docked`** | `{:set_timer, :door_timeout, 5000}` |
-| **`:docked`** | `handle_event(:door_timeout)` | **`:leaving`** | `{:close_door}` |
-| **`:leaving`** | `handle_event(:door_closed)` | **`:moving`** | `{:move, dir}` (if reqs remain) |
-| **`:leaving`** | `handle_event(:door_closed)` | **`:idle`** | None (if no reqs remain) |
-| **`:leaving`** | `handle_event(:door_obstructed)` | **`:arriving`** | `{:open_door}` |
+All event handling in the Core is primary guarded by the current phase. Illegal events for a given phase are ignored to maintain safety invariants.
 
 ## Internal State
 
@@ -80,11 +37,6 @@ The state is managed via the `%Elevator.Core{}` struct:
 - `handle_event(state, event, now)`: Processes hardware confirmations and timeouts.
 - `handle_button_press(state, button, now)`: Processes manual door overrides.
 - `process_arrival(state, floor)`: Handles physical floor sensor triggers.
-
-### Internal Logic
-
-- `update_heading(state)`: Recalculates `heading` based on the current floor and request queue.
-- `enforce_the_golden_rule(state)`: A safety invariant that ensures the motor is **stopped** if doors are not confirmed closed.
 
 ## Actions (The Output)
 
