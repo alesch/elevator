@@ -26,6 +26,10 @@ defmodule Elevator.Core do
               last_activity_at: 0
             }
 
+  @type phase :: :booting | :idle | :moving | :arriving | :docked | :leaving | :rehoming
+  @type door_status :: :closed | :opening | :open | :closing | :obstructed
+  @type motor_status :: :stopped | :running | :stopping | :crawling
+
   @type direction :: :up | :down | :idle
   @type startup_payload :: %{vault: integer() | nil, sensor: integer() | nil}
   @type event_payload :: integer() | startup_payload() | nil
@@ -46,19 +50,30 @@ defmodule Elevator.Core do
   # ## Status Accessors (Public)
   # ---------------------------------------------------------------------------
 
+  @spec phase(t()) :: phase()
   def phase(%Core{logic: %{phase: p}}), do: p
+
+  @spec door_status(t()) :: door_status()
   def door_status(%Core{hardware: %{door_status: d}}), do: d
+
+  @spec motor_status(t()) :: motor_status()
   def motor_status(%Core{hardware: %{motor_status: m}}), do: m
+
+  @spec current_floor(t()) :: integer() | :unknown
   def current_floor(%Core{hardware: %{current_floor: f}}), do: f
 
+  @doc "Ordered list of floor requests, based on current floor."
+  @spec requests(t()) :: [Elevator.Sweep.request()]
   def requests(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
     if is_integer(f), do: Elevator.Sweep.queue(s, f), else: []
   end
 
+  @spec heading(t()) :: direction()
   def heading(%Core{logic: %{phase: :booting}}), do: :idle
   def heading(%Core{logic: %{phase: :rehoming}, hardware: %{current_floor: :unknown}}), do: :down
   def heading(%Core{logic: %{sweep: s}}), do: Elevator.Sweep.heading(s)
 
+  @spec next_stop(t()) :: integer() | nil
   def next_stop(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
     if is_integer(f), do: Elevator.Sweep.next_stop(s, f), else: nil
   end
