@@ -165,12 +165,14 @@ defmodule Elevator.Sweep do
   defp sort_by_heading(requests, :down), do: sort_descending(requests)
   defp sort_by_heading(requests, :idle), do: requests
 
-  defp any_requests_above?(sweep, :unknown), do: false
+  defp any_requests_above?(_sweep, :unknown), do: false
+
   defp any_requests_above?(sweep, floor) do
     Enum.any?(sweep.requests, fn {_, f} -> f > floor end)
   end
 
   defp any_requests_below?(sweep, :unknown), do: any_requests?(sweep)
+
   defp any_requests_below?(sweep, floor) do
     Enum.any?(sweep.requests, fn {_, f} -> f < floor end)
   end

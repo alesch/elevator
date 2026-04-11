@@ -11,7 +11,7 @@ defmodule Elevator.Features.SafetyTest do
   end
 
   # Given logic
-  defgiven ~r/^the elevator is in phase "(?<phase>.+)"$/, %{phase: phase_str}, context do
+  defgiven ~r/^the elevator is in phase (?<phase>.+)$/, %{phase: phase_str}, context do
     phase = Args.parse_phase(phase_str)
 
     # Use public API / factory methods to reach the desired state
@@ -31,7 +31,7 @@ defmodule Elevator.Features.SafetyTest do
   end
 
   # When logic
-  defwhen ~r/^"(?<source>.+)" request for floor "(?<target>.+)" is received$/,
+  defwhen ~r/^(?<source>.+) request for floor (?<target>.+) is received$/,
           %{source: source_str, target: target_str},
           context do
     source = Args.parse_source(source_str)
@@ -41,7 +41,7 @@ defmodule Elevator.Features.SafetyTest do
     {:ok, %{context | state: new_state, actions: actions}}
   end
 
-  defwhen ~r/^the "(?<button>.+)" button is pressed$/, %{button: button_str}, context do
+  defwhen ~r/^the (?<button>.+) button is pressed$/, %{button: button_str}, context do
     button = Args.parse_button(button_str)
     now = 1000 # Mock time
     {new_state, actions} = Core.handle_button_press(context.state, button, now)

@@ -110,7 +110,7 @@ defmodule Elevator.Features.CoreTest do
     {:ok, context}
   end
 
-  defthen ~r/^the door is "(?<value>.+)"$/, %{value: val_str}, context do
+  defthen ~r/^the door is (?<value>.+)$/, %{value: val_str}, context do
     expected = Arguments.parse_door_status(val_str)
 
     case {expected, context.actions} do
@@ -124,6 +124,78 @@ defmodule Elevator.Features.CoreTest do
 
   defthen ~r/^the door timeout timer is set$/, _vars, context do
     assert {:set_timer, :door_timeout, 5000} in context.actions
+    {:ok, context}
+  end
+
+  # --- Missing Steps ---
+
+  defgiven ~r/^door is opening$/, _vars, context do
+    {state, _} = Core.handle_event(context.state, :door_opening)
+    {:ok, %{context | state: state}}
+  end
+
+  defgiven ~r/^door is open$/, _vars, context do
+    {state, _} = Core.handle_event(context.state, :door_opened, 0)
+    {:ok, %{context | state: state}}
+  end
+
+  defgiven ~r/^door is closing$/, _vars, context do
+    {state, _} = Core.handle_event(context.state, :door_closing)
+    {:ok, %{context | state: state}}
+  end
+
+  defgiven ~r/^door_sensor is clear$/, _vars, context do
+    {state, _} = Core.handle_event(context.state, :door_cleared)
+    {:ok, %{context | state: state}}
+  end
+
+  defgiven ~r/^the motor is stopped$/, _vars, context do
+    {state, _} = Core.handle_event(context.state, :motor_stopped)
+    {:ok, %{context | state: state}}
+  end
+
+  defwhen ~r/^the door is confirmed open$/, _vars, context do
+    {state, actions} = Core.handle_event(context.state, :door_opened, 0)
+    {:ok, %{context | state: state, actions: actions}}
+  end
+
+  defwhen ~r/^the door is confirmed closed$/, _vars, context do
+    {state, actions} = Core.handle_event(context.state, :door_closed)
+    {:ok, %{context | state: state, actions: actions}}
+  end
+
+  defwhen ~r/^the door timeout expires$/, _vars, context do
+    {state, actions} = Core.handle_event(context.state, :door_timeout, 5000)
+    {:ok, %{context | state: state, actions: actions}}
+  end
+
+  defwhen ~r/^the door is obstructed$/, _vars, context do
+    {state, actions} = Core.handle_event(context.state, :door_obstructed, 0)
+    {:ok, %{context | state: state, actions: actions}}
+  end
+
+  defthen ~r/^door is closing$/, _vars, context do
+    assert Core.door_status(context.state) == :closing
+    {:ok, context}
+  end
+
+  defthen ~r/^door is opening$/, _vars, context do
+    assert Core.door_status(context.state) == :opening
+    {:ok, context}
+  end
+
+  defthen ~r/^door is open$/, _vars, context do
+    assert Core.door_status(context.state) == :open
+    {:ok, context}
+  end
+
+  defthen ~r/^the motor is running$/, _vars, context do
+    assert Core.motor_status(context.state) == :running or {:move, :up} in context.actions or {:move, :down} in context.actions or {:crawl, :down} in context.actions
+    {:ok, context}
+  end
+
+  defthen ~r/^the motor is stopping$/, _vars, context do
+    assert Core.motor_status(context.state) == :stopping or {:stop_motor} in context.actions
     {:ok, context}
   end
 end

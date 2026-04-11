@@ -16,38 +16,33 @@ defmodule Elevator.Features.HomingTest do
     {:ok, %{context | vault: nil}}
   end
 
-  defgiven ~r/^the Elevator Vault stores "Floor (?<floor>.+)"$/, %{floor: floor_str}, context do
+  defgiven ~r/^the Elevator Vault stores Floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
     {:ok, %{context | vault: floor}}
   end
 
-  defgiven ~r/^the Elevator Sensor is currently at "Floor (?<floor>.+)"$/,
+  defgiven ~r/^the Elevator Sensor is currently at Floor (?<floor>.+)$/,
            %{floor: floor_str},
            context do
     floor = Args.parse_floor(floor_str)
     {:ok, %{context | sensor: floor}}
   end
 
-  defgiven ~r/^the Elevator Sensor is ":unknown" or mismatches$/, _vars, context do
+  defgiven ~r/^the Elevator Sensor is :unknown or mismatches$/, _vars, context do
     # Set it to something that clearly won't match Vault floor (usually 3 in the feature)
     {:ok, %{context | sensor: 99}}
   end
 
-  defgiven ~r/^the elevator has started rehoming$/, _vars, context do
+  defgiven ~r/^the elevator is rehoming$/, _vars, context do
     # Natural transition to rehoming via startup check failure
     {state, _} = Core.handle_event(Core.init(), :startup_check, %{vault: nil, sensor: nil})
+
     # Emulate hardware starting to crawl in response to the :crawl action
     state = put_in(state.hardware.motor_status, :crawling)
     {:ok, %{context | state: state}}
   end
 
-  defgiven ~r/^the elevator is in rehoming phase$/, _vars, context do
-    # Natural transition to rehoming via startup check failure
-    {state, _} = Core.handle_event(Core.init(), :startup_check, %{vault: nil, sensor: nil})
-    {:ok, %{context | state: state}}
-  end
-
-  defgiven ~r/^"door_status" is ":closed"$/, _vars, context do
+  defgiven ~r/^door_status is :closed$/, _vars, context do
     # Assuming it's already closed in Core.init()
     assert Core.door_status(context.state) == :closed
     {:ok, context}
@@ -66,13 +61,13 @@ defmodule Elevator.Features.HomingTest do
     {:ok, %{context | state: new_state, actions: actions}}
   end
 
-  defwhen ~r/^the Core receives its very first ":floor_arrival" event$/, _vars, context do
+  defwhen ~r/^the Core receives its very first :floor_arrival event$/, _vars, context do
     # We choose a floor (e.g., 0)
     {new_state, actions} = Core.process_arrival(context.state, 0)
     {:ok, %{context | state: new_state, actions: actions}}
   end
 
-  defwhen ~r/^the ":motor_stopped" confirmation is received after homing arrival$/,
+  defwhen ~r/^the :motor_stopped confirmation is received after homing arrival$/,
           _vars,
           context do
     {new_state, actions} = Core.handle_event(context.state, :motor_stopped)
@@ -86,31 +81,39 @@ defmodule Elevator.Features.HomingTest do
 
   # --- Then Steps ---
 
-  defthen ~r/^(the )?"?phase"? is "(?<value>.+)"$/, %{value: val_str}, context do
-    expected = Args.parse_phase(val_str)
-    assert Core.phase(context.state) == expected
-    {:ok, context}
-  end
-
-  defthen ~r/^(the )?"?motor_status"? is "(?<value>.+)"$/, %{value: val_str}, context do
-    expected = Args.parse_motor_status(val_str)
-    case {expected, context.actions} do
-      {:stopping, actions} when actions != [] -> assert {:stop_motor} in actions
-      _ -> assert Core.motor_status(context.state) == expected
+  defthen ~r/^(the )?(\w+) is ([^ ]+)$/, %{field: field, value: val}, context do
+    case field do
+      "phase" -> assert Core.phase(context.state) == Args.parse_phase(val)
+      "heading" -> 
+         expected = Args.parse_heading(val)
+         case {expected, context.actions} do
+           {:idle, actions} when actions != [] -> assert {:stop_motor} in actions
+           _ -> assert Core.heading(context.state) == expected
+         end
+      "motor_speed" ->
+         # motor_speed is a property of the crawl/move action in FICS
+         if String.contains?(val, "crawling") do
+            assert Enum.any?(context.actions, fn {:crawl, _} -> true; _ -> false end)
+         end
+      "current_floor" ->
+         case val do
+           ":unknown" -> assert Core.current_floor(context.state) == :unknown
+           _ -> assert Core.current_floor(context.state) == Args.parse_floor(val)
+         end
+      "door_status" ->
+         expected = Args.parse_door_status(val)
+         assert Core.door_status(context.state) == expected
+      "motor_status" ->
+         expected = Args.parse_motor_status(val)
+         case {expected, context.actions} do
+           {:stopping, actions} when actions != [] -> assert {:stop_motor} in actions
+           _ -> assert Core.motor_status(context.state) == expected
+         end
     end
     {:ok, context}
   end
 
-  defthen ~r/^(the )?"?door_status"? is "(?<value>.+)"$/, %{value: val_str}, context do
-    expected = Args.parse_door_status(val_str)
-    case {expected, context.actions} do
-      {:opening, actions} when actions != [] -> assert {:open_door} in actions
-      _ -> assert Core.door_status(context.state) == expected
-    end
-    {:ok, context}
-  end
-
-  defthen ~r/^(the )?"?(?<field>[^"]+)"? is "(?<value>[^"]+)"$/, %{field: field, value: val}, context do
+  defthen ~r/^(the )?(\w+) is ([^ ]+)$/, %{field: field, value: val}, context do
     case field do
       "phase" -> assert Core.phase(context.state) == Args.parse_phase(val)
       "heading" -> 
@@ -163,7 +166,7 @@ defmodule Elevator.Features.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^no "(?<cmd>.+)" command is issued$/, %{cmd: cmd_str}, context do
+  defthen ~r/^no (?<cmd>.+) command is issued$/, %{cmd: cmd_str}, context do
     cmd = String.trim_leading(cmd_str, ":") |> String.to_atom()
     refute Enum.any?(context.actions, fn
       {^cmd} -> true
@@ -173,22 +176,22 @@ defmodule Elevator.Features.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^the "phase" should transition to ":idle"$/, _vars, context do
+  defthen ~r/^the phase should transition to :idle$/, _vars, context do
     assert Core.phase(context.state) == :idle
     {:ok, context}
   end
 
-  defthen ~r/^"door_status" should remain ":closed"$/, _vars, context do
+  defthen ~r/^door_status should remain :closed$/, _vars, context do
     assert Core.door_status(context.state) == :closed
     {:ok, context}
   end
 
-  defthen ~r/^no ":open_door" command should be issued$/, _vars, context do
+  defthen ~r/^no :open_door command should be issued$/, _vars, context do
     refute {:open_door} in context.actions
     {:ok, context}
   end
 
-  defthen ~r/^the "(?<attr>.+)" should immediately become "(?<val>.+)"$/,
+  defthen ~r/^the (?<attr>.+) should immediately become (?<val>.+)$/,
           %{attr: attr_str, val: val_str},
           context do
     expected = val_str |> String.trim_leading(":") |> String.to_atom()
@@ -207,7 +210,7 @@ defmodule Elevator.Features.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^"(?<attr>.+)" should become "(?<val>.+)"$/,
+  defthen ~r/^(?<attr>.+) should become (?<val>.+)$/,
           %{attr: attr_str, val: val_str},
           context do
     expected = val_str |> String.trim_leading(":") |> String.to_atom()
