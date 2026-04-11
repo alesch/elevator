@@ -2,17 +2,23 @@
 
 The Elevator Door is a self-contained state machine that coordinates with the Controller through standardized pulse events and completion notifications.
 
-## State Machine
+## The Transition Ledger (SECA)
 
-The door operates as a 5-state machine:
+Formal definition of state changes based on **State, Event, Condition, and Action**.
 
-| Status | Description | Transitions To |
-| :--- | :--- | :--- |
-| **`:closed`** | Resting state. Door is fully shut. | `:opening` |
-| **`:opening`** | Active transition state. Transit timer (1s) active. | `:open`, `:obstructed` |
-| **`:open`** | Maximum retraction. Safe for passenger ingress/egress. | `:closing` |
-| **`:closing`** | Active transition state. Transit timer (1s) active. | `:closed`, `:obstructed` |
-| **`:obstructed`** | Safety interrupt state. Stationary and stable. | `:opening` |
+| Current State | Event (Trigger) | Condition | Action (Effect) | Next State |
+| :--- | :--- | :--- | :--- | :--- |
+| **`:closed`** | `:open` | None | `{:start_timer, 1s}` | **`:opening`** |
+| **`:opening`** | `:fully_opened` | Timer Expired | `{:notify, :door_opened}` | **`:open`** |
+| **`:opening`** | `:close` | None | `{:start_timer, 1s}` | **`:closing`** |
+| **`:opening`** | `:door_obstructed` | Sensor Pulse | `{:cancel_timer}, {:notify, :door_obstructed}` | **`:obstructed`** |
+| **`:open`** | `:close` | None | `{:start_timer, 1s}` | **`:closing`** |
+| **`:closing`** | `:fully_closed` | Timer Expired | `{:notify, :door_closed}` | **`:closed`** |
+| **`:closing`** | `:open` | None | `{:start_timer, 1s}` | **`:opening`** |
+| **`:closing`** | `:door_obstructed` | Sensor Pulse | `{:cancel_timer}, {:notify, :door_obstructed}` | **`:obstructed`** |
+| **`:obstructed`** | `:open` | None | `{:start_timer, 1s}` | **`:opening`** |
+| **`:obstructed`** | `:close` | None | `{:start_timer, 1s}` | **`:closing`** |
+
 
 ## Public API
 
