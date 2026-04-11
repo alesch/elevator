@@ -4,6 +4,7 @@ defmodule Elevator.Features.HomingTest do
 
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
+  import_steps Elevator.Gherkin.Steps
   import ExUnit.Assertions
 
   setup do
@@ -81,69 +82,6 @@ defmodule Elevator.Features.HomingTest do
 
   # --- Then Steps ---
 
-  defthen ~r/^(the )?(\w+) is ([^ ]+)$/, %{field: field, value: val}, context do
-    case field do
-      "phase" -> assert Core.phase(context.state) == Args.parse_phase(val)
-      "heading" -> 
-         expected = Args.parse_heading(val)
-         case {expected, context.actions} do
-           {:idle, actions} when actions != [] -> assert {:stop_motor} in actions
-           _ -> assert Core.heading(context.state) == expected
-         end
-      "motor_speed" ->
-         # motor_speed is a property of the crawl/move action in FICS
-         if String.contains?(val, "crawling") do
-            assert Enum.any?(context.actions, fn {:crawl, _} -> true; _ -> false end)
-         end
-      "current_floor" ->
-         case val do
-           ":unknown" -> assert Core.current_floor(context.state) == :unknown
-           _ -> assert Core.current_floor(context.state) == Args.parse_floor(val)
-         end
-      "door_status" ->
-         expected = Args.parse_door_status(val)
-         assert Core.door_status(context.state) == expected
-      "motor_status" ->
-         expected = Args.parse_motor_status(val)
-         case {expected, context.actions} do
-           {:stopping, actions} when actions != [] -> assert {:stop_motor} in actions
-           _ -> assert Core.motor_status(context.state) == expected
-         end
-    end
-    {:ok, context}
-  end
-
-  defthen ~r/^(the )?(\w+) is ([^ ]+)$/, %{field: field, value: val}, context do
-    case field do
-      "phase" -> assert Core.phase(context.state) == Args.parse_phase(val)
-      "heading" -> 
-         expected = Args.parse_heading(val)
-         case {expected, context.actions} do
-           {:idle, actions} when actions != [] -> assert {:stop_motor} in actions
-           _ -> assert Core.heading(context.state) == expected
-         end
-      "motor_speed" ->
-         # motor_speed is a property of the crawl/move action in FICS
-         if String.contains?(val, "crawling") do
-            assert Enum.any?(context.actions, fn {:crawl, _} -> true; _ -> false end)
-         end
-      "current_floor" ->
-         case val do
-           ":unknown" -> assert Core.current_floor(context.state) == :unknown
-           _ -> assert Core.current_floor(context.state) == Args.parse_floor(val)
-         end
-      "door_status" ->
-         expected = Args.parse_door_status(val)
-         assert Core.door_status(context.state) == expected
-      "motor_status" ->
-         expected = Args.parse_motor_status(val)
-         case {expected, context.actions} do
-           {:stopping, actions} when actions != [] -> assert {:stop_motor} in actions
-           _ -> assert Core.motor_status(context.state) == expected
-         end
-    end
-    {:ok, context}
-  end
 
   defthen ~r/^no motor movement should be triggered$/, _vars, context do
     refute Enum.any?(context.actions, fn a -> match?({:move, _}, a) or match?({:crawl, _}, a) end)
@@ -157,7 +95,7 @@ defmodule Elevator.Features.HomingTest do
     {:ok, context}
   end
 
-  defthen ~r/^the Vault is updated with the current floor$/, _vars, context do
+  defthen ~r/^the Vault is updated with the current_floor$/, _vars, context do
     # Check for the persistence intent returned by FICS Core
     assert Enum.any?(context.actions, fn 
       {:persist_arrival, _} -> true

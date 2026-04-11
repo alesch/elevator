@@ -10,7 +10,7 @@ Feature: Elevator Homing & Recovery
     Then the phase is :rehoming
     And heading is :down
     And motor_speed is :crawling
-    And current_floor is :unknown
+    And current floor is :unknown
 
   @S-HOME-ZERO @R-HOME-STRATEGY
   Scenario: Mid-Floor Recovery (Zero-Move)
@@ -37,7 +37,7 @@ Feature: Elevator Homing & Recovery
     Then the heading is :idle
     And motor_status is :stopping
     And door_status is :closed
-    And the Vault is updated with the current floor
+    And the Vault is updated with the current_floor
 
   @S-HOME-NO-DOOR @R-HOME-STRATEGY
   Scenario: No Door Cycle on Homing Arrival

@@ -29,10 +29,10 @@ Feature: Elevator Movement
   @S-MOVE-OPENING @R-SAFE-ARRIVAL
   Scenario: Doors start opening after motor stops
     Given the elevator is stopping at a floor
-    And a request for the current floor is pending
+    And a request for the current_floor is pending
     When the motor confirms it has stopped
     Then the door_status is :opening
-    And the request for the current floor is fulfilled
+    And the request for the current_floor is fulfilled
 
   @S-MOVE-DOCKED @R-CORE-STATE @R-SAFE-TIMEOUT
   Scenario: Doors are fully open
@@ -74,7 +74,7 @@ Feature: Elevator Movement
     And floor 3 is in the pending requests
 
   @S-MOVE-SAME-FLOOR @R-MOVE-WAKEUP
-  Scenario: Request on the current floor
+  Scenario: Request on the current_floor
     Given the elevator is idle at floor 3
     When a request for floor 3 is received
     Then the door_status is :opening
@@ -104,7 +104,7 @@ Feature: Elevator Movement
   Scenario: Door obstruction during closing sequence
     Given the elevator is idle at floor 3
     And the doors are closing
-    When the door sensor detects an obstruction
+    When the door_sensor detects an obstruction
     Then the door_status is :opening
 
   @S-MOVE-HEADING-MAINTENANCE @R-MOVE-LOOK

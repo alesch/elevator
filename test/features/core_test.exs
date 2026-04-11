@@ -4,7 +4,8 @@ defmodule Elevator.Features.CoreTest do
     async: false
 
   alias Elevator.Core
-  alias Elevator.Gherkin.Arguments
+  alias Elevator.Gherkin.Arguments, as: Args
+  import_steps Elevator.Gherkin.Steps
   import ExUnit.Assertions
 
   setup do
@@ -15,7 +16,7 @@ defmodule Elevator.Features.CoreTest do
   # --- Given Steps ---
 
   defgiven ~r/^the core is in phase (?<phase>.+)$/, %{phase: phase_str}, context do
-    phase = Arguments.parse_phase(phase_str)
+    phase = Args.parse_phase(phase_str)
 
     state =
       case phase do
@@ -48,7 +49,7 @@ defmodule Elevator.Features.CoreTest do
   end
 
   defgiven ~r/^a request exists for Floor (?<floor>.+)$/, %{floor: floor_str}, context do
-    floor = Arguments.parse_floor(floor_str)
+    floor = Args.parse_floor(floor_str)
     {state, _} = Core.request_floor(context.state, :car, floor)
     {:ok, %{context | state: state}}
   end
@@ -65,7 +66,7 @@ defmodule Elevator.Features.CoreTest do
   end
 
   defgiven ~r/^heading is (?<heading>.+)$/, %{heading: heading_str}, context do
-    heading = Arguments.parse_heading(heading_str)
+    heading = Args.parse_heading(heading_str)
     state = put_in(context.state.logic.sweep.heading, heading)
     {:ok, %{context | state: state}}
   end
@@ -78,51 +79,13 @@ defmodule Elevator.Features.CoreTest do
   end
 
   defwhen ~r/^the core arrives at floor (?<floor>.+)$/, %{floor: floor_str}, context do
-    floor = Arguments.parse_floor(floor_str)
+    floor = Args.parse_floor(floor_str)
     {state, actions} = Core.process_arrival(context.state, floor)
     {:ok, %{context | state: state, actions: actions}}
   end
 
   # --- Then Steps ---
 
-  defthen ~r/^the phase is (?<value>.+)$/, %{value: val_str}, context do
-    expected = Arguments.parse_phase(val_str)
-    assert Core.phase(context.state) == expected
-    {:ok, context}
-  end
-
-  defthen ~r/^the motor is (?<value>.+)$/, %{value: val_str}, context do
-    expected = Arguments.parse_motor_status(val_str)
-
-    case {expected, context.actions} do
-      {:running, actions} when actions != [] ->
-        assert Enum.any?(actions, fn
-                 {:move, _} -> true
-                 {:crawl, _} -> true
-                 _ -> false
-               end)
-
-      {:stopping, actions} when actions != [] ->
-        assert {:stop_motor} in actions
-
-      _ ->
-        assert Core.motor_status(context.state) == expected
-    end
-
-    {:ok, context}
-  end
-
-  defthen ~r/^the door is (?<value>.+)$/, %{value: val_str}, context do
-    expected = Arguments.parse_door_status(val_str)
-
-    case {expected, context.actions} do
-      {:opening, actions} when actions != [] -> assert {:open_door} in actions
-      {:closing, actions} when actions != [] -> assert {:close_door} in actions
-      _ -> assert Core.door_status(context.state) == expected
-    end
-
-    {:ok, context}
-  end
 
   defthen ~r/^the door timeout timer is set$/, _vars, context do
     assert {:set_timer, :door_timeout, 5000} in context.actions

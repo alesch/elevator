@@ -4,6 +4,7 @@ defmodule Elevator.Features.MovementTest do
 
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
+  import_steps Elevator.Gherkin.Steps
   import ExUnit.Assertions
 
   setup do
@@ -29,49 +30,6 @@ defmodule Elevator.Features.MovementTest do
 
   # --- Then Steps ---
 
-  defthen ~r/^(the )?(?<field>\w+) is (?<val>[^ ]+)$/, %{field: field, val: val}, context do
-    case field do
-      "phase" ->
-        expected = Args.parse_phase(val)
-        actual = Core.phase(context.state)
-        assert actual == expected, "Expected phase #{expected}, got #{actual}"
-
-      "motor_status" ->
-        expected = Args.parse_motor_status(val)
-
-        case {expected, context.actions} do
-          {:running, actions} when actions != [] ->
-            assert Enum.any?(actions, fn
-                     {:move, _} -> true
-                     {:crawl, _} -> true
-                     _ -> false
-                   end)
-
-          {:stopping, actions} when actions != [] ->
-            assert {:stop_motor} in actions
-
-          _ ->
-            assert Core.motor_status(context.state) == expected
-        end
-
-      "door_status" ->
-        expected = Args.parse_door_status(val)
-
-        case {expected, context.actions} do
-          {:opening, actions} when actions != [] -> assert {:open_door} in actions
-          {:closing, actions} when actions != [] -> assert {:close_door} in actions
-          _ -> assert Core.door_status(context.state) == expected
-        end
-
-      "heading" ->
-        assert Core.heading(context.state) == Args.parse_heading(val)
-
-      "current_floor" ->
-        assert Core.current_floor(context.state) == Args.parse_floor(val)
-    end
-
-    {:ok, context}
-  end
 
   defthen ~r/^(floor )?(?<target>\w+) is in the pending requests$/, %{target: target}, context do
     case target do
@@ -91,7 +49,7 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  defthen ~r/^the request (for the current floor )?is fulfilled/, _vars, context do
+  defthen ~r/^the request (for the current_floor )?is fulfilled/, _vars, context do
     current_floor = Core.current_floor(context.state)
     assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == current_floor end)
     {:ok, context}
@@ -280,7 +238,7 @@ defmodule Elevator.Features.MovementTest do
     {:ok, %{context | state: s, actions: actions}}
   end
 
-  defwhen ~r/^the door sensor detects an obstruction$/, _vars, context do
+  defwhen ~r/^the door_sensor detects an obstruction$/, _vars, context do
     {s, actions} = Core.handle_event(context.state, :door_obstructed, 0)
     {:ok, %{context | state: s, actions: actions}}
   end
@@ -332,7 +290,7 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  defgiven ~r/^a request for the current floor is pending$/, _vars, context do
+  defgiven ~r/^a request for the current_floor is pending$/, _vars, context do
     # Current floor should have a request
     current_floor = Core.current_floor(context.state)
     {s, _} = Core.request_floor(context.state, :car, current_floor)
