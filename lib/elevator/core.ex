@@ -123,6 +123,7 @@ defmodule Elevator.Core do
   # ## Public API (Entry Points)
   # ---------------------------------------------------------------------------
 
+  @spec request_floor(t(), Elevator.Sweep.source(), integer()) :: {t(), [action()]}
   def request_floor(%Core{logic: %{phase: phase}} = state, _source, _floor)
       when phase in [:booting, :rehoming],
       do: {state, []}
@@ -133,11 +134,13 @@ defmodule Elevator.Core do
     |> pulse()
   end
 
+  @spec process_arrival(t(), integer()) :: {t(), [action()]}
   def process_arrival(%Core{} = state, floor) do
     state
     |> handle_event(:arrival, floor)
   end
 
+  @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
   def handle_button_press(%Core{logic: %{phase: phase}} = state, _button, _now)
       when phase in [:booting, :rehoming],
       do: {state, []}
@@ -148,6 +151,7 @@ defmodule Elevator.Core do
     |> pulse()
   end
 
+  @spec handle_event(t(), atom(), event_payload()) :: {t(), [action()]}
   def handle_event(state, event, payload \\ nil) do
     state
     |> do_ingest_event(event, payload)
@@ -158,6 +162,7 @@ defmodule Elevator.Core do
   # ## The Engine (Pulse)
   # ---------------------------------------------------------------------------
 
+  @spec pulse(t()) :: {t(), [action()]}
   def pulse(state) do
     state_ready = ingest_signals(state)
     new_state = state_ready |> transit()
@@ -168,6 +173,7 @@ defmodule Elevator.Core do
     {final_state, actions}
   end
 
+  @spec ingest_signals(t()) :: t()
   defp ingest_signals(%Core{signal: {:request, source, floor}} = state) do
     state
     |> add_sweep_request(source, floor)
@@ -190,6 +196,8 @@ defmodule Elevator.Core do
   # ## Hardware Ingestion Layer
   # ---------------------------------------------------------------------------
 
+  # Hardware Ingestion
+  @spec do_ingest_event(t(), atom(), event_payload()) :: t()
   defp do_ingest_event(state, :startup_check, %{vault: v, sensor: s}) do
     if warm_start?(v, s) do
       state
@@ -248,6 +256,7 @@ defmodule Elevator.Core do
   defp do_ingest_event(state, _, _), do: state
 
   # Buttons
+  @spec do_ingest_button(t(), atom(), integer()) :: t()
   defp do_ingest_button(%Core{logic: %{phase: :docked}} = state, :door_open, now) do
     state
     |> put_in([Access.key(:logic), :last_activity_at], now)
@@ -271,8 +280,10 @@ defmodule Elevator.Core do
   # ## Logical Transit Rules
   # ---------------------------------------------------------------------------
 
+  @spec transit(t()) :: t()
   defp transit(%Core{} = state), do: do_transit(state)
 
+  @spec do_transit(t()) :: t()
   # Booting
   defp do_transit(%Core{logic: %{phase: :booting}, signal: :warm_start} = state) do
     put_in(state.logic.phase, :idle)
@@ -366,12 +377,14 @@ defmodule Elevator.Core do
   # ## Calculation Helpers
   # ---------------------------------------------------------------------------
 
+  @spec add_sweep_request(t(), Elevator.Sweep.source(), integer()) :: t()
   defp add_sweep_request(state, source, floor) do
     Map.update!(state, :logic, fn logic ->
       Map.update!(logic, :sweep, &Elevator.Sweep.add_request(&1, source, floor))
     end)
   end
 
+  @spec update_sweep_heading(t()) :: t()
   defp update_sweep_heading(state) do
     f = current_floor(state)
 
@@ -384,6 +397,7 @@ defmodule Elevator.Core do
     end
   end
 
+  @spec floor_serviced(t()) :: t()
   defp floor_serviced(state) do
     f = current_floor(state)
 
@@ -396,12 +410,14 @@ defmodule Elevator.Core do
     end
   end
 
+  @spec warm_start?(integer() | :unknown, integer() | :unknown) :: boolean()
   defp warm_start?(v, s), do: v == s and is_integer(v)
 
   # ---------------------------------------------------------------------------
   # ## Action Derivation
   # ---------------------------------------------------------------------------
 
+  @spec derive_actions(t(), t()) :: [action()]
   defp derive_actions(old, new) do
     []
     |> verify_golden_rule(new)
@@ -411,6 +427,7 @@ defmodule Elevator.Core do
     |> update_persistence_action(old, new)
   end
 
+  @spec update_persistence_action([action()], t(), t()) :: [action()]
   defp update_persistence_action(actions, old, new) do
     if old.hardware.current_floor != new.hardware.current_floor and
          is_integer(new.hardware.current_floor) do
@@ -420,6 +437,7 @@ defmodule Elevator.Core do
     end
   end
 
+  @spec update_motor_action([action()], t(), t()) :: [action()]
   defp update_motor_action(actions, old, new) do
     entered_arriving = new.logic.phase == :arriving and old.logic.phase != :arriving
     entered_idle = new.logic.phase == :idle and old.logic.phase != :idle
@@ -447,6 +465,7 @@ defmodule Elevator.Core do
     end
   end
 
+  @spec update_door_action([action()], t(), t()) :: [action()]
   defp update_door_action(actions, old, new) do
     old_ready_open = old.logic.phase == :arriving and old.hardware.motor_status == :stopped
     new_ready_open = new.logic.phase == :arriving and new.hardware.motor_status == :stopped
@@ -466,6 +485,7 @@ defmodule Elevator.Core do
     end
   end
 
+  @spec update_timer_action([action()], t(), t()) :: [action()]
   defp update_timer_action(actions, old, new) do
     entered_docked = new.logic.phase == :docked and old.logic.phase != :docked
 
@@ -486,6 +506,7 @@ defmodule Elevator.Core do
     end
   end
 
+  @spec verify_golden_rule([action()], t()) :: [action()]
   defp verify_golden_rule(actions, new) do
     cond do
       new.hardware.door_status != :closed and
