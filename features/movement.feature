@@ -93,12 +93,13 @@ Feature: Elevator Movement
   @S-MOVE-MULTI-HALL @R-MOVE-LOOK
   Scenario: Multiple hall requests are deferred to the return journey
     Given the elevator is idle at floor ground
-    And hall requests are received for floors 2, 4, and 5
-    When the elevator travels upward, passing floors 2 and 4 to reach floor 5
-    Then the phase is :docked
-    And current floor is 2
-    And the request for floor 5 is fulfilled
-    And the request for floor 4 is fulfilled
+    When hall requests are received for floors 2, 4, 5
+    Then the elevator should not stop at floor 2
+    And the elevator should not stop at floor 4
+    And the elevator should stop at floor 5
+    When floor 5 is serviced
+    Then the elevator should stop at floor 4
+    And the elevator should stop at floor 2
 
   @S-MOVE-OBSTRUCT @R-SAFE-OBSTRUCT
   Scenario: Door obstruction during closing sequence

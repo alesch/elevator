@@ -235,8 +235,7 @@ defmodule Elevator.Features.MovementTest do
   defwhen ~r/^hall requests are received for floors (?<floors>.+)$/,
           %{floors: floors_str},
           context do
-    floors =
-      String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
+    floors = parse_list(floors_str, &parse_floor/1)
 
     s =
       Enum.reduce(floors, context.state, fn f, acc ->
@@ -249,18 +248,8 @@ defmodule Elevator.Features.MovementTest do
 
   defwhen ~r/^the elevator travels upward$/, _vars, context do
     # Assuming it's already moving or triggered to move
+    # fixme Need to get the elevator start servicing, but what is it waiting on?
     {:ok, context}
-  end
-
-  defwhen ~r/^the elevator travels upward, passing floors 2 and 4 to reach floor 5$/,
-          _vars,
-          context do
-    # Simulation: Pass 2, Pass 4, Arrive at 5
-    s = context.state
-    {s, _} = Core.process_arrival(s, 2)
-    {s, _} = Core.process_arrival(s, 4)
-    {s, actions} = Core.process_arrival(s, 5)
-    {:ok, %{context | state: s, actions: actions}}
   end
 
   defwhen ~r/^the door_sensor detects an obstruction$/, _vars, context do
