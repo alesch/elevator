@@ -39,7 +39,7 @@ defmodule Elevator.DoorTest do
     assert Door.get_state(pid).status == :closing
 
     # Simulate an obstruction
-    Door.obstruct(pid)
+    Door.simulate_obstruction(pid)
 
     state = Door.get_state(pid)
     assert state.status == :obstructed

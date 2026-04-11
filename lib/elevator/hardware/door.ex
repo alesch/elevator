@@ -32,9 +32,9 @@ defmodule Elevator.Hardware.Door do
     GenServer.cast(pid, :close)
   end
 
-  @doc "Stops the door and enters a stable OBSTRUCTED state."
-  @spec obstruct(pid() | atom()) :: :ok
-  def obstruct(pid \\ __MODULE__) do
+  @doc "Simulates a hardware-level obstruction event."
+  @spec simulate_obstruction(pid() | atom()) :: :ok
+  def simulate_obstruction(pid \\ __MODULE__) do
     GenServer.cast(pid, :door_obstructed)
   end
 

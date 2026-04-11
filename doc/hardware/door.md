@@ -26,7 +26,7 @@ The door process is managed via a GenServer and supports the following commands:
 
 - `open(pid)`: Transitions from `:closed`, `:closing`, or `:obstructed` to **`:opening`**.
 - `close(pid)`: Transitions from `:open` or `:opening` to **`:closing`**.
-- `obstruct(pid)`: Force-transitions any active state to **`:obstructed`**.
+- `simulate_obstruction(pid)`: Force-transitions any active state to **`:obstructed`**. Primarily used for diagnostics and hardware simulation.
 - `get_state(pid)`: Returns a snapshot of the internal state for diagnostics.
 
 ## Timers & Notifications
