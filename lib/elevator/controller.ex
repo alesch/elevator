@@ -91,7 +91,7 @@ defmodule Elevator.Controller do
     end
 
     data = %{
-      state: Core.init(),
+      state: Core.booting(),
       deps: %{
         motor: Keyword.get(opts, :motor),
         door: Keyword.get(opts, :door),
