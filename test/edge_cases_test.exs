@@ -11,11 +11,11 @@ defmodule Elevator.EdgeCasesTest do
       # WHEN: Passenger inside presses Floor 3
       {new_state, actions} = Core.request_floor(state, :car, 3)
 
-      # THEN: No braking cycle needed; door opens immediately; request fulfilled; phase :arriving
+      # THEN: Logic transitions to :arriving and issues {:open_door}
       assert Core.phase(new_state) == :arriving
+      # Reality: Motor stays stopped, Door stays closed until ingested
       assert Core.motor_status(new_state) == :stopped
-      assert Core.door_status(new_state) == :opening
-      refute {:car, 3} in Core.requests(new_state)
+      assert Core.door_status(new_state) == :closed 
       assert {:open_door} in actions
     end
 
@@ -26,11 +26,10 @@ defmodule Elevator.EdgeCasesTest do
       # WHEN: Hall call for F3
       {new_state, actions} = Core.request_floor(state, :hall, 3)
 
-      # THEN: Same as car — no braking cycle, door opens, request fulfilled, phase :arriving
+      # THEN: Logic transitions to :arriving and issues {:open_door}
       assert Core.phase(new_state) == :arriving
       assert Core.motor_status(new_state) == :stopped
-      assert Core.door_status(new_state) == :opening
-      refute {:hall, 3} in Core.requests(new_state)
+      assert Core.door_status(new_state) == :closed
       assert {:open_door} in actions
     end
   end

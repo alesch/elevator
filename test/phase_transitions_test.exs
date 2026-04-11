@@ -9,7 +9,8 @@ defmodule Elevator.PhaseTransitionsTest do
     {new_state, actions} = Core.request_floor(state, :car, 3)
 
     assert Core.phase(new_state) == :moving
-    assert Core.motor_status(new_state) == :running
+    # Reality: Motor status remains :stopped until :motor_running confirmation
+    assert Core.motor_status(new_state) == :stopped 
     assert Core.heading(new_state) == :up
     assert {:move, :up} in actions
   end
@@ -21,7 +22,8 @@ defmodule Elevator.PhaseTransitionsTest do
     {new_state, actions} = Core.process_arrival(state, 3)
 
     assert Core.phase(new_state) == :arriving
-    assert Core.motor_status(new_state) == :stopping
+    # Reality: Motor status remains :running until :motor_stopped confirmation
+    assert Core.motor_status(new_state) == :running
     assert {:stop_motor} in actions
   end
 
@@ -30,9 +32,11 @@ defmodule Elevator.PhaseTransitionsTest do
     # Reach :arriving state naturally
     state = 
       Core.moving_to(0, 3)
-      |> Core.process_arrival(3)
+      |> Core.handle_event(:arrival, 3)
       |> elem(0)
-      |> Core.handle_event(:motor_stopped, nil)
+      |> Core.handle_event(:motor_stopped)
+      |> elem(0)
+      |> Core.handle_event(:door_opening)
       |> elem(0)
 
     assert Core.motor_status(state) == :stopped
@@ -54,7 +58,8 @@ defmodule Elevator.PhaseTransitionsTest do
     {new_state, actions} = Core.handle_event(state, :door_timeout, 5000)
 
     assert Core.phase(new_state) == :leaving
-    assert Core.door_status(new_state) == :closing
+    # Reality: Door remains :open until :door_closing confirmation
+    assert Core.door_status(new_state) == :open
     assert {:close_door} in actions
   end
 
@@ -73,6 +78,8 @@ defmodule Elevator.PhaseTransitionsTest do
       |> elem(0)
       |> Core.handle_event(:door_timeout, 5000)
       |> elem(0)
+      |> Core.handle_event(:door_closing)
+      |> elem(0)
 
     assert Core.phase(state) == :leaving
     assert Core.door_status(state) == :closing
@@ -80,7 +87,8 @@ defmodule Elevator.PhaseTransitionsTest do
     {new_state, actions} = Core.handle_event(state, :door_closed, nil)
 
     assert Core.phase(new_state) == :moving
-    assert Core.motor_status(new_state) == :running
+    # Reality: Door remains :closed, Motor remains :stopped until :motor_running confirmation
+    assert Core.motor_status(new_state) == :stopped
     assert {:move, :up} in actions
   end
 
@@ -95,6 +103,8 @@ defmodule Elevator.PhaseTransitionsTest do
       |> Core.handle_event(:door_opened, 0)
       |> elem(0)
       |> Core.handle_event(:door_timeout, 5000)
+      |> elem(0)
+      |> Core.handle_event(:door_closing)
       |> elem(0)
 
     assert Core.phase(state) == :leaving
@@ -117,12 +127,14 @@ defmodule Elevator.PhaseTransitionsTest do
       |> elem(0)
       |> Core.handle_event(:door_timeout, 5000)
       |> elem(0)
+      |> Core.handle_event(:door_closing)
+      |> elem(0)
 
     {new_state, actions} = Core.handle_event(state, :door_obstructed, nil)
 
-    # Note: Transition to :arriving (the "Gateway" broker)
     assert Core.phase(new_state) == :arriving
-    assert Core.door_status(new_state) == :opening
+    # Reality: Door has been obstructed physically
+    assert Core.door_status(new_state) == :obstructed
     assert {:open_door} in actions
   end
 end

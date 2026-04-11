@@ -5,59 +5,59 @@ Feature: Elevator Core State Machine
 
   @S-PHASE-IDLE-MOVE @R-CORE-STATE
   Scenario: :idle → :moving
-    Given the core is ":idle" and doors are ":closed"
+    Given the core is in phase idle
     When a request for a different floor is received
-    Then the "phase" should become ":moving"
-    And "motor_status" should become ":running"
+    Then the phase is moving
+    And the motor is running
 
   @S-PHASE-MOVE-ARRIVE @R-CORE-STATE
   Scenario: :moving → :arriving
-    Given the core is in "phase: :moving"
-    And "heading" is ":up"
+    Given the core is in phase moving
+    And heading is up
     And a request exists for Floor 3
     When the core arrives at floor 3
-    Then the "phase" should become ":arriving"
-    And "motor_status" should become ":stopping"
+    Then the phase is arriving
+    And the motor is stopping
 
   @S-PHASE-ARRIVE-DOCK @R-CORE-STATE
   Scenario: :arriving → :docked
-    Given the core is in "phase: :arriving"
-    And "motor_status" is ":stopped"
-    And "door_status" is ":opening"
-    When the ":door_opened" message is received
-    Then the "phase" should become ":docked"
-    And "door_status" should become ":open"
-    And the door timeout timer should be set
+    Given the core is in phase arriving
+    And the motor is stopped
+    And door is opening
+    When the door is confirmed open
+    Then the phase is docked
+    And door is open
+    And the door timeout timer is set
 
   @S-PHASE-DOCK-LEAVE @R-CORE-STATE
   Scenario: :docked → :leaving
-    Given the core is in "phase: :docked"
-    And "door_status" is ":open"
-    And "door_sensor" is ":clear"
-    When the ":door_timeout" event is received
-    Then the "phase" should become ":leaving"
-    And "door_status" should become ":closing"
+    Given the core is in phase docked
+    And door is open
+    And door_sensor is clear
+    When the door timeout expires
+    Then the phase is leaving
+    And door is closing
 
   @S-PHASE-LEAVE-MOVE @R-CORE-STATE @R-MOVE-LOOK
   Scenario: :leaving → :moving
-    Given the core is in "phase: :leaving"
+    Given the core is in phase leaving
     And pending work exists in the queue
-    When the ":door_closed" message is received
-    Then the "phase" should become ":moving"
-    And "motor_status" should become ":running"
+    When the door is confirmed closed
+    Then the phase is moving
+    And the motor is running
 
   @S-PHASE-LEAVE-IDLE @R-CORE-STATE @R-MOVE-LOOK
   Scenario: :leaving → :idle
-    Given the core is in "phase: :leaving"
+    Given the core is in phase leaving
     And no pending requests remain
-    When the ":door_closed" message is received
-    Then the "phase" should become ":idle"
-    And "motor_status" should stay ":stopped"
+    When the door is confirmed closed
+    Then the phase is idle
+    And the motor is stopped
 
   @S-PHASE-LEAVE-ARRIVE @R-CORE-STATE @R-SAFE-OBSTRUCT
   Scenario: :leaving → :arriving (Obstruction Gateway)
-    Given the core is in "phase: :leaving"
-    And "door_status" is ":closing"
-    When a ":door_obstructed" message is received
-    Then the "phase" should become ":arriving"
-    And "door_status" should become ":opening"
+    Given the core is in phase leaving
+    And door is closing
+    When the door is obstructed
+    Then the phase is arriving
+    And door is opening

@@ -98,18 +98,24 @@ defmodule Elevator.HomingTest do
       )
 
     # 2. Verification
-    _ = Controller.get_state(ctrl)
-    assert Core.phase(Controller.get_state(ctrl)) == :rehoming
+    state = Controller.get_state(ctrl)
+    assert Core.phase(state) == :rehoming
     assert Motor.get_state(motor).status == :crawling
+    
+    # Ingest reality: motor is actually crawling now
+    send(ctrl, :motor_crawling)
+    assert Core.motor_status(Controller.get_state(ctrl)) == :crawling
 
     # 3. [S-HOME-ANCHOR]: Floor arrival during rehoming — anchor (brake), phase stays :rehoming
     send(ctrl, {:floor_arrival, 0})
     _ = Controller.get_state(ctrl)
+    _ = Vault.get_floor(vault)
 
     state = Controller.get_state(ctrl)
     assert Core.phase(state) == :rehoming
-    assert state.current_floor == 0
-    assert state.motor_status == :stopping
+    assert state.hardware.current_floor == 0
+    # Reality: still crawling until stopped confirmation processed
+    assert state.hardware.motor_status == :crawling
     assert Vault.get_floor(vault) == 0
 
     # Wait for physical braking to complete (500ms + buffer)

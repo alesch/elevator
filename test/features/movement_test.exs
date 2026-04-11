@@ -27,37 +27,90 @@ defmodule Elevator.Features.MovementTest do
     {:ok, %{context | state: new_internal_state, actions: actions}}
   end
 
-  # Then the elevator should start moving <heading>
-  defthen ~r/^the elevator should start moving (?<heading>.+)$/,
-          %{heading: heading_str},
-          context do
-    expected_heading = Args.parse_heading(heading_str)
+  # --- Then Steps ---
 
-    # Assertions on state
-    assert Core.phase(context.state) == :moving
-    assert Core.heading(context.state) == expected_heading
+  defthen ~r/^(the )?"?phase"? is "(?<value>.+)"$/, %{value: val_str}, context do
+    expected = Args.parse_phase(val_str)
+    assert Core.phase(context.state) == expected
+    {:ok, context}
+  end
 
-    # Assertions on derived actions
-    assert {:move, expected_heading} in context.actions
+  defthen ~r/^(the )?"?motor_status"? is "(?<value>.+)"$/, %{value: val_str}, context do
+    expected = Args.parse_motor_status(val_str)
+
+    case {expected, context.actions} do
+      {:running, actions} when actions != [] ->
+        assert Enum.any?(actions, fn
+                 {:move, _} -> true
+                 {:crawl, _} -> true
+                 _ -> false
+               end)
+
+      {:stopping, actions} when actions != [] ->
+        assert {:stop_motor} in actions
+
+      _ ->
+        assert Core.motor_status(context.state) == expected
+    end
 
     {:ok, context}
   end
 
-  defthen ~r/^the elevator should begin opening the doors$/, _vars, context do
-    assert {:open_door} in context.actions
+  defthen ~r/^(the )?"?door_status"? is "(?<value>.+)"$/, %{value: val_str}, context do
+    expected = Args.parse_door_status(val_str)
+
+    case {expected, context.actions} do
+      {:opening, actions} when actions != [] -> assert {:open_door} in actions
+      {:closing, actions} when actions != [] -> assert {:close_door} in actions
+      _ -> assert Core.door_status(context.state) == expected
+    end
+
     {:ok, context}
   end
 
-  # And the request should be fulfilled without any motor movement
-  defthen ~r/^the request should be fulfilled without any motor movement$/, _vars, context do
-    # Fulfillment: No requests for current floor
+  defthen ~r/^(the )?"?(?<field>[^"]+)"? is "(?<value>[^"]+)"$/, %{field: field, value: val}, context do
+    case field do
+      "phase" -> assert Core.phase(context.state) == Args.parse_phase(val)
+      "heading" -> assert Core.heading(context.state) == Args.parse_heading(val)
+      "current_floor" -> assert Core.current_floor(context.state) == Args.parse_floor(val)
+    end
+    {:ok, context}
+  end
+
+  defthen ~r/^(floor )?"?(?<target>.+)"? is in the pending requests$/, %{target: target}, context do
+    floor = Args.parse_floor(target)
+    assert {:car, floor} in Core.requests(context.state) or {:hall, floor} in Core.requests(context.state)
+    {:ok, context}
+  end
+
+  defthen ~r/^the "?request"? for floor (?<target>.+) is still pending$/, %{target: target}, context do
+    floor = Args.parse_floor(target)
+    assert {:car, floor} in Core.requests(context.state)
+    {:ok, context}
+  end
+
+  defthen ~r/^the request (for the current floor )?is fulfilled/, _vars, context do
     current_floor = Core.current_floor(context.state)
-    assert request_fulfilled?(context.state, current_floor)
+    assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == current_floor end)
+    {:ok, context}
+  end
 
-    # Motor check: Should remain stopped
+  defthen ~r/^floor "(?<target>.+)" is fulfilled$/, %{target: target}, context do
+    floor = Args.parse_floor(target)
+    assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == floor end)
+    {:ok, context}
+  end
+
+  defthen ~r/^the door timeout timer is set for 5 seconds$/, _vars, context do
+    assert {:set_timer, :door_timeout, 5000} in context.actions
+    {:ok, context}
+  end
+
+  defthen ~r/^the request is fulfilled without any motor movement$/, _vars, context do
+    c_floor = Core.current_floor(context.state)
+    assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == c_floor end)
     assert Core.motor_status(context.state) == :stopped
-    refute motor_moving?(context.actions)
-
+    refute Enum.any?(context.actions, fn {:move, _} -> true; {:crawl, _} -> true; _ -> false end)
     {:ok, context}
   end
 
@@ -72,21 +125,20 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  # @S-MOVE-BRAKING
-  # Given the elevator is moving up towards floor 3
   defgiven ~r/^the elevator is moving up towards floor (?<target>.+)$/,
            %{target: target},
            context do
     floor = Args.parse_floor(target)
     # Reach moving state naturally
     new_internal_state = Core.moving_to(floor - 1, floor)
+    # Ingest reality
+    {new_internal_state, _} = Core.handle_event(new_internal_state, :motor_running)
 
     {:ok, %{context | state: new_internal_state}}
   end
 
   # And a request for floor 3 is active
   defgiven ~r/^a request for floor (?<target>.+) is active$/, %{target: target}, context do
-    # This is redundantly covered by moving_to, but let's ensure it's in the queue
     floor = Args.parse_floor(target)
     assert {:car, floor} in Core.requests(context.state)
     {:ok, context}
@@ -116,6 +168,7 @@ defmodule Elevator.Features.MovementTest do
     # Reach stopping via process_arrival
     floor = 3
     s = Core.moving_to(floor - 1, floor)
+    {s, _} = Core.handle_event(s, :motor_running)
     {s, _} = Core.process_arrival(s, floor)
     {:ok, %{context | state: s}}
   end
@@ -124,8 +177,10 @@ defmodule Elevator.Features.MovementTest do
     # Arrived and motor stopped
     floor = 3
     s = Core.moving_to(floor - 1, floor)
+    {s, _} = Core.handle_event(s, :motor_running)
     {s, _} = Core.process_arrival(s, floor)
     {s, _} = Core.handle_event(s, :motor_stopped, nil)
+    {s, _} = Core.handle_event(s, :door_opening)
     {:ok, %{context | state: s}}
   end
 
@@ -134,6 +189,7 @@ defmodule Elevator.Features.MovementTest do
     floor = 3
     s = Core.docked_at(floor)
     {s, _} = Core.handle_event(s, :door_timeout, 0)
+    {s, _} = Core.handle_event(s, :door_closing)
     {:ok, %{context | state: s}}
   end
 
@@ -141,6 +197,8 @@ defmodule Elevator.Features.MovementTest do
     t_floor = Args.parse_floor(target)
     c_floor = Core.current_floor(context.state)
     s = Core.moving_to(c_floor, t_floor)
+    # Reality ingestion: motor is now running
+    {s, _} = Core.handle_event(s, :motor_running)
     {:ok, %{context | state: s}}
   end
 
@@ -227,35 +285,9 @@ defmodule Elevator.Features.MovementTest do
 
   # --- Then Steps ---
 
-  defthen ~r/^the request for floor (?<target>.+) should still be pending$/,
-          %{target: target},
-          context do
-    floor = Args.parse_floor(target)
-    assert {:car, floor} in Core.requests(context.state) or {:hall, floor} in Core.requests(context.state)
-    {:ok, context}
-  end
-
-  defthen ~r/^the request for the current floor should be fulfilled$/, _vars, context do
-    current = Core.current_floor(context.state)
-    assert request_fulfilled?(context.state, current)
-    {:ok, context}
-  end
-
-  defthen ~r/^the elevator should be docked at floor (?<floor>.+)$/, %{floor: floor_str}, context do
-    floor = Args.parse_floor(floor_str)
-    assert Core.current_floor(context.state) == floor
-    assert Core.phase(context.state) == :docked
-    {:ok, context}
-  end
-
-  defthen ~r/^the doors should be set to close in 5 seconds$/, _vars, context do
-    assert {:set_timer, :door_timeout, 5000} in context.actions
-    {:ok, context}
-  end
-
-  defthen ~r/^a request for floor (?<floor>.+) should be added$/, %{floor: floor_str}, context do
-    floor = Args.parse_floor(floor_str)
-    assert {:car, floor} in Core.requests(context.state)
+  defthen ~r/^the elevator should return to floor ground$/, _vars, context do
+    assert Core.heading(context.state) == :down
+    assert {:move, :down} in context.actions
     {:ok, context}
   end
 

@@ -10,28 +10,30 @@ defmodule Elevator.AlgorithmTest do
     test "Car request on the path — elevator stops" do
       # GIVEN: Moving :up, car request for F3 on the path
       state = Core.idle_at(1) |> Core.request_floor(:car, 3) |> elem(0)
-      {state, _} = Core.pulse(state)
+      # Ingest reality: motor is now running
+      {state, _} = Core.handle_event(state, :motor_running)
 
       # WHEN: Sensor confirms arrival at F3
       {new_state, actions} = Core.process_arrival(state, 3)
 
       # THEN: Elevator stops at F3
       assert Core.phase(new_state) == :arriving
-      assert Core.motor_status(new_state) == :stopping
+      # Reality: still running until stop confirmed
+      assert Core.motor_status(new_state) == :running 
       assert {:stop_motor} in actions
     end
 
     test "Hall request on the path — elevator stops" do
       # GIVEN: Moving :up, hall request for F4 on the path
       state = Core.idle_at(2) |> Core.request_floor(:hall, 4) |> elem(0)
-      {state, _} = Core.pulse(state)
+      {state, _} = Core.handle_event(state, :motor_running)
 
       # WHEN: Sensor confirms arrival at F4
       {new_state, actions} = Core.process_arrival(state, 4)
 
       # THEN: Elevator stops at F4
       assert Core.phase(new_state) == :arriving
-      assert Core.motor_status(new_state) == :stopping
+      assert Core.motor_status(new_state) == :running
       assert {:stop_motor} in actions
     end
   end
@@ -69,42 +71,57 @@ defmodule Elevator.AlgorithmTest do
       {state, _} = Core.request_floor(state, :car, 4)
       {state, _} = Core.request_floor(state, :car, 6)
 
+      # Ingest reality: motor started
+      {state, _} = Core.handle_event(state, :motor_running)
+
       # Pulse settlement: the first request_floor starts the move
       assert Core.heading(state) == :up
       assert Core.phase(state) == :moving
+      assert Core.motor_status(state) == :running
 
       # ARRIVE at F2 — must stop
-      {state, _} = Core.process_arrival(state, 2)
+      {state, actions} = Core.process_arrival(state, 2)
       assert Core.phase(state) == :arriving
-      assert Core.motor_status(state) == :stopping
+      assert {:stop_motor} in actions
 
-      # Clear F2 (motor stopped), then simulate door cycle completing → back to :moving
+      # Settle to :docked to clear request
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
+      {state, _} = Core.handle_event(state, :door_opened, 0)
       refute {:car, 2} in Core.requests(state)
-      state = %{state | phase: :leaving, door_status: :closed}
-      # Pulse 2: settle transition from leaving to moving
-      {state, _} = Core.pulse(state)
+      assert Core.phase(state) == :docked
+
+      # Depart from F2
+      {state, _} = Core.handle_event(state, :door_timeout, 5000)
+      {state, _} = Core.handle_event(state, :door_closed)
       assert Core.phase(state) == :moving
+      {state, _} = Core.handle_event(state, :motor_running)
+      assert Core.motor_status(state) == :running
 
       # ARRIVE at F4 — must stop
-      {state, _} = Core.process_arrival(state, 4)
+      {state, actions} = Core.process_arrival(state, 4)
       assert Core.phase(state) == :arriving
-      assert Core.motor_status(state) == :stopping
+      assert {:stop_motor} in actions
 
-      # Clear F4, simulate door cycle
+      # Settle to :docked to clear request
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
+      {state, _} = Core.handle_event(state, :door_opened, 0)
       refute {:car, 4} in Core.requests(state)
-      state = %{state | phase: :leaving, door_status: :closed}
-      {state, _} = Core.pulse(state)
+
+      # Depart from F4
+      {state, _} = Core.handle_event(state, :door_timeout, 5000)
+      {state, _} = Core.handle_event(state, :door_closed)
       assert Core.phase(state) == :moving
+      {state, _} = Core.handle_event(state, :motor_running)
+      assert Core.motor_status(state) == :running
 
       # ARRIVE at F6 — must stop
-      {state, _} = Core.process_arrival(state, 6)
+      {state, actions} = Core.process_arrival(state, 6)
       assert Core.phase(state) == :arriving
-      assert Core.motor_status(state) == :stopping
+      assert {:stop_motor} in actions
 
-      # All requests fulfilled
-      {final_state, _} = Core.handle_event(state, :motor_stopped, 0)
+      # All requests fulfilled after docking
+      {state, _} = Core.handle_event(state, :motor_stopped, 0)
+      {final_state, _} = Core.handle_event(state, :door_opened, 0)
       assert Core.requests(final_state) == []
     end
   end
@@ -118,8 +135,9 @@ defmodule Elevator.AlgorithmTest do
       # Now it's arriving at 3. Add a request for 0.
       {state, _} = Core.request_floor(state, :car, 0)
 
-      # WHEN: Motor confirms stopped (fulfills F3 request)
+      # WHEN: Move to :docked (fulfills F3 request)
       {state, _} = Core.handle_event(state, :motor_stopped, 0)
+      {state, _} = Core.handle_event(state, :door_opened, 0)
 
       # THEN: F3 cleared, F0 remains
       refute {:car, 3} in Core.requests(state)

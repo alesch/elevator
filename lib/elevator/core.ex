@@ -199,6 +199,9 @@ defmodule Elevator.Core do
   defp do_ingest_event(state, :motor_running, _),
     do: put_in(state.hardware.motor_status, :running)
 
+  defp do_ingest_event(state, :motor_crawling, _),
+    do: put_in(state.hardware.motor_status, :crawling)
+
   defp do_ingest_event(state, :door_opened, now) do
     state
     |> put_in([Access.key(:hardware), :door_status], :open)
@@ -206,6 +209,10 @@ defmodule Elevator.Core do
   end
 
   defp do_ingest_event(state, :door_closed, _), do: put_in(state.hardware.door_status, :closed)
+
+  defp do_ingest_event(state, :door_opening, _), do: put_in(state.hardware.door_status, :opening)
+
+  defp do_ingest_event(state, :door_closing, _), do: put_in(state.hardware.door_status, :closing)
 
   defp do_ingest_event(state, :door_obstructed, _) do
     state

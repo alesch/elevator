@@ -183,10 +183,38 @@ defmodule Elevator.Controller do
   end
 
   @impl true
+  @spec handle_info(:door_opening, t()) :: {:noreply, t()}
+  def handle_info(:door_opening, data) do
+    data
+    |> pulse_and_commit(:door_opening, %{}, Core.handle_event(data.state, :door_opening))
+  end
+
+  @impl true
+  @spec handle_info(:door_closing, t()) :: {:noreply, t()}
+  def handle_info(:door_closing, data) do
+    data
+    |> pulse_and_commit(:door_closing, %{}, Core.handle_event(data.state, :door_closing))
+  end
+
+  @impl true
   @spec handle_info(:motor_stopped, t()) :: {:noreply, t()}
   def handle_info(:motor_stopped, data) do
     data
     |> pulse_and_commit(:motor_stopped, %{}, Core.handle_event(data.state, :motor_stopped))
+  end
+
+  @impl true
+  @spec handle_info(:motor_running, t()) :: {:noreply, t()}
+  def handle_info(:motor_running, data) do
+    data
+    |> pulse_and_commit(:motor_running, %{}, Core.handle_event(data.state, :motor_running))
+  end
+
+  @impl true
+  @spec handle_info(:motor_crawling, t()) :: {:noreply, t()}
+  def handle_info(:motor_crawling, data) do
+    data
+    |> pulse_and_commit(:motor_crawling, %{}, Core.handle_event(data.state, :motor_crawling))
   end
 
   @impl true

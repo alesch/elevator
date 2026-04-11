@@ -7,17 +7,17 @@ Feature: Elevator Homing & Recovery
   Scenario: Cold Start (No Persistence)
     Given the Elevator Vault is empty
     When the system starts
-    Then the "phase" should be ":rehoming"
-    And "heading" should be ":down"
-    And "motor_speed" should be ":crawling"
-    And "current_floor" should be ":unknown"
+    Then the "phase" is ":rehoming"
+    And "heading" is ":down"
+    And "motor_speed" is ":crawling"
+    And "current_floor" is ":unknown"
 
   @S-HOME-ZERO @R-HOME-STRATEGY
   Scenario: Mid-Floor Recovery (Zero-Move)
     Given the Elevator Vault stores "Floor 3"
     And the Elevator Sensor is currently at "Floor 3"
     When the system reboots
-    Then the "phase" should transition ":rehoming" -> ":idle" immediately
+    Then the "phase" is ":idle"
     And no motor movement should be triggered
 
   @S-HOME-MOVE @R-HOME-STRATEGY
@@ -25,19 +25,19 @@ Feature: Elevator Homing & Recovery
     Given the Elevator Vault stores "Floor 3"
     And the Elevator Sensor is ":unknown" or mismatches
     When the system reboots
-    Then the "phase" should be ":rehoming"
-    And "heading" should be ":down"
-    And "motor_speed" should be ":crawling"
+    Then the "phase" is ":rehoming"
+    And "heading" is ":down"
+    And "motor_speed" is ":crawling"
     And the elevator should move until the first physical sensor confirms arrival
 
   @S-HOME-ANCHOR @R-HOME-STRATEGY @R-HOME-VAULT
   Scenario: Homing Completion (Anchoring)
     Given the "phase" is ":rehoming"
     When the Core receives its very first ":floor_arrival" event
-    Then the "heading" should immediately become ":idle"
-    And "motor_status" should become ":stopping"
-    And "door_status" should stay ":closed"
-    And the Vault should be updated with the current floor
+    Then the "heading" is ":idle"
+    And "motor_status" is ":stopping"
+    And "door_status" is ":closed"
+    And the Vault is updated with the current floor
 
   @S-HOME-NO-DOOR @R-HOME-STRATEGY
   Scenario: No Door Cycle on Homing Arrival
@@ -45,9 +45,9 @@ Feature: Elevator Homing & Recovery
     And "door_status" is ":closed"
     And the Core receives its very first ":floor_arrival" event
     When the ":motor_stopped" confirmation is received after homing arrival
-    Then the "phase" should transition to ":idle"
-    And "door_status" should remain ":closed"
-    And no ":open_door" command should be issued
+    Then the "phase" is ":idle"
+    And "door_status" is ":closed"
+    And no ":open_door" command is issued
 
   @S-HOME-BLOCK-REQ @R-HOME-STRATEGY
   Scenario: Request Blocking during Rehoming
