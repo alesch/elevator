@@ -99,17 +99,8 @@ defmodule Elevator.Hardware.Motor do
     {:noreply, perform_move(state, direction, :crawling, @crawl_ms)}
   end
 
-  @impl true
-  @spec handle_cast(:stop_now, map()) :: {:noreply, map()}
   def handle_cast(:stop_now, %{status: status} = state) when status in [:stopped, :stopping] do
-    Logger.warning("Hardware: Redundant Motor Stop request while already #{inspect(status)}")
-
-    :telemetry.execute([:elevator, :hardware, :motor, :stop], %{}, %{
-      status: status,
-      redundant: true
-    })
-
-    {:noreply, state}
+    {:noreply, handle_redundant_request(state, :stop)}
   end
 
   def handle_cast(:stop_now, state) do
@@ -168,6 +159,16 @@ defmodule Elevator.Hardware.Motor do
     |> cancel_timer()
     |> update_motion_state(status, direction, interval_ms)
     |> start_transit_timer()
+  end
+ 
+  @spec handle_redundant_request(t(), atom()) :: t()
+  defp handle_redundant_request(%{status: status} = state, action) do
+    :telemetry.execute([:elevator, :hardware, :motor, action], %{}, %{
+      status: status,
+      redundant: true
+    })
+ 
+    state
   end
 
   @spec notify(t(), atom(), term()) :: :ok

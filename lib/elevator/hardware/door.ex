@@ -155,9 +155,6 @@ defmodule Elevator.Hardware.Door do
 
   @spec handle_redundant_request(t(), atom()) :: t()
   defp handle_redundant_request(%{status: status} = state, action) do
-    action_str = action |> Atom.to_string() |> String.capitalize()
-    Logger.warning("Hardware: Redundant Door #{action_str} request while already #{inspect(status)}")
-
     :telemetry.execute([:elevator, :hardware, :door, action], %{}, %{
       status: status,
       redundant: true
