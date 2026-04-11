@@ -209,7 +209,8 @@ defmodule Elevator.Core do
     end
   end
 
-  defp do_ingest_event(state, :floor_arrival, floor), do: put_in(state.hardware.current_floor, floor)
+  defp do_ingest_event(state, :floor_arrival, floor),
+    do: put_in(state.hardware.current_floor, floor)
 
   defp do_ingest_event(state, :motor_stopped, _),
     do: put_in(state.hardware.motor_status, :stopped)
@@ -411,11 +412,11 @@ defmodule Elevator.Core do
   @spec derive_actions(t(), t()) :: [action()]
   defp derive_actions(baseline, transitions_applied) do
     []
-    |> verify_golden_rule(transitions_applied)
     |> update_motor_action(baseline, transitions_applied)
     |> update_door_action(baseline, transitions_applied)
     |> update_timer_action(baseline, transitions_applied)
     |> update_persistence_action(baseline, transitions_applied)
+    |> verify_golden_rule(transitions_applied)
   end
 
   @spec update_persistence_action([action()], t(), t()) :: [action()]
@@ -473,7 +474,8 @@ defmodule Elevator.Core do
       new_ready_open and not old_ready_open and transitions_applied.hardware.door_status != :open ->
         actions ++ [{:open_door}]
 
-      new_ready_close and not old_ready_close and transitions_applied.hardware.door_status != :closed ->
+      new_ready_close and not old_ready_close and
+          transitions_applied.hardware.door_status != :closed ->
         actions ++ [{:close_door}]
 
       true ->
@@ -515,14 +517,25 @@ defmodule Elevator.Core do
 
   @spec verify_golden_rule([action()], t()) :: [action()]
   defp verify_golden_rule(actions, state) do
-    cond do
-      state.hardware.door_status != :closed and
-          state.hardware.motor_status not in [:stopped, :stopping] ->
-        Logger.error("CRITICAL SAFETY BREACH: Golden Rule Violated.")
-        actions ++ [{:stop_motor}]
+    moving_requested =
+      Enum.any?(actions, fn a -> match?({:move, _}, a) or match?({:crawl, _}, a) end)
 
-      true ->
-        actions
+    motor_active = state.hardware.motor_status not in [:stopped, :stopping]
+    doors_not_closed = state.hardware.door_status != :closed
+
+    is_unsafe = doors_not_closed and (moving_requested or motor_active)
+
+    if is_unsafe do
+      :telemetry.execute([:elevator, :core, :safety_breach], %{}, %{
+        phase: state.logic.phase,
+        door_status: state.hardware.door_status,
+        motor_status: state.hardware.motor_status,
+        actions: actions
+      })
+
+      actions ++ [{:stop_motor}]
+    else
+      actions
     end
   end
 
