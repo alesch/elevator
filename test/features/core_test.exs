@@ -64,8 +64,10 @@ defmodule Elevator.Features.CoreTest do
     {:ok, context}
   end
 
-  defgiven ~r/^heading is (?<direction>.+)$/, %{direction: direction_str}, context do
-    direction = Arguments.parse_direction(direction_str)
+  defgiven ~r/^heading is (?<heading>.+)$/, %{heading: heading_str}, context do
+    heading = Arguments.parse_heading(heading_str)
+    state = put_in(context.state.logic.sweep.heading, heading)
+    {:ok, %{context | state: state}}
   end
 
   # --- When Steps ---
