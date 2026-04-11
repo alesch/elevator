@@ -164,13 +164,13 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @spec pulse(t()) :: {t(), [action()]}
-  def pulse(state) do
-    state_ready = ingest_signals(state)
-    new_state = state_ready |> transit()
+  def pulse(baseline) do
+    reality_updated = ingest_signals(baseline)
+    transitions_applied = reality_updated |> transit()
 
-    actions = derive_actions(state, new_state)
+    actions = derive_actions(baseline, transitions_applied)
 
-    final_state = %{new_state | signal: nil}
+    final_state = %{transitions_applied | signal: nil}
     {final_state, actions}
   end
 
@@ -409,51 +409,52 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @spec derive_actions(t(), t()) :: [action()]
-  defp derive_actions(old, new) do
+  defp derive_actions(baseline, transitions_applied) do
     []
-    |> verify_golden_rule(new)
-    |> update_motor_action(old, new)
-    |> update_door_action(old, new)
-    |> update_timer_action(old, new)
-    |> update_persistence_action(old, new)
+    |> verify_golden_rule(transitions_applied)
+    |> update_motor_action(baseline, transitions_applied)
+    |> update_door_action(baseline, transitions_applied)
+    |> update_timer_action(baseline, transitions_applied)
+    |> update_persistence_action(baseline, transitions_applied)
   end
 
   @spec update_persistence_action([action()], t(), t()) :: [action()]
-  defp update_persistence_action(actions, old, new) do
-    if old.hardware.current_floor != new.hardware.current_floor and
-         is_integer(new.hardware.current_floor) do
-      actions ++ [{:persist_arrival, new.hardware.current_floor}]
+  defp update_persistence_action(actions, baseline, transitions_applied) do
+    if floor_reached?(baseline, transitions_applied) do
+      actions ++ [{:persist_arrival, transitions_applied.hardware.current_floor}]
     else
       actions
     end
   end
 
   @spec update_motor_action([action()], t(), t()) :: [action()]
-  defp update_motor_action(actions, old, new) do
-    entered_arriving = new.logic.phase == :arriving and old.logic.phase != :arriving
-    entered_idle = new.logic.phase == :idle and old.logic.phase != :idle
-    entered_rehoming = new.logic.phase == :rehoming and old.logic.phase != :rehoming
-    entered_moving = new.logic.phase == :moving and old.logic.phase != :moving
+  defp update_motor_action(actions, baseline, transitions_applied) do
+    entered_arriving = phase_entered?(baseline, transitions_applied, :arriving)
+    entered_idle = phase_entered?(baseline, transitions_applied, :idle)
+    entered_rehoming = phase_entered?(baseline, transitions_applied, :rehoming)
+    entered_moving = phase_entered?(baseline, transitions_applied, :moving)
 
     cond do
-      entered_arriving and new.hardware.motor_status != :stopped ->
+      entered_arriving and transitions_applied.hardware.motor_status != :stopped ->
         actions ++ [{:stop_motor}]
 
-      entered_idle and new.hardware.motor_status != :stopped ->
+      entered_idle and transitions_applied.hardware.motor_status != :stopped ->
         actions ++ [{:stop_motor}]
 
       entered_rehoming ->
-        actions ++ [{:crawl, heading(new)}]
+        actions ++ [{:crawl, heading(transitions_applied)}]
 
       entered_moving ->
-        actions ++ [{:move, heading(new)}]
+        actions ++ [{:move, heading(transitions_applied)}]
 
-      new.logic.phase == :rehoming and is_integer(new.hardware.current_floor) and
-          new.hardware.motor_status == :crawling ->
+      transitions_applied.logic.phase == :rehoming and
+        is_integer(transitions_applied.hardware.current_floor) and
+          transitions_applied.hardware.motor_status == :crawling ->
         actions ++ [{:stop_motor}]
 
-      new.logic.phase == :moving and heading(old) != heading(new) ->
-        actions ++ [{:move, heading(new)}]
+      transitions_applied.logic.phase == :moving and
+          heading(baseline) != heading(transitions_applied) ->
+        actions ++ [{:move, heading(transitions_applied)}]
 
       true ->
         actions
@@ -461,18 +462,18 @@ defmodule Elevator.Core do
   end
 
   @spec update_door_action([action()], t(), t()) :: [action()]
-  defp update_door_action(actions, old, new) do
-    old_ready_open = old.logic.phase == :arriving and old.hardware.motor_status == :stopped
-    new_ready_open = new.logic.phase == :arriving and new.hardware.motor_status == :stopped
+  defp update_door_action(actions, baseline, transitions_applied) do
+    new_ready_open = door_ready_to_open?(transitions_applied)
+    old_ready_open = door_ready_to_open?(baseline)
 
-    old_ready_close = old.logic.phase == :leaving
-    new_ready_close = new.logic.phase == :leaving
+    new_ready_close = door_ready_to_close?(transitions_applied)
+    old_ready_close = door_ready_to_close?(baseline)
 
     cond do
-      new_ready_open and not old_ready_open and new.hardware.door_status != :open ->
+      new_ready_open and not old_ready_open and transitions_applied.hardware.door_status != :open ->
         actions ++ [{:open_door}]
 
-      new_ready_close and not old_ready_close and new.hardware.door_status != :closed ->
+      new_ready_close and not old_ready_close and transitions_applied.hardware.door_status != :closed ->
         actions ++ [{:close_door}]
 
       true ->
@@ -481,15 +482,18 @@ defmodule Elevator.Core do
   end
 
   @spec update_timer_action([action()], t(), t()) :: [action()]
-  defp update_timer_action(actions, old, new) do
-    entered_docked = new.logic.phase == :docked and old.logic.phase != :docked
-    left_docked = old.logic.phase == :docked and new.logic.phase != :docked
+  defp update_timer_action(actions, baseline, transitions_applied) do
+    entered_docked = phase_entered?(baseline, transitions_applied, :docked)
+    left_docked = phase_left?(baseline, transitions_applied, :docked)
 
-    entered_idle = new.logic.phase == :idle and old.logic.phase != :idle
-    left_idle = old.logic.phase == :idle and new.logic.phase != :idle
+    entered_idle = phase_entered?(baseline, transitions_applied, :idle)
+    left_idle = phase_left?(baseline, transitions_applied, :idle)
+
+    new_activity_at = transitions_applied.logic.last_activity_at
+    old_activity_at = baseline.logic.last_activity_at
 
     docked_activity =
-      new.logic.phase == :docked and new.logic.last_activity_at != old.logic.last_activity_at
+      transitions_applied.logic.phase == :docked and new_activity_at != old_activity_at
 
     cond do
       entered_docked or docked_activity ->
@@ -510,15 +514,40 @@ defmodule Elevator.Core do
   end
 
   @spec verify_golden_rule([action()], t()) :: [action()]
-  defp verify_golden_rule(actions, new) do
+  defp verify_golden_rule(actions, state) do
     cond do
-      new.hardware.door_status != :closed and
-          new.hardware.motor_status not in [:stopped, :stopping] ->
+      state.hardware.door_status != :closed and
+          state.hardware.motor_status not in [:stopped, :stopping] ->
         Logger.error("CRITICAL SAFETY BREACH: Golden Rule Violated.")
         actions ++ [{:stop_motor}]
 
       true ->
         actions
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # ## Semantic Helpers (Conditions with >1 check)
+  # ---------------------------------------------------------------------------
+
+  defp phase_entered?(baseline, transitions_applied, phase) do
+    transitions_applied.logic.phase == phase and baseline.logic.phase != phase
+  end
+
+  defp phase_left?(baseline, transitions_applied, phase) do
+    baseline.logic.phase == phase and transitions_applied.logic.phase != phase
+  end
+
+  defp floor_reached?(baseline, transitions_applied) do
+    baseline.hardware.current_floor != transitions_applied.hardware.current_floor and
+      is_integer(transitions_applied.hardware.current_floor)
+  end
+
+  defp door_ready_to_open?(state) do
+    state.logic.phase == :arriving and state.hardware.motor_status == :stopped
+  end
+
+  defp door_ready_to_close?(state) do
+    state.logic.phase == :leaving
   end
 end
