@@ -81,17 +81,31 @@ defmodule Elevator.Core do
   # ## State Factories (Public API)
   # ---------------------------------------------------------------------------
 
-  @doc "Factory: Returns a fresh Elevator struct."
-  @spec init() :: t()
-  def init, do: %Core{}
+  @doc "Factory: Returns a fresh Elevator struct in :booting phase."
+  @spec booting() :: t()
+  def booting, do: %Core{}
+
+  @doc """
+  Factory: Returns an elevator in :rehoming phase.
+  Drives from booting() via a mismatched :startup_check.
+  """
+  @spec rehoming() :: t()
+  def rehoming do
+    booting()
+    |> handle_event(:startup_check, %{vault: nil, sensor: nil})
+    |> elem(0)
+    # The system is now in :rehoming but motor hasn't confirmed running
+    |> handle_event(:motor_running)
+    |> elem(0)
+  end
 
   @doc """
   Factory: Returns an elevator idle at the given floor.
-  Bypasses rehoming by simulating a successful recovery.
+  Zero-movement rehoming.
   """
   @spec idle_at(integer()) :: t()
   def idle_at(floor) do
-    init()
+    booting()
     |> handle_event(:startup_check, %{vault: floor, sensor: floor})
     |> elem(0)
   end
@@ -102,9 +116,7 @@ defmodule Elevator.Core do
     idle_at(floor)
     |> request_floor(:car, floor)
     |> elem(0)
-    |> handle_event(:motor_stopped, nil)
-    |> elem(0)
-    |> handle_event(:door_opened, 0)
+    |> handle_event(:door_opened)
     |> elem(0)
   end
 
@@ -114,7 +126,7 @@ defmodule Elevator.Core do
     idle_at(from)
     |> request_floor(:car, to)
     |> elem(0)
-    |> handle_event(:motor_running, nil)
+    |> handle_event(:motor_running)
     |> elem(0)
   end
 
