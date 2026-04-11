@@ -220,8 +220,7 @@ defmodule Elevator.Features.MovementTest do
   defwhen ~r/^passengers inside the car select floors (?<floors>.+)$/,
           %{floors: floors_str},
           context do
-    floors =
-      String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
+    floors = parse_list(floors_str, &parse_floor/1)
 
     s =
       Enum.reduce(floors, context.state, fn f, acc ->
@@ -293,8 +292,7 @@ defmodule Elevator.Features.MovementTest do
   end
 
   defthen ~r/^it should stop at floors: (?<floors>.+)$/, %{floors: floors_str}, context do
-    floors =
-      String.split(floors_str, ~r/,\s*(?:and\s+)?|\s+and\s+/) |> Enum.map(&Args.parse_floor/1)
+    floors = parse_list(floors_str, &parse_floor/1)
 
     # We simulate the trip
     Enum.reduce(floors, context.state, fn f, acc ->
