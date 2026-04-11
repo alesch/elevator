@@ -1,17 +1,22 @@
-# Technical Specification: Hardware Motor
+# Hardware Motor
 
 The Elevator Motor is a "dumb" actuator responsible for vertical motion. It does not track its own position; instead, it relies on pulse timers and external sensor feedback to coordinate movement.
 
-## State Machine
+## The Transition Ledger (SECA)
 
-The motor operates as a 4-state machine:
+Formal definition of state changes based on **State, Event, Condition, and Action**.
 
-| Status          | Description                                           | Transitions To          |
-| :---            | :---                                                  | :---                    |
-| **`:stopped`**  | Initial/Stationary state. No timers active.           | `:running`, `:crawling` |
-| **`:running`**  | Normal speed travel (1.5s/floor). Pulse timer active. | `:stopping`             |
-| **`:crawling`** | Slow speed travel (4.5s/floor). Pulse timer active.   | `:stopping`             |
-| **`:stopping`** | Active braking phase (500ms). Brake timer active.     | **`:stopped`**          |
+| Current State | Event (Trigger) | Condition | Action (Effect) | Next State |
+| :--- | :--- | :--- | :--- | :--- |
+| **`:stopped`** | `{:move, dir}` | None | `{:start_timer, 1.5s}` | **`:running`** |
+| **`:stopped`** | `{:crawl, dir}` | None | `{:start_timer, 4.5s}` | **`:crawling`** |
+| **`:running`** | `:pulse` | Timer Expired | `{:notify_sensor, pulse}, {:restart_timer}` | **`:running`** |
+| **`:running`** | `:stop_now` | None | `{:cancel_timer}, {:start_brake_timer, 0.5s}` | **`:stopping`** |
+| **`:crawling`** | `:pulse` | Timer Expired | `{:notify_sensor, pulse}, {:restart_timer}` | **`:crawling`** |
+| **`:crawling`** | `:stop_now` | None | `{:cancel_timer}, {:start_brake_timer, 0.5s}` | **`:stopping`** |
+| **`:stopping`** | `:brake_complete` | Timer Expired | `{:notify_controller, :motor_stopped}` | **`:stopped`** |
+| **`any active`** | `{:move, dir}` | None | `{:cancel_timer}, {:start_timer, 1.5s}` | **`:running`** |
+| **`any active`** | `{:crawl, dir}` | None | `{:cancel_timer}, {:start_timer, 4.5s}` | **`:crawling`** |
 
 ## Public API
 
