@@ -36,6 +36,21 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | **`:leaving`** | `:door_closed` | `requests.empty?` | None | **`:idle`** |
 | **`:leaving`** | `:door_closed` | `not requests.empty?` | `{:move, dir}` | **`:moving`** |
 | **`:leaving`** | `:door_obstructed`| None | `{:open_door}` | **`:arriving`** |
+| **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:moving`** |
+
+---
+
+## Hardware Feedback Ledger
+
+The following events update the system's "Reality" but might trigger an immediate phase transition.
+
+| Event | Logic Effect |
+| :--- | :--- |
+| **`:motor_running`** | Updates `hardware.motor_status` to `:running`. |
+| **`:motor_crawling`**| Updates `hardware.motor_status` to `:crawling`. |
+| **`:door_opening`** | Updates `hardware.door_status` to `:opening`. |
+| **`:door_closing`** | Updates `hardware.door_status` to `:closing`. |
+| **`:door_cleared`** | Updates `hardware.door_sensor` to `:clear`. |
 
 ---
 
@@ -59,12 +74,12 @@ stateDiagram-v2
     booting --> idle : :startup_check (agree)
     booting --> rehoming : :startup_check (mismatch)
     
-    rehoming --> idle : :arrival (F0)
+    rehoming --> idle : :floor_arrival (F0)
     
-    idle --> moving : :request_floor (diff)
+    idle --> moving : :request_floor (diff) / :inactivity_timeout
     idle --> arriving : :request_floor (same)
     
-    moving --> arriving : :arrival (target)
+    moving --> arriving : :floor_arrival (target)
     
     arriving --> docked : :door_opened
     
