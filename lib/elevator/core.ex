@@ -66,17 +66,15 @@ defmodule Elevator.Core do
   @doc "Ordered list of floor requests, based on current floor."
   @spec requests(t()) :: [Elevator.Sweep.request()]
   def requests(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
-    if is_integer(f), do: Elevator.Sweep.queue(s, f), else: []
+    Elevator.Sweep.queue(s, f)
   end
 
   @spec heading(t()) :: direction()
-  def heading(%Core{logic: %{phase: :booting}}), do: :idle
-  def heading(%Core{logic: %{phase: :rehoming}, hardware: %{current_floor: :unknown}}), do: :down
   def heading(%Core{logic: %{sweep: s}}), do: Elevator.Sweep.heading(s)
 
   @spec next_stop(t()) :: integer() | nil
   def next_stop(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
-    if is_integer(f), do: Elevator.Sweep.next_stop(s, f), else: nil
+    Elevator.Sweep.next_stop(s, f)
   end
 
   # ---------------------------------------------------------------------------
@@ -286,7 +284,10 @@ defmodule Elevator.Core do
   end
 
   defp do_transit(%Core{logic: %{phase: :booting}, signal: :rehoming_started} = state) do
-    put_in(state.logic.phase, :rehoming)
+    state
+    |> put_in([Access.key(:logic), :phase], :rehoming)
+    |> add_sweep_request(:car, 0)
+    |> update_sweep_heading()
   end
 
   # Rehoming
@@ -380,13 +381,9 @@ defmodule Elevator.Core do
   defp update_sweep_heading(state) do
     f = current_floor(state)
 
-    if is_integer(f) do
-      Map.update!(state, :logic, fn logic ->
-        Map.update!(logic, :sweep, &Elevator.Sweep.update_heading(&1, f))
-      end)
-    else
-      state
-    end
+    Map.update!(state, :logic, fn logic ->
+      Map.update!(logic, :sweep, &Elevator.Sweep.update_heading(&1, f))
+    end)
   end
 
   @spec floor_serviced(t()) :: t()

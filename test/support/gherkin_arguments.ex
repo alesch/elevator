@@ -11,6 +11,7 @@ defmodule Elevator.Gherkin.Arguments do
   """
   def parse_floor(val) when is_integer(val), do: val
 
+  def parse_floor(val) when val in [":unknown", "unknown", "UNKNOWN"], do: :unknown
   def parse_floor(val) when val in [nil, ""],
     do: raise(ArgumentError, "Floor argument is missing or empty.")
   def parse_floor(val) when val in ["GROUND", "Ground", "ground", ":ground "], do: 0

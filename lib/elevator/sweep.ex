@@ -57,10 +57,12 @@ defmodule Elevator.Sweep do
   end
 
   @doc "Returns the queue of requests based on current heading and position."
-  @spec queue(t(), floor()) :: [request()]
-  def queue(%Sweep{heading: :idle, requests: []}, _current_floor), do: []
-
+  @spec queue(t(), floor() | :unknown) :: [request()]
   def queue(%Sweep{requests: []}, _), do: []
+
+  def queue(%Sweep{heading: heading, requests: reqs}, :unknown) do
+    if heading == :idle, do: reqs, else: sort_by_heading(reqs, heading)
+  end
 
   def queue(%Sweep{heading: :idle, requests: reqs} = sweep, current_floor) do
     case calculate_heading(sweep, current_floor) do
@@ -107,7 +109,7 @@ defmodule Elevator.Sweep do
   end
 
   @doc "Updates the heading based on current floor and requests."
-  @spec update_heading(t(), floor()) :: t()
+  @spec update_heading(t(), floor() | :unknown) :: t()
   def update_heading(sweep, current_floor) do
     %{sweep | heading: calculate_heading(sweep, current_floor)}
   end
@@ -159,13 +161,21 @@ defmodule Elevator.Sweep do
   defp sort_ascending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :asc)
   defp sort_descending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :desc)
 
+  defp sort_by_heading(requests, :up), do: sort_ascending(requests)
+  defp sort_by_heading(requests, :down), do: sort_descending(requests)
+  defp sort_by_heading(requests, :idle), do: requests
+
+  defp any_requests_above?(sweep, :unknown), do: false
   defp any_requests_above?(sweep, floor) do
     Enum.any?(sweep.requests, fn {_, f} -> f > floor end)
   end
 
+  defp any_requests_below?(sweep, :unknown), do: any_requests?(sweep)
   defp any_requests_below?(sweep, floor) do
     Enum.any?(sweep.requests, fn {_, f} -> f < floor end)
   end
+
+  defp any_requests?(%Sweep{requests: reqs}), do: reqs != []
 
   defp element_to_floor(nil), do: nil
   defp element_to_floor({_, f}), do: f

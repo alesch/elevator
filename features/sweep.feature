@@ -80,3 +80,10 @@ Feature: Elevator Sweep Algorithm (LOOK)
     And a hall request for floor 3 is added
     Then the next stop should be floor 5
     And the queue should be: 5, 3
+
+  @S-MOVE-LOOK-UNKNOWN
+  Scenario: Unknown position defaults to downward heading if requests exist
+    Given a sweep with heading idle and the elevator at floor :unknown
+    When a car request for floor 0 is added
+    Then the heading should be down
+    And the queue should be: 0

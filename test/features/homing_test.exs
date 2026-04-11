@@ -33,15 +33,17 @@ defmodule Elevator.Features.HomingTest do
     {:ok, %{context | sensor: 99}}
   end
 
-  defgiven ~r/^the "phase" is ":rehoming"$/, _vars, context do
-    # Natural transition to rehoming
-    {state, _} = Core.handle_event(Core.init(), :rehoming_started)
+  defgiven ~r/^the elevator has started rehoming$/, _vars, context do
+    # Natural transition to rehoming via startup check failure
+    {state, _} = Core.handle_event(Core.init(), :startup_check, %{vault: nil, sensor: nil})
+    # Emulate hardware starting to crawl in response to the :crawl action
+    state = put_in(state.hardware.motor_status, :crawling)
     {:ok, %{context | state: state}}
   end
 
-  defgiven ~r/^the elevator is in "phase: :rehoming"$/, _vars, context do
-    # Natural transition to rehoming
-    {state, _} = Core.handle_event(Core.init(), :rehoming_started)
+  defgiven ~r/^the elevator is in rehoming phase$/, _vars, context do
+    # Natural transition to rehoming via startup check failure
+    {state, _} = Core.handle_event(Core.init(), :startup_check, %{vault: nil, sensor: nil})
     {:ok, %{context | state: state}}
   end
 
@@ -127,6 +129,15 @@ defmodule Elevator.Features.HomingTest do
            ":unknown" -> assert Core.current_floor(context.state) == :unknown
            _ -> assert Core.current_floor(context.state) == Args.parse_floor(val)
          end
+      "door_status" ->
+         expected = Args.parse_door_status(val)
+         assert Core.door_status(context.state) == expected
+      "motor_status" ->
+         expected = Args.parse_motor_status(val)
+         case {expected, context.actions} do
+           {:stopping, actions} when actions != [] -> assert {:stop_motor} in actions
+           _ -> assert Core.motor_status(context.state) == expected
+         end
     end
     {:ok, context}
   end
@@ -210,7 +221,8 @@ defmodule Elevator.Features.HomingTest do
   end
 
   defthen ~r/^the request should be ignored and NOT added to the queue$/, _vars, context do
-    assert Core.requests(context.state) == []
+    # During rehoming, we expect only the virtual F0 request
+    assert Core.requests(context.state) == [{:car, 0}]
     {:ok, context}
   end
 end

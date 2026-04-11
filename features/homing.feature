@@ -32,7 +32,7 @@ Feature: Elevator Homing & Recovery
 
   @S-HOME-ANCHOR @R-HOME-STRATEGY @R-HOME-VAULT
   Scenario: Homing Completion (Anchoring)
-    Given the "phase" is ":rehoming"
+    Given the elevator has started rehoming
     When the Core receives its very first ":floor_arrival" event
     Then the "heading" is ":idle"
     And "motor_status" is ":stopping"
@@ -41,7 +41,7 @@ Feature: Elevator Homing & Recovery
 
   @S-HOME-NO-DOOR @R-HOME-STRATEGY
   Scenario: No Door Cycle on Homing Arrival
-    Given the "phase" is ":rehoming"
+    Given the elevator has started rehoming
     And "door_status" is ":closed"
     And the Core receives its very first ":floor_arrival" event
     When the ":motor_stopped" confirmation is received after homing arrival
@@ -51,6 +51,6 @@ Feature: Elevator Homing & Recovery
 
   @S-HOME-BLOCK-REQ @R-HOME-STRATEGY
   Scenario: Request Blocking during Rehoming
-    Given the elevator is in "phase: :rehoming"
+    Given the elevator is in rehoming phase
     When any floor request is received
     Then the request should be ignored and NOT added to the queue
