@@ -29,61 +29,63 @@ defmodule Elevator.Features.MovementTest do
 
   # --- Then Steps ---
 
-  defthen ~r/^(the )?"?phase"? is "(?<value>.+)"$/, %{value: val_str}, context do
-    expected = Args.parse_phase(val_str)
-    assert Core.phase(context.state) == expected
-    {:ok, context}
-  end
-
-  defthen ~r/^(the )?"?motor_status"? is "(?<value>.+)"$/, %{value: val_str}, context do
-    expected = Args.parse_motor_status(val_str)
-
-    case {expected, context.actions} do
-      {:running, actions} when actions != [] ->
-        assert Enum.any?(actions, fn
-                 {:move, _} -> true
-                 {:crawl, _} -> true
-                 _ -> false
-               end)
-
-      {:stopping, actions} when actions != [] ->
-        assert {:stop_motor} in actions
-
-      _ ->
-        assert Core.motor_status(context.state) == expected
-    end
-
-    {:ok, context}
-  end
-
-  defthen ~r/^(the )?"?door_status"? is "(?<value>.+)"$/, %{value: val_str}, context do
-    expected = Args.parse_door_status(val_str)
-
-    case {expected, context.actions} do
-      {:opening, actions} when actions != [] -> assert {:open_door} in actions
-      {:closing, actions} when actions != [] -> assert {:close_door} in actions
-      _ -> assert Core.door_status(context.state) == expected
-    end
-
-    {:ok, context}
-  end
-
-  defthen ~r/^(the )?"?(?<field>[^"]+)"? is "(?<value>[^"]+)"$/, %{field: field, value: val}, context do
+  defthen ~r/^(the )?(?<field>\w+) is (?<val>[^ ]+)$/, %{field: field, val: val}, context do
     case field do
-      "phase" -> assert Core.phase(context.state) == Args.parse_phase(val)
-      "heading" -> assert Core.heading(context.state) == Args.parse_heading(val)
-      "current_floor" -> assert Core.current_floor(context.state) == Args.parse_floor(val)
+      "phase" ->
+        expected = Args.parse_phase(val)
+        actual = Core.phase(context.state)
+        assert actual == expected, "Expected phase #{expected}, got #{actual}"
+
+      "motor_status" ->
+        expected = Args.parse_motor_status(val)
+
+        case {expected, context.actions} do
+          {:running, actions} when actions != [] ->
+            assert Enum.any?(actions, fn
+                     {:move, _} -> true
+                     {:crawl, _} -> true
+                     _ -> false
+                   end)
+
+          {:stopping, actions} when actions != [] ->
+            assert {:stop_motor} in actions
+
+          _ ->
+            assert Core.motor_status(context.state) == expected
+        end
+
+      "door_status" ->
+        expected = Args.parse_door_status(val)
+
+        case {expected, context.actions} do
+          {:opening, actions} when actions != [] -> assert {:open_door} in actions
+          {:closing, actions} when actions != [] -> assert {:close_door} in actions
+          _ -> assert Core.door_status(context.state) == expected
+        end
+
+      "heading" ->
+        assert Core.heading(context.state) == Args.parse_heading(val)
+
+      "current_floor" ->
+        assert Core.current_floor(context.state) == Args.parse_floor(val)
     end
+
     {:ok, context}
   end
 
-  defthen ~r/^(floor )?"?(?<target>.+)"? is in the pending requests$/, %{target: target}, context do
+  defthen ~r/^(floor )?(?<target>\w+) is in the pending requests$/, %{target: target}, context do
+    case target do
+      "ground" -> # handled by parse_floor
+        nil
+      _ ->
+        nil
+    end
     floor = Args.parse_floor(target)
     assert {:car, floor} in Core.requests(context.state) or {:hall, floor} in Core.requests(context.state)
     {:ok, context}
   end
 
-  defthen ~r/^the "?request"? for floor (?<target>.+) is still pending$/, %{target: target}, context do
+  defthen ~r/^the request for floor (?<target>.+) is still pending$/, %{target: target}, context do
     floor = Args.parse_floor(target)
     assert {:car, floor} in Core.requests(context.state)
     {:ok, context}
@@ -95,7 +97,7 @@ defmodule Elevator.Features.MovementTest do
     {:ok, context}
   end
 
-  defthen ~r/^floor "(?<target>.+)" is fulfilled$/, %{target: target}, context do
+  defthen ~r/^floor (?<target>.+) is fulfilled$/, %{target: target}, context do
     floor = Args.parse_floor(target)
     assert not Enum.any?(Core.requests(context.state), fn {_, f} -> f == floor end)
     {:ok, context}
