@@ -25,17 +25,17 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | **`:booting`** | `:startup_check` | `vault == sensor` | None | **`:idle`** |
 | **`:booting`** | `:startup_check` | `vault != sensor` | `{:crawl, :down}` | **`:rehoming`** |
 | **`:rehoming`** | `:floor_arrival` | `is_integer(floor)` | `{:stop_motor}` | **`:rehoming`** |
-| **`:rehoming`** | `:motor_stopped`| `is_integer(floor)` | None | **`:idle`** |
+| **`:rehoming`** | `:motor_stopped` | `is_integer(floor)` | None | **`:idle`** |
 | **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:arriving`** |
 | **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:moving`** |
 | **`:moving`** | `:floor_arrival` | `floor == target` | `{:stop_motor}` | **`:arriving`** |
-| **`:arriving`** | `:motor_stopped`| Only if FICS derived | `{:open_door}` | **`:arriving`** |
+| **`:arriving`** | `:motor_stopped` | Only if FICS derived | `{:open_door}` | **`:arriving`** |
 | **`:arriving`** | `:door_opened` | None | `{:set_timer, :door_timeout}` | **`:docked`** |
 | **`:docked`** | `:door_timeout` | None | `{:close_door}` | **`:leaving`** |
 | **`:docked`** | `:door_close` | None | `{:close_door}` | **`:leaving`** |
 | **`:leaving`** | `:door_closed` | `requests.empty?` | None | **`:idle`** |
 | **`:leaving`** | `:door_closed` | `not requests.empty?` | `{:move, dir}` | **`:moving`** |
-| **`:leaving`** | `:door_obstructed`| None | `{:open_door}` | **`:arriving`** |
+| **`:leaving`** | `:door_obstructed` | None | `{:open_door}` | **`:arriving`** |
 | **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:moving`** |
 
 ---
@@ -47,7 +47,7 @@ The following events update the system's "Reality" but might trigger an immediat
 | Event | Logic Effect |
 | :--- | :--- |
 | **`:motor_running`** | Updates `hardware.motor_status` to `:running`. |
-| **`:motor_crawling`**| Updates `hardware.motor_status` to `:crawling`. |
+| **`:motor_crawling`** | Updates `hardware.motor_status` to `:crawling`. |
 | **`:door_opening`** | Updates `hardware.door_status` to `:opening`. |
 | **`:door_closing`** | Updates `hardware.door_status` to `:closing`. |
 | **`:door_cleared`** | Updates `hardware.door_sensor` to `:clear`. |
