@@ -137,7 +137,7 @@ defmodule Elevator.Core do
   @spec process_arrival(t(), integer()) :: {t(), [action()]}
   def process_arrival(%Core{} = state, floor) do
     state
-    |> handle_event(:arrival, floor)
+    |> handle_event(:floor_arrival, floor)
   end
 
   @spec handle_button_press(t(), atom(), integer()) :: {t(), [action()]}
@@ -208,7 +208,7 @@ defmodule Elevator.Core do
     end
   end
 
-  defp do_ingest_event(state, :arrival, floor), do: put_in(state.hardware.current_floor, floor)
+  defp do_ingest_event(state, :floor_arrival, floor), do: put_in(state.hardware.current_floor, floor)
 
   defp do_ingest_event(state, :motor_stopped, _),
     do: put_in(state.hardware.motor_status, :stopped)
@@ -446,6 +446,10 @@ defmodule Elevator.Core do
 
       entered_moving ->
         actions ++ [{:move, heading(new)}]
+
+      new.logic.phase == :rehoming and is_integer(new.hardware.current_floor) and
+          new.hardware.motor_status == :crawling ->
+        actions ++ [{:stop_motor}]
 
       new.logic.phase == :moving and heading(old) != heading(new) ->
         actions ++ [{:move, heading(new)}]

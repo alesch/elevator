@@ -24,10 +24,11 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | :--- | :--- | :--- | :--- | :--- |
 | **`:booting`** | `:startup_check` | `vault == sensor` | None | **`:idle`** |
 | **`:booting`** | `:startup_check` | `vault != sensor` | `{:crawl, :down}` | **`:rehoming`** |
-| **`:rehoming`** | `:arrival` | `floor == 0` | `{:stop_motor}` | **`:idle`** |
+| **`:rehoming`** | `:floor_arrival` | `is_integer(floor)` | `{:stop_motor}` | **`:rehoming`** |
+| **`:rehoming`** | `:motor_stopped`| `is_integer(floor)` | None | **`:idle`** |
 | **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:arriving`** |
 | **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:moving`** |
-| **`:moving`** | `:arrival` | `floor == target` | `{:stop_motor}` | **`:arriving`** |
+| **`:moving`** | `:floor_arrival` | `floor == target` | `{:stop_motor}` | **`:arriving`** |
 | **`:arriving`** | `:motor_stopped`| Only if FICS derived | `{:open_door}` | **`:arriving`** |
 | **`:arriving`** | `:door_opened` | None | `{:set_timer, :door_timeout}` | **`:docked`** |
 | **`:docked`** | `:door_timeout` | None | `{:close_door}` | **`:leaving`** |

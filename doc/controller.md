@@ -68,6 +68,24 @@ Upon startup (`handle_continue`), the Controller executes a "Smart Homing" check
 > See [states.md](doc/states.md) for the detailed transition logic during the recovery sequence.
 ---
 
+## Events Sent to Core
+
+The Controller translates hardware signals and timer expirations into discrete events for the Core to process.
+
+| Event | Condition / Source |
+| :--- | :--- |
+| **`:startup_check`** | Sent during `handle_continue` to verify position recovery. |
+| **`:floor_arrival`** | Triggered by the physical floor sensors via `process_arrival/2`. |
+| **`:motor_stopped`** | Feedback from the motor driver confirming zero velocity. |
+| **`:door_opened`** | Feedback from the door driver confirming full open status. |
+| **`:door_closed`** | Feedback from the door driver confirming full closed status. |
+| **`:door_obstructed`** | Signal from the door safety beam (IR sensor). |
+| **`:door_timeout`** | The logic-controlled timer for how long doors remain open. |
+| **`:door_open`** | Manual override button from the car panel. |
+| **`:door_close`** | Manual override button from the car panel. |
+
+---
+
 ## Action Materialization
 
 | Action Variable | Execution |
