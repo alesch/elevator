@@ -11,6 +11,7 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @door_wait_ms 5000
+  @inactivity_wait_ms 300_000
   @base_floor 0
 
   defstruct hardware: %{
@@ -482,11 +483,13 @@ defmodule Elevator.Core do
   @spec update_timer_action([action()], t(), t()) :: [action()]
   defp update_timer_action(actions, old, new) do
     entered_docked = new.logic.phase == :docked and old.logic.phase != :docked
+    left_docked = old.logic.phase == :docked and new.logic.phase != :docked
+
+    entered_idle = new.logic.phase == :idle and old.logic.phase != :idle
+    left_idle = old.logic.phase == :idle and new.logic.phase != :idle
 
     docked_activity =
       new.logic.phase == :docked and new.logic.last_activity_at != old.logic.last_activity_at
-
-    left_docked = old.logic.phase == :docked and new.logic.phase != :docked
 
     cond do
       entered_docked or docked_activity ->
@@ -494,6 +497,12 @@ defmodule Elevator.Core do
 
       left_docked ->
         actions ++ [{:cancel_timer, :door_timeout}]
+
+      entered_idle ->
+        actions ++ [{:set_timer, :inactivity_timeout, @inactivity_wait_ms}]
+
+      left_idle ->
+        actions ++ [{:cancel_timer, :inactivity_timeout}]
 
       true ->
         actions

@@ -8,9 +8,6 @@ defmodule Elevator.Controller do
   alias Elevator.Hardware
   alias __MODULE__, as: Controller
 
-  # 5 minutes
-  @default_return_to_base_ms 300_000
-
   @type deps :: %{
           optional(:motor) => pid() | atom(),
           optional(:door) => pid() | atom(),
@@ -20,8 +17,6 @@ defmodule Elevator.Controller do
 
   @type t :: %{
           state: Elevator.Core.t(),
-          timer_ms: integer(),
-          timer: reference() | nil,
           deps: deps()
         }
 
@@ -66,7 +61,12 @@ defmodule Elevator.Controller do
     GenServer.call(pid, :get_timer_ref)
   end
 
-  @doc "Resets the elevator to a clean state: clears the vault and restarts the hardware stack, triggering a rehome to F0."
+  @doc """
+  Diagnostics: Resets the elevator to a clean state.
+  Clears the vault and restarts the hardware stack.
+
+  WARNING: This is a developer tool and should not be used in production flows.
+  """
   @spec reset() :: :ok
   def reset do
     Elevator.Vault.put_floor(Elevator.Vault, nil)
@@ -90,12 +90,8 @@ defmodule Elevator.Controller do
       {:ok, _} = Registry.register(Elevator.Registry, :controller, nil)
     end
 
-    timer_ms = Keyword.get(opts, :timer_ms, @default_return_to_base_ms)
-
     data = %{
       state: Core.init(),
-      timer_ms: timer_ms,
-      timer: schedule_return_to_base(timer_ms),
       deps: %{
         motor: Keyword.get(opts, :motor),
         door: Keyword.get(opts, :door),
@@ -242,13 +238,6 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_info(:return_to_base, t()) :: {:noreply, t()}
-  def handle_info(:return_to_base, data) do
-    data
-    |> pulse_and_commit(:return_to_base, %{}, Core.request_floor(data.state, :hall, 0))
-  end
-
-  @impl true
   @spec handle_info(term(), t()) :: {:noreply, t()}
   def handle_info(msg, state) do
     :telemetry.execute([:elevator, :controller, :unexpected_message], %{}, %{message: msg})
@@ -259,12 +248,6 @@ defmodule Elevator.Controller do
   @spec handle_call(:get_state, GenServer.from(), t()) :: {:reply, Elevator.Core.t(), t()}
   def handle_call(:get_state, _from, data) do
     {:reply, data.state, data}
-  end
-
-  @impl true
-  @spec handle_call(:get_timer_ref, GenServer.from(), t()) :: {:reply, reference() | nil, t()}
-  def handle_call(:get_timer_ref, _from, data) do
-    {:reply, data.timer, data}
   end
 
   # ---------------------------------------------------------------------------
@@ -306,13 +289,6 @@ defmodule Elevator.Controller do
     acc
   end
 
-  defp do_execute({:cancel_timer, _id}, acc) do
-    # We use a simplified timer model: instead of explicitly canceling timers,
-    # we rely on the Core (Brain) to be idempotent and ignore timeout messages
-    # that arrive late or are no longer relevant to the current phase.
-    acc
-  end
-
   defp do_execute({:persist_arrival, floor}, acc) do
     lookup_hardware(acc, :vault, &Elevator.Vault.put_floor(&1, floor))
     acc
@@ -330,15 +306,9 @@ defmodule Elevator.Controller do
     new_data =
       %{data | state: new_state}
       |> execute_actions(actions)
-      |> broadcast_and_reset_timer()
 
+    broadcast_state(new_data.state)
     {:noreply, new_data}
-  end
-
-  @spec broadcast_and_reset_timer(t()) :: t()
-  defp broadcast_and_reset_timer(data) do
-    broadcast_state(data.state)
-    reset_inactivity_timer(data)
   end
 
   @spec broadcast_state(Elevator.Core.t()) :: :ok | {:error, term()}
@@ -347,6 +317,8 @@ defmodule Elevator.Controller do
   end
 
   # Dispatch logic: Priority to explicit deps (Test Way) -> Discovery (Industrial Way)
+  # The 'deps' map is a Test Isolation Hook, allowing mocks to be injected
+  # during parallel test runs where global names are avoided.
   @spec lookup_hardware(t(), atom(), (pid() | atom() -> term())) :: term()
   defp lookup_hardware(data, key, func) do
     target = Map.get(data.deps, key) || registry_lookup(key)
@@ -363,16 +335,5 @@ defmodule Elevator.Controller do
   defp log_hardware_failure(key) do
     :telemetry.execute([:elevator, :controller, :hardware_failure], %{}, %{key: key})
     nil
-  end
-
-  @spec reset_inactivity_timer(t()) :: t()
-  defp reset_inactivity_timer(%{timer: timer, timer_ms: ms} = data) do
-    if timer, do: Process.cancel_timer(timer)
-    %{data | timer: schedule_return_to_base(ms)}
-  end
-
-  @spec schedule_return_to_base(integer()) :: reference()
-  defp schedule_return_to_base(ms) do
-    Process.send_after(self(), :return_to_base, ms)
   end
 end
