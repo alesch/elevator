@@ -119,6 +119,8 @@ defmodule Elevator.Gherkin.Arguments do
   Parses a comma-separated list of values using the provided parser function.
   Example: parse_list("1, 2, 3", &parse_floor/1) -> [1, 2, 3]
   """
+  def parse_list(val, _parser_fn) when val in ["empty", "EMPTY", "Empty"], do: []
+
   def parse_list(val, parser_fn) when is_binary(val) do
     val
     |> String.split(",")
