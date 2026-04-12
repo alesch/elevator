@@ -32,7 +32,7 @@ defmodule Elevator.Features.SweepTest do
   #
 
   # When car requests for floors 2, 5
-  defwhen ~r/^car requests for floors (?<floors>.+)$/, %{floors: floors_str}, context do
+  defwhen ~r/^car requests are added for floors (?<floors>.+)$/, %{floors: floors_str}, context do
     do_add_car_requests(context, floors_str)
   end
 
@@ -84,8 +84,8 @@ defmodule Elevator.Features.SweepTest do
     {:ok, context}
   end
 
-  # Then the next stop should be floor X
-  defthen ~r/^the next stop should be floor (?<floor>.+)$/, %{floor: floor_str}, context do
+  # Then the next stop should be X
+  defthen ~r/^the next stop should be (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Arguments.parse_floor(floor_str)
     assert_next_stop(context, floor)
   end

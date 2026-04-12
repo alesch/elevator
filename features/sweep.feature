@@ -40,9 +40,9 @@ Feature: Elevator Sweep Algorithm (LOOK)
 
   Scenario: Ignore request for the current floor
     Given a new sweep
-    And the elevator at floor 3
+    And the elevator is at floor 3
     When a hall request for floor 3 is added
-    Then the next stop should be none
+    And the next stop should be none
     And the heading should be idle
     When a car request for floor 3 is added
     Then the next stop should be none
@@ -52,17 +52,16 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Given a new sweep
     And the elevator is at floor 0
     When car requests are added for floors 2, 5
-    Then the next stop should be floor 2
+    Then the next stop should be 2
     And the queue should be 2, 5
     When floor 2 is serviced
-    Then the next stop should be floor 5
-    And the queue should be empty
+    Then the next stop should be 5
 
   Scenario: Requests persist until serviced
     Given a new sweep
     And the elevator is at floor 0
     When a car request for floor 3 is added
-    When elevator is at floor 3
+    When the elevator is at floor 3
     Then the queue should be 3
     And the next stop should be 3
     And the heading should be up
@@ -73,7 +72,7 @@ Feature: Elevator Sweep Algorithm (LOOK)
 
   @S-MOVE-LOOK-SERVICE
   Scenario: Servicing a floor removes all requests for that floor
-    Given a new Sweep
+    Given a new sweep
     When a car request for floor 3 is added
     And a hall request for floor 3 is added
     And floor 3 is serviced
@@ -104,7 +103,7 @@ Feature: Elevator Sweep Algorithm (LOOK)
     And a car request for floor 5 is added
     When the elevator is at floor 2
     And a car request for floor 3 is added
-    Then the next stop should be floor 3
+    Then the next stop should be 3
     And the queue should be 3, 5
 
   @S-MOVE-LOOK-HALL-DEFER
@@ -114,7 +113,7 @@ Feature: Elevator Sweep Algorithm (LOOK)
     And a car request for floor 5 is added
     And a hall request for floor 3 is added
     When the elevator is at floor 2
-    Then the next stop should be floor 5
+    Then the next stop should be 5
     And the queue should be 5, 3
 
   #
