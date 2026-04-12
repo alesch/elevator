@@ -43,14 +43,19 @@ defmodule Elevator.Sweep do
   end
 
   @doc "Returns the sweep heading."
+  @spec heading(t()) :: :up | :down | :idle
   def heading(%Sweep{heading: h}), do: h
 
   @doc "Returns the requests list, raw unsorted."
+  @spec requests(t()) :: [request()]
   def requests(%Sweep{requests: r}), do: r
 
+  @doc "Returns the sorted queue of requests."
+  @spec queue(t(), floor() | :unknown) :: [floor()]
   def queue(sweep, current_floor) do
-    sweep |> calculate_look_queue(current_floor)
-    # sweep.requests |> Enum.map(&element_to_floor/1)
+    sweep
+    |> calculate_look_queue(current_floor)
+    |> Enum.map(&element_to_floor/1)
   end
 
   @doc "Adds a request to the sweep."
@@ -62,12 +67,11 @@ defmodule Elevator.Sweep do
   end
 
   @doc "Returns the next floor to stop at."
-  @spec next_stop(t()) :: floor() | nil
-  def next_stop(sweep) do
+  @spec next_stop(t(), floor() | :unknown) :: floor() | nil
+  def next_stop(sweep, current_floor) do
     sweep
-    |> requests()
+    |> queue(current_floor)
     |> List.first()
-    |> element_to_floor()
   end
 
   @doc "Removes all requests for the given floor and updates heading."
@@ -87,6 +91,7 @@ defmodule Elevator.Sweep do
     %{sweep | heading: do_update_heading(sweep, current_floor)}
   end
 
+  @spec calculate_look_queue(t(), floor() | :unknown) :: [request()]
   defp calculate_look_queue(sweep, current_floor) do
     # The LOOK Algorithm "Story":
     # 1. We split the universe into what's "Ahead" and what's "Behind" us.
@@ -97,9 +102,10 @@ defmodule Elevator.Sweep do
     {immediate_stops, deferred} = apply_look_priorities(ahead, sweep.heading)
 
     # 3. We assemble the journey: Immediate stops (Ahead) -> Deferred/Reverse (Behind).
-    assemble_journey(immediate_stops, behind ++ deferred, heading)
+    assemble_journey(immediate_stops, behind ++ deferred, sweep.heading)
   end
 
+  @spec split_by_heading([request()], floor(), :up | :down) :: {[request()], [request()]}
   defp split_by_heading(requests, current_floor, :up) do
     Enum.split_with(requests, fn {_, f} -> f >= current_floor end)
   end
@@ -114,6 +120,7 @@ defmodule Elevator.Sweep do
   #   2. `split_with` groups `{:car, 5}` and `{:hall, 5}` as immediate stops.
   #   3. `{:hall, 3}` is deferred into the second list of the tuple.
   #   Result: `{[{:car, 5}, {:hall, 5}], [{:hall, 3}]}`
+  @spec apply_look_priorities([request()], :up | :down) :: {[request()], [request()]}
   defp apply_look_priorities(ahead, :up) do
     # On UP journeys: Defer hall requests that aren't the peak.
     peak_floor =
@@ -134,6 +141,7 @@ defmodule Elevator.Sweep do
     {ahead, []}
   end
 
+  @spec assemble_journey([request()], [request()], :up | :down) :: [request()]
   defp assemble_journey(immediate, return_journey, :up) do
     sort_ascending(immediate) ++ sort_descending(return_journey)
   end
@@ -142,6 +150,7 @@ defmodule Elevator.Sweep do
     sort_descending(immediate) ++ sort_ascending(return_journey)
   end
 
+  @spec do_add_request(t(), source(), floor()) :: t()
   defp do_add_request(sweep, source, floor) do
     if {source, floor} in sweep.requests do
       # ignore if duplicate
@@ -151,34 +160,44 @@ defmodule Elevator.Sweep do
     end
   end
 
+  @spec do_remove_floor(t(), floor()) :: t()
   defp do_remove_floor(sweep, floor) do
     %{sweep | requests: Enum.reject(sweep.requests, fn {_, f} -> f == floor end)}
   end
 
+  @spec sort_ascending([request()]) :: [request()]
   defp sort_ascending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :asc)
+
+  @spec sort_descending([request()]) :: [request()]
   defp sort_descending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :desc)
 
+  @spec sort_by_heading([request()], :up | :down | :idle) :: [request()]
   defp sort_by_heading(requests, :up), do: sort_ascending(requests)
   defp sort_by_heading(requests, :down), do: sort_descending(requests)
   defp sort_by_heading(requests, :idle), do: requests
 
+  @spec any_requests_above?(t(), floor() | :unknown) :: boolean()
   defp any_requests_above?(_sweep, :unknown), do: false
 
   defp any_requests_above?(sweep, floor) do
     Enum.any?(sweep.requests, fn {_, f} -> f > floor end)
   end
 
+  @spec any_requests_below?(t(), floor() | :unknown) :: boolean()
   defp any_requests_below?(sweep, :unknown), do: any_requests?(sweep)
 
   defp any_requests_below?(sweep, floor) do
     Enum.any?(sweep.requests, fn {_, f} -> f < floor end)
   end
 
+  @spec any_requests?(t()) :: boolean()
   defp any_requests?(%Sweep{requests: reqs}), do: reqs != []
 
+  @spec element_to_floor(request() | nil) :: floor() | nil
   defp element_to_floor(nil), do: nil
   defp element_to_floor({_, f}), do: f
 
+  @spec do_update_heading(t(), floor() | :unknown) :: :up | :down | :idle
   defp do_update_heading(%Sweep{requests: []}, _current_floor), do: :idle
 
   defp do_update_heading(sweep, current_floor) do
