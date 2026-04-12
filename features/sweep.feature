@@ -57,7 +57,6 @@ Feature: Elevator Sweep Algorithm (LOOK)
     When floor 2 is serviced
     Then the next stop should be 5
 
-  @stop
   Scenario: Requests persist until serviced
     Given a new sweep
     And the elevator is at floor 0
@@ -65,7 +64,7 @@ Feature: Elevator Sweep Algorithm (LOOK)
     When the elevator is at floor 3
     Then the queue should be 3
     And the next stop should be 3
-    And the heading should be up
+    And the heading should be idle
     When floor 3 is serviced
     Then the queue should be empty
     And the next stop should be none

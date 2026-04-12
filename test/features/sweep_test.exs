@@ -8,6 +8,18 @@ defmodule Elevator.Features.SweepTest do
   alias Elevator.Gherkin.Arguments
   import ExUnit.Assertions
 
+  defmacro trace(context) do
+    quote do
+      # Capture the line in the test file where trace(context) was called.
+      location = "#{Path.basename(__ENV__.file)}:#{__ENV__.line}"
+
+      # Accumulate into a list called :step_history
+      Map.update(unquote(context), :step_history, [location], fn history ->
+        [location | history]
+      end)
+    end
+  end
+
   setup context do
     {:ok, %{sweep: %Sweep{}, current_floor: 0, scenario: context.test}}
   end
@@ -18,11 +30,13 @@ defmodule Elevator.Features.SweepTest do
 
   # Given a new sweep
   defgiven ~r/^a new sweep$/, _vars, context do
+    context = trace(context)
     {:ok, %{context | sweep: %Sweep{}, current_floor: 0}}
   end
 
   # Given the elevator is at floor X
   defgiven ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
+    context = trace(context)
     floor = Arguments.parse_floor(floor_str)
     {:ok, %{context | current_floor: floor}}
   end
@@ -33,6 +47,7 @@ defmodule Elevator.Features.SweepTest do
 
   # When car requests for floors 2, 5
   defwhen ~r/^car requests are added for floors (?<floors>.+)$/, %{floors: floors_str}, context do
+    context = trace(context)
     do_add_car_requests(context, floors_str)
   end
 
@@ -40,6 +55,7 @@ defmodule Elevator.Features.SweepTest do
   defwhen ~r/^a (?<source>.+) request for floor (?<floor>.+) is added$/,
           %{source: source_str, floor: floor_str},
           context do
+    context = trace(context)
     source = Arguments.parse_source(source_str)
     floor = Arguments.parse_floor(floor_str)
     do_add_request(context, floor, source)
@@ -47,6 +63,7 @@ defmodule Elevator.Features.SweepTest do
 
   # When floor 3 is serviced
   defwhen ~r/^floor (?<floor>.+) is serviced$/, %{floor: floor_str}, context do
+    context = trace(context)
     floor = Arguments.parse_floor(floor_str)
     new_sweep = Sweep.floor_serviced(context.sweep, floor)
     {:ok, %{context | sweep: new_sweep}}
@@ -58,6 +75,7 @@ defmodule Elevator.Features.SweepTest do
 
   # Then the queue should be 2, 4, 5
   defthen ~r/^the queue should be (?<floors>.+)$/, %{floors: floors_str}, context do
+    context = trace(context)
     expected_floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
 
     actual_floors =
@@ -73,6 +91,7 @@ defmodule Elevator.Features.SweepTest do
   defthen ~r/^there should be no requests for floor (?<floor>.+)$/,
           %{floor: floor_str},
           context do
+    context = trace(context)
     floor = Arguments.parse_floor(floor_str)
 
     floors =
@@ -86,17 +105,20 @@ defmodule Elevator.Features.SweepTest do
 
   # Then the next stop should be X
   defthen ~r/^the next stop should be (?<floor>.+)$/, %{floor: floor_str}, context do
+    context = trace(context)
     floor = Arguments.parse_floor(floor_str)
     assert_next_stop(context, floor)
   end
 
   # Then the next stop should be none
   defthen ~r/^the next stop should be none$/, _vars, context do
+    context = trace(context)
     assert_next_stop(context, nil)
   end
 
   # Then the heading should be up
   defthen ~r/^the heading should be (?<heading>.+)$/, %{heading: heading_str}, context do
+    context = trace(context)
     expected_heading = Arguments.parse_heading(heading_str)
 
     # We check what the heading BECOMES when updated from the current position
