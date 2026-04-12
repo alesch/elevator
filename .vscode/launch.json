@@ -1,0 +1,25 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "mix_task",
+      "name": "mix test (Active File)",
+      "request": "launch",
+      "task": "test",
+      "taskArgs": [
+        "${relativeFile}"
+      ],
+      "projectDir": "${workspaceRoot}"
+    },
+    {
+      "type": "mix_task",
+      "name": "mix test (All)",
+      "request": "launch",
+      "task": "test",
+      "taskArgs": [
+        "--trace"
+      ],
+      "projectDir": "${workspaceRoot}"
+    }
+  ]
+}
