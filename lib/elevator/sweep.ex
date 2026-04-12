@@ -32,7 +32,9 @@ defmodule Elevator.Sweep do
           requests: [request()]
         }
 
+  #
   # --- Public API ---
+  #
 
   @doc "Initializes a new sweep state."
   @spec new(:up | :down | :idle, [request()]) :: t()
@@ -80,19 +82,6 @@ defmodule Elevator.Sweep do
     calculate_look_queue(requests, current_floor, heading)
   end
 
-  defp calculate_look_queue(requests, current_floor, heading) do
-    # The LOOK Algorithm "Story":
-    # 1. We split the universe into what's "Ahead" and what's "Behind" us.
-    {ahead, behind} = split_by_heading(requests, current_floor, heading)
-
-    # 2. In the current direction, we decide which requests are immediate stops
-    #    and which should be deferred (Look-Ahead logic).
-    {immediate_stops, deferred} = apply_look_priorities(ahead, heading)
-
-    # 3. We assemble the journey: Immediate stops (Ahead) -> Deferred/Reverse (Behind).
-    assemble_journey(immediate_stops, behind ++ deferred, heading)
-  end
-
   @doc "Returns the next floor to stop at."
   @spec next_stop(t(), floor()) :: floor() | nil
   def next_stop(sweep, current_floor) do
@@ -114,7 +103,22 @@ defmodule Elevator.Sweep do
     %{sweep | heading: calculate_heading(sweep, current_floor)}
   end
 
+  #
   # --- Private Functions ---
+  #
+
+  defp calculate_look_queue(requests, current_floor, heading) do
+    # The LOOK Algorithm "Story":
+    # 1. We split the universe into what's "Ahead" and what's "Behind" us.
+    {ahead, behind} = split_by_heading(requests, current_floor, heading)
+
+    # 2. In the current direction, we decide which requests are immediate stops
+    #    and which should be deferred (Look-Ahead logic).
+    {immediate_stops, deferred} = apply_look_priorities(ahead, heading)
+
+    # 3. We assemble the journey: Immediate stops (Ahead) -> Deferred/Reverse (Behind).
+    assemble_journey(immediate_stops, behind ++ deferred, heading)
+  end
 
   defp split_by_heading(requests, current_floor, :up) do
     Enum.split_with(requests, fn {_, f} -> f >= current_floor end)
