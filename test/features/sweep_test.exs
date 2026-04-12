@@ -8,8 +8,8 @@ defmodule Elevator.Features.SweepTest do
   alias Elevator.Gherkin.Arguments
   import ExUnit.Assertions
 
-  setup do
-    {:ok, %{sweep: %Sweep{}, current_floor: 0}}
+  setup context do
+    {:ok, %{sweep: %Sweep{}, current_floor: 0, scenario: context.test}}
   end
 
   #
