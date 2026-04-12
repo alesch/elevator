@@ -49,7 +49,7 @@ defmodule Elevator.Sweep do
   def requests(%Sweep{requests: r}), do: r
 
   def queue(sweep) do
-    sweep.requests |> element_to_floor()
+    sweep.requests |> Enum.map(&element_to_floor/1)
   end
 
   @doc "Adds a request to the sweep."
