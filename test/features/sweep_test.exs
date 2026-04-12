@@ -12,6 +12,10 @@ defmodule Elevator.Features.SweepTest do
     {:ok, %{sweep: %Sweep{}, current_floor: 0}}
   end
 
+  #
+  # --- Given ---
+  #
+
   # Given a new sweep
   defgiven ~r/^a new sweep$/, _vars, context do
     {:ok, %{context | sweep: %Sweep{}, current_floor: 0}}
@@ -26,34 +30,13 @@ defmodule Elevator.Features.SweepTest do
     {:ok, %{context | sweep: %{context.sweep | heading: heading}, current_floor: floor}}
   end
 
-  # Given requests for floors: 2, 5
+  # Given car requests for floors 2, 5
   defgiven ~r/^car requests for floors (?<floors>.+)$/, %{floors: floors_str}, context do
     do_add_car_requests(context, floors_str)
   end
 
-  # When requests are added for floors: 5, 2, 4
-  defwhen ~r/^car requests are added for floors (?<floors>.+)$/,
-          %{floors: floors_str},
-          context do
-    do_add_car_requests(context, floors_str)
-  end
-
-  # Then the queue should be 2, 4, 5 or empty
-  defthen ~r/^the queue should be (?<floors>.+)$/, %{floors: floors_str}, context do
-    expected_floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
-
-    # Extract only floors from the requests, using current_floor
-    actual_floors =
-      context.sweep
-      |> Sweep.queue(context.current_floor)
-      |> extract_floors()
-
-    assert actual_floors == expected_floors
-    {:ok, context}
-  end
-
-  # Given a car/hall request for floor X
-  defgiven ~r/^a (?<source>.+) request for floor (?<floor>.+)$/,
+  # Given a car/hall request for floor X is added
+  defgiven ~r/^a (?<source>.+) request for floor (?<floor>.+) is added$/,
            %{source: source_str, floor: floor_str},
            context do
     source = Arguments.parse_source(source_str)
@@ -61,26 +44,21 @@ defmodule Elevator.Features.SweepTest do
     do_add_request(context, floor, source)
   end
 
-  # --- Helpers ---
-
-  defp do_add_request(context, floor, source) do
-    new_sweep = Sweep.add_request(context.sweep, source, floor)
-    {:ok, %{context | sweep: new_sweep}}
-  end
-
-  defp do_add_car_requests(context, floors_str) do
-    floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
-
-    Enum.reduce(floors, {:ok, context}, fn floor, {:ok, ctx} ->
-      do_add_request(ctx, floor, :car)
-    end)
-  end
-
-  # When the elevator is at floor X
-  defwhen ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
+  # Given the elevator is at floor X
+  defgiven ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Arguments.parse_floor(floor_str)
-    new_sweep = Sweep.floor_serviced(context.sweep, floor)
-    {:ok, %{context | sweep: new_sweep, current_floor: floor}}
+    {:ok, %{context | current_floor: floor}}
+  end
+
+  #
+  # --- When ---
+  #
+
+  # When car requests are added for floors 5, 2, 4
+  defwhen ~r/^car requests are added for floors (?<floors>.+)$/,
+          %{floors: floors_str},
+          context do
+    do_add_car_requests(context, floors_str)
   end
 
   # When floor 3 is serviced
@@ -88,6 +66,23 @@ defmodule Elevator.Features.SweepTest do
     floor = Arguments.parse_floor(floor_str)
     new_sweep = Sweep.floor_serviced(context.sweep, floor)
     {:ok, %{context | sweep: new_sweep}}
+  end
+
+  #
+  # --- Then ---
+  #
+
+  # Then the queue should be 2, 4, 5
+  defthen ~r/^the queue should be (?<floors>.+)$/, %{floors: floors_str}, context do
+    expected_floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
+
+    actual_floors =
+      context.sweep
+      |> Sweep.queue(context.current_floor)
+      |> extract_floors()
+
+    assert actual_floors == expected_floors
+    {:ok, context}
   end
 
   # Then there should be no requests for floor 3
@@ -130,6 +125,20 @@ defmodule Elevator.Features.SweepTest do
   #
   # --- Helpers ---
   #
+
+  defp do_add_request(context, floor, source) do
+    new_sweep = Sweep.add_request(context.sweep, source, floor)
+    {:ok, %{context | sweep: new_sweep}}
+  end
+
+  defp do_add_car_requests(context, floors_str) do
+    floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
+
+    Enum.reduce(floors, {:ok, context}, fn floor, {:ok, ctx} ->
+      do_add_request(ctx, floor, :car)
+    end)
+  end
+
   defp extract_floors(requests), do: Enum.map(requests, fn {_, f} -> f end)
 
   defp assert_next_stop(context, expected) do

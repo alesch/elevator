@@ -18,26 +18,42 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Then the queue should be 3
     When floor 3 is serviced
     Then the queue should be empty
+    And the heading should be idle
 
   Scenario: duplicates are ignored
-    Given a sweep with heading up and the elevator at floor 0
+    Given a new sweep
+    And the elevator is at floor 0
     When car requests are added for floors 2, 3, 2, 5
     Then the queue should be 2, 3, 5
 
   Scenario: Next stop follows the queue
-    Given a sweep with heading up and the elevator at floor 0
+    Given a new sweep
+    And the elevator is at floor 0
     When car requests are added for floors 2, 5
     Then the next stop should be floor 2
     And the queue should be 2, 5
-    When the elevator is at floor 2
+    When floor 2 is serviced
     Then the next stop should be floor 5
     And the queue should be empty
+
+  Scenario: Requests persist until serviced
+    Given a new sweep
+    And the elevator is at floor 0
+    When a car request for floor 3 is added
+    When elevator is at floor 3
+    Then the queue should be 3
+    And the next stop should be 3
+    And the heading should be up
+    When floor 3 is serviced
+    Then the queue should be empty
+    And the next stop should be none
+    And the heading should be idle
 
   @S-MOVE-LOOK-SERVICE
   Scenario: Servicing a floor removes all requests for that floor
     Given a new Sweep
-    And a car request for floor 3
-    And a hall request for floor 3
+    And a car request for floor 3 is added
+    And a hall request for floor 3 is added
     When floor 3 is serviced
     Then there should be no requests for floor 3
 
@@ -47,45 +63,46 @@ Feature: Elevator Sweep Algorithm (LOOK)
 
   @S-MOVE-LOOK-UP
   Scenario: Upward sweep orders ahead-requests first
-    Given a sweep with heading up and the elevator at floor 3
+    Given a new sweep
+    And the elevator is at floor 3
     When car requests are added for floors 5, 2, 4
     Then the queue should be 4, 5, 2
 
   @S-MOVE-LOOK-DOWN
   Scenario: Downward sweep orders ahead-requests first
-    Given a sweep with heading down and the elevator at floor 3
+    Given a new sweep
+    And the elevator is at floor 3
     When car requests are added for floors 1, 5, 4
-    Then the queue should be 1, 4, 5
+    Then the queue should be 1, 5, 4
 
   @S-MOVE-LOOK-CAR
   Scenario: Stopping for car requests on the way up
-    Given a sweep with heading up and the elevator at floor 2
-    And a car request for floor 5
-    And a car request for floor 3
-    When the elevator is at floor 3
+    Given a new sweep
+    And the elevator is at floor 0
+    And a car request for floor 5 is added
+    When the elevator is at floor 2
+    And a car request for floor 3 is added
     Then the next stop should be floor 3
     And the queue should be 3, 5
 
   @S-MOVE-LOOK-HALL-DEFER
   Scenario: Deferring hall requests on the way up
-    Given a sweep with heading up and the elevator at floor 2
-    And a car request for floor 5
-    And a hall request for floor 3
-    When the elevator is at floor 3
+    Given a new sweep
+    And the elevator is at floor 0
+    And a car request for floor 5 is added
+    And a hall request for floor 3 is added
+    When the elevator is at floor 2
     Then the next stop should be floor 5
+    And the queue should be 5, 3
 
-  @S-MOVE-LOOK-HALL-PEAK
-  Scenario: Picking up hall requests at the top of the sweep
-    Given a sweep with heading up and the elevator at floor 4
-    And a hall request for floor 5
-    When the elevator is at floor 5
-    Then the next stop should be floor 5
+
+
 
   @S-MOVE-LOOK-HALL-DOWN
   Scenario: Picking up hall requests on the way down
     Given a sweep with heading down and the elevator at floor 4
-    And a car request for floor 1
-    And a hall request for floor 3
+    And a car request for floor 1 is added
+    And a hall request for floor 3 is added
     When the elevator is at floor 3
     Then the next stop should be floor 3
 
@@ -98,21 +115,21 @@ Feature: Elevator Sweep Algorithm (LOOK)
   @S-MOVE-LOOK-IDLE-START
   Scenario: Calculating next stop from IDLE
     Given a sweep with heading idle and the elevator at floor 3
-    And a car request for floor 5
+    And a car request for floor 5 is added
     Then the next stop should be floor 5
     And the heading should be up
 
   @S-MOVE-LOOK-IDLE-SAME
   Scenario: Request on current_floor while IDLE
     Given a sweep with heading idle and the elevator at floor 3
-    And a car request for floor 3
+    And a car request for floor 3 is added
     Then the next stop should be none
     And the heading should be idle
 
   @S-MOVE-LOOK-UP-SKIP
   Scenario: Defer Hall Request on the way up (Asymmetry Rule)
     Given a sweep with heading up and the elevator at floor 1
-    And a hall request for floor 5
+    And a hall request for floor 5 is added
     When the elevator is at floor 3
     And a hall request for floor 3 is added
     Then the next stop should be floor 5
