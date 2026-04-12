@@ -46,15 +46,17 @@ Feature: Elevator Sweep Algorithm (LOOK)
     When car requests are added for floors 2, 3, 2, 5
     Then the queue should be 2, 3, 5
 
-  Scenario: Ignore request for the current floor
+  @stop
+  Scenario: Request for the current floor do not change heading
     Given a new sweep
     And the elevator is at floor 3
     When a hall request for floor 3 is added
-    And the next stop should be none
+    And the next stop should be 3
     And the heading should be idle
+    And the queue should be 3
     When a car request for floor 3 is added
-    Then the next stop should be none
-    And the heading should be idle
+    Then the queue should be 3
+
 
   Scenario: Next stop follows the queue
     Given a new sweep
