@@ -61,8 +61,8 @@ defmodule Elevator.Sweep do
   end
 
   @doc "Returns the next floor to stop at."
-  @spec next_stop(t(), floor()) :: floor() | nil
-  def next_stop(sweep, current_floor) do
+  @spec next_stop(t()) :: floor() | nil
+  def next_stop(sweep) do
     sweep
     |> requests()
     |> List.first()
@@ -142,7 +142,7 @@ defmodule Elevator.Sweep do
   end
 
   defp do_add_request(sweep, source, floor) do
-    %{sweep | requests: reqs ++ [{source, floor}]}
+    %{sweep | requests: sweep.requests ++ [{source, floor}]}
   end
 
   defp do_remove_floor(sweep, floor) do

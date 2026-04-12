@@ -127,8 +127,8 @@ defmodule Elevator.Features.SweepTest do
   # --- Helpers ---
   #
 
-  defp do_add_request(context, floor, source) do
-    new_sweep = context.sweep |> add_request(source, floor, context.current_floor)
+  defp do_add_request(context, floor, source, current_floor) do
+    new_sweep = context.sweep |> add_request(source, floor, current_floor)
     {:ok, %{context | sweep: new_sweep}}
   end
 
