@@ -44,13 +44,12 @@ From these rules we derive the test scenarios.
 
 * **Rule: LOOK algorithm [R-MOVE-LOOK]**  
   The `Elevator.Sweep` module implements the **LOOK algorithm** which governs movement and stop priority:
-  1. **Directional Bias**: The elevator travels in its current `heading` as long as there are requests further along that path. Once moving, it satisfies all **Car Requests** in the current direction.
+  1. **Directional Bias**: The elevator travels in its current `heading` as long as there are requests further along that path. Once moving, it satisfies all Car Requests in the current direction.
   2. **Stopping on the Way (Directional Asymmetry)**:
       * This results in an ascending sweep optimized for internal passengers and a descending sweep for external arrivals.
-      * **UP Journeys**: Priority is given to **Car Requests**. **Hall Requests** are picked up on the way ONLY if they are at the "peak" (the furthest request).
+      * **UP Journeys**: Priority is given to Car Requests.
       * **DOWN Journeys**: Pick up ALL requests (Car and Hall) on the way to maximize efficiency for returning cars.
-  3. **The "Look Ahead"**: Before reversing, the system verifies if there are any requests ahead of the current position in the current heading.
-  4. **Reverse on Empty (Idle State)**: If no work remains in the current heading, the elevator reverses to satisfy requests in the opposite direction.
+  3. **Reverse**: When no work remains in the current heading, the elevator reverses to satisfy requests in the opposite direction.
 
 * **Rule: Return to Base [R-MOVE-BASE]**
   * If the elevator remains idle for more than 5 minutes (300 seconds), the elevator moves to the base floor.
