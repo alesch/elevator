@@ -40,7 +40,6 @@ Feature: Elevator Sweep Algorithm (LOOK)
     When a car request for floor 1 is added
     Then the heading should be down
 
-  @stop
   Scenario: duplicates are ignored
     Given a new sweep
     And the elevator is at floor 0

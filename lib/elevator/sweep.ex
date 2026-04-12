@@ -52,6 +52,10 @@ defmodule Elevator.Sweep do
 
   @doc "Returns the sorted queue of requests."
   @spec queue(t(), floor() | :unknown) :: [floor()]
+  def queue(%Sweep{heading: :idle, requests: reqs}, _current_floor) do
+    Enum.map(reqs, &element_to_floor/1)
+  end
+
   def queue(sweep, current_floor) do
     sweep
     |> calculate_look_queue(current_floor)

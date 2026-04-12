@@ -78,7 +78,7 @@ defmodule Elevator.Features.SweepTest do
     context = trace(context)
     expected_floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
 
-    floors = context.sweep |> Sweep.queue()
+    floors = context.sweep |> Sweep.queue(context.current_floor)
 
     assert floors == expected_floors
     {:ok, context}
@@ -91,7 +91,7 @@ defmodule Elevator.Features.SweepTest do
     context = trace(context)
     floor = Arguments.parse_floor(floor_str)
 
-    floors = context.sweep |> Sweep.queue()
+    floors = context.sweep |> Sweep.queue(context.current_floor)
 
     refute floor in floors
     {:ok, context}
