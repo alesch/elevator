@@ -45,11 +45,12 @@ defmodule Elevator.Sweep do
   @doc "Returns the sweep heading."
   def heading(%Sweep{heading: h}), do: h
 
-  @doc "Returns the requests list."
+  @doc "Returns the requests list, raw unsorted."
   def requests(%Sweep{requests: r}), do: r
 
-  def queue(sweep) do
-    sweep.requests |> Enum.map(&element_to_floor/1)
+  def queue(sweep, current_floor) do
+    sweep |> calculate_look_queue(current_floor)
+    # sweep.requests |> Enum.map(&element_to_floor/1)
   end
 
   @doc "Adds a request to the sweep."
@@ -86,14 +87,14 @@ defmodule Elevator.Sweep do
     %{sweep | heading: do_update_heading(sweep, current_floor)}
   end
 
-  defp calculate_look_queue(requests, current_floor, heading) do
+  defp calculate_look_queue(sweep, current_floor) do
     # The LOOK Algorithm "Story":
     # 1. We split the universe into what's "Ahead" and what's "Behind" us.
-    {ahead, behind} = split_by_heading(requests, current_floor, heading)
+    {ahead, behind} = split_by_heading(sweep.requests, current_floor, sweep.heading)
 
     # 2. In the current direction, we decide which requests are immediate stops
     #    and which should be deferred (Look-Ahead logic).
-    {immediate_stops, deferred} = apply_look_priorities(ahead, heading)
+    {immediate_stops, deferred} = apply_look_priorities(ahead, sweep.heading)
 
     # 3. We assemble the journey: Immediate stops (Ahead) -> Deferred/Reverse (Behind).
     assemble_journey(immediate_stops, behind ++ deferred, heading)
@@ -118,7 +119,7 @@ defmodule Elevator.Sweep do
     peak_floor =
       ahead
       # transforms [{:car, 5}, {:hall, 3}] into [5, 3]
-      |> Enum.map(fn {_, f} -> f end)
+      |> Enum.map(&element_to_floor/1)
       # finds the highest floor number (5)
       |> Enum.max(fn -> nil end)
 
@@ -142,7 +143,12 @@ defmodule Elevator.Sweep do
   end
 
   defp do_add_request(sweep, source, floor) do
-    %{sweep | requests: sweep.requests ++ [{source, floor}]}
+    if {source, floor} in sweep.requests do
+      # ignore if duplicate
+      sweep
+    else
+      %{sweep | requests: sweep.requests ++ [{source, floor}]}
+    end
   end
 
   defp do_remove_floor(sweep, floor) do

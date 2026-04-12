@@ -40,6 +40,7 @@ Feature: Elevator Sweep Algorithm (LOOK)
     When a car request for floor 1 is added
     Then the heading should be down
 
+  @stop
   Scenario: duplicates are ignored
     Given a new sweep
     And the elevator is at floor 0
@@ -69,10 +70,11 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Given a new sweep
     And the elevator is at floor 0
     When a car request for floor 3 is added
+    Then the heading should be up
     When the elevator is at floor 3
     Then the queue should be 3
     And the next stop should be 3
-    And the heading should be idle
+    And the heading should be up
     When floor 3 is serviced
     Then the queue should be empty
     And the next stop should be none
@@ -123,6 +125,16 @@ Feature: Elevator Sweep Algorithm (LOOK)
     When the elevator is at floor 2
     Then the next stop should be 5
     And the queue should be 5, 3
+
+  Scenario: Sweep is not interrupted half way through
+    Given a new sweep
+    And the elevator is at floor 5
+    When a car request for floor 0 is added
+    Then the heading should be down
+    When the elevator is at floor 3
+    Then a hall request for floor 4 is added
+    And the next stop should be 0
+    And the heading should be down
 
   #
   # rehoming
