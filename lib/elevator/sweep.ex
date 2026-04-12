@@ -53,7 +53,7 @@ defmodule Elevator.Sweep do
   end
 
   @doc "Adds a request to the sweep."
-  @spec add_request(t(), source(), floor()) :: t()
+  @spec add_request(t(), source(), floor(), floor() | :unknown) :: t()
   def add_request(sweep, source, floor, current_floor) do
     sweep
     |> do_add_request(source, floor)
@@ -64,7 +64,7 @@ defmodule Elevator.Sweep do
   @spec next_stop(t(), floor()) :: floor() | nil
   def next_stop(sweep, current_floor) do
     sweep
-    |> queue(current_floor)
+    |> requests()
     |> List.first()
     |> element_to_floor()
   end

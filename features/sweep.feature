@@ -12,6 +12,14 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Then the queue should be empty
     And the heading should be idle
 
+  Scenario: Next stop is idempotent
+    Given a new sweep
+    And the elevator is at floor 0
+    When a car request for floor 3 is added
+    Then the next stop should be 3
+    Then the next stop should be 3
+    Then the next stop should be 3
+
   Scenario: Adding and servicing a request
     Given a new sweep
     When a car request for floor 3 is added
