@@ -74,9 +74,9 @@ Feature: Elevator Sweep Algorithm (LOOK)
   @S-MOVE-LOOK-SERVICE
   Scenario: Servicing a floor removes all requests for that floor
     Given a new Sweep
-    And a car request for floor 3 is added
+    When a car request for floor 3 is added
     And a hall request for floor 3 is added
-    When floor 3 is serviced
+    And floor 3 is serviced
     Then there should be no requests for floor 3
 
   #

@@ -21,29 +21,6 @@ defmodule Elevator.Features.SweepTest do
     {:ok, %{context | sweep: %Sweep{}, current_floor: 0}}
   end
 
-  # Given a sweep with heading up and the elevator at floor 3
-  defgiven ~r/^a sweep with heading (?<heading>.+) and the elevator at floor (?<floor>.+)$/,
-           %{heading: heading_str, floor: floor_str},
-           context do
-    heading = Arguments.parse_heading(heading_str)
-    floor = Arguments.parse_floor(floor_str)
-    {:ok, %{context | sweep: %{context.sweep | heading: heading}, current_floor: floor}}
-  end
-
-  # Given car requests for floors 2, 5
-  defgiven ~r/^car requests for floors (?<floors>.+)$/, %{floors: floors_str}, context do
-    do_add_car_requests(context, floors_str)
-  end
-
-  # Given a car/hall request for floor X is added
-  defgiven ~r/^a (?<source>.+) request for floor (?<floor>.+) is added$/,
-           %{source: source_str, floor: floor_str},
-           context do
-    source = Arguments.parse_source(source_str)
-    floor = Arguments.parse_floor(floor_str)
-    do_add_request(context, floor, source)
-  end
-
   # Given the elevator is at floor X
   defgiven ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Arguments.parse_floor(floor_str)
@@ -54,11 +31,18 @@ defmodule Elevator.Features.SweepTest do
   # --- When ---
   #
 
-  # When car requests are added for floors 5, 2, 4
-  defwhen ~r/^car requests are added for floors (?<floors>.+)$/,
-          %{floors: floors_str},
-          context do
+  # When car requests for floors 2, 5
+  defwhen ~r/^car requests for floors (?<floors>.+)$/, %{floors: floors_str}, context do
     do_add_car_requests(context, floors_str)
+  end
+
+  # When a car/hall request for floor X is added
+  defwhen ~r/^a (?<source>.+) request for floor (?<floor>.+) is added$/,
+          %{source: source_str, floor: floor_str},
+          context do
+    source = Arguments.parse_source(source_str)
+    floor = Arguments.parse_floor(floor_str)
+    do_add_request(context, floor, source)
   end
 
   # When floor 3 is serviced
