@@ -12,6 +12,11 @@ defmodule Elevator.Features.SweepTest do
     {:ok, %{sweep: %Sweep{}, current_floor: 0}}
   end
 
+  # Given a new sweep
+  defgiven ~r/^a new sweep$/, _vars, context do
+    {:ok, %{context | sweep: %Sweep{}, current_floor: 0}}
+  end
+
   # Given a sweep with heading up and the elevator at floor 3
   defgiven ~r/^a sweep with heading (?<heading>.+) and the elevator at floor (?<floor>.+)$/,
            %{heading: heading_str, floor: floor_str},
@@ -22,27 +27,26 @@ defmodule Elevator.Features.SweepTest do
   end
 
   # Given requests for floors: 2, 5
-  defgiven ~r/^car requests for floors: (?<floors>.+)$/, %{floors: floors_str}, context do
+  defgiven ~r/^car requests for floors (?<floors>.+)$/, %{floors: floors_str}, context do
     do_add_car_requests(context, floors_str)
   end
 
   # When requests are added for floors: 5, 2, 4
-  defwhen ~r/^car requests are added for floors: (?<floors>.+)$/,
+  defwhen ~r/^car requests are added for floors (?<floors>.+)$/,
           %{floors: floors_str},
           context do
     do_add_car_requests(context, floors_str)
   end
 
-  # Then the queue should be: 2, 4, 5
-  defthen ~r/^the queue should be: (?<floors>.+)$/, %{floors: floors_str}, context do
+  # Then the queue should be 2, 4, 5 or empty
+  defthen ~r/^the queue should be (?<floors>.+)$/, %{floors: floors_str}, context do
     expected_floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
 
     # Extract only floors from the requests, using current_floor
     actual_floors =
       context.sweep
       |> Sweep.queue(context.current_floor)
-      |> Enum.map(fn {_, f} -> f end)
-      |> Enum.uniq()
+      |> extract_floors()
 
     assert actual_floors == expected_floors
     {:ok, context}
@@ -72,25 +76,11 @@ defmodule Elevator.Features.SweepTest do
     end)
   end
 
-  # When the elevator reaches floor X
   # When the elevator is at floor X
   defwhen ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Arguments.parse_floor(floor_str)
-    {:ok, Map.put(context, :current_floor, floor)}
-  end
-
-  # Given a sweep with car and hall requests for floor 3
-  defgiven ~r/^a sweep with car and hall requests for floor (?<floor>.+)$/,
-           %{floor: floor_str},
-           context do
-    floor = Arguments.parse_floor(floor_str)
-
-    new_sweep =
-      context.sweep
-      |> Sweep.add_request(:car, floor)
-      |> Sweep.add_request(:hall, floor)
-
-    {:ok, %{context | sweep: new_sweep}}
+    new_sweep = Sweep.floor_serviced(context.sweep, floor)
+    {:ok, %{context | sweep: new_sweep, current_floor: floor}}
   end
 
   # When floor 3 is serviced
@@ -105,15 +95,25 @@ defmodule Elevator.Features.SweepTest do
           %{floor: floor_str},
           context do
     floor = Arguments.parse_floor(floor_str)
-    refute Enum.any?(Sweep.requests(context.sweep), fn {_, f} -> f == floor end)
+
+    floors =
+      context.sweep
+      |> Sweep.requests()
+      |> extract_floors()
+
+    refute floor in floors
     {:ok, context}
   end
 
   # Then the next stop should be floor X
   defthen ~r/^the next stop should be floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Arguments.parse_floor(floor_str)
-    assert Sweep.next_stop(context.sweep, context.current_floor) == floor
-    {:ok, context}
+    assert_next_stop(context, floor)
+  end
+
+  # Then the next stop should be none
+  defthen ~r/^the next stop should be none$/, _vars, context do
+    assert_next_stop(context, nil)
   end
 
   # Then the heading should be up
@@ -121,9 +121,20 @@ defmodule Elevator.Features.SweepTest do
     expected_heading = Arguments.parse_heading(heading_str)
 
     # We check what the heading BECOMES when updated from the current position
-    actual_sweep = Sweep.update_heading(context.sweep, context.current_floor)
+    new_sweep = Sweep.update_heading(context.sweep, context.current_floor)
 
-    assert Sweep.heading(actual_sweep) == expected_heading
+    assert Sweep.heading(new_sweep) == expected_heading
+    {:ok, context}
+  end
+
+  #
+  # --- Helpers ---
+  #
+  defp extract_floors(requests), do: Enum.map(requests, fn {_, f} -> f end)
+
+  defp assert_next_stop(context, expected) do
+    next = Sweep.next_stop(context.sweep, context.current_floor)
+    assert next == expected
     {:ok, context}
   end
 end
