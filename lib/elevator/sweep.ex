@@ -37,49 +37,27 @@ defmodule Elevator.Sweep do
   #
 
   @doc "Initializes a new sweep state."
-  @spec new(:up | :down | :idle, [request()]) :: t()
-  def new(heading \\ :idle, requests \\ []) do
-    %Sweep{heading: heading, requests: requests}
+  @spec new([request()]) :: t()
+  def new(requests \\ []) do
+    %Sweep{requests: requests}
   end
 
   @doc "Returns the sweep heading."
   def heading(%Sweep{heading: h}), do: h
 
-  @doc "Returns the raw request list."
+  @doc "Returns the requests list."
   def requests(%Sweep{requests: r}), do: r
+
+  def queue(sweep) do
+    sweep.requests |> element_to_floor()
+  end
 
   @doc "Adds a request to the sweep."
   @spec add_request(t(), source(), floor()) :: t()
-  def add_request(%Sweep{requests: reqs} = sweep, source, floor) do
-    if {source, floor} in reqs do
-      sweep
-    else
-      %{sweep | requests: reqs ++ [{source, floor}]}
-    end
-  end
-
-  @doc "Returns the queue of requests based on current heading and position."
-  @spec queue(t(), floor() | :unknown) :: [request()]
-  def queue(%Sweep{requests: []}, _), do: []
-
-  def queue(%Sweep{heading: heading, requests: reqs}, :unknown) do
-    if heading == :idle, do: reqs, else: sort_by_heading(reqs, heading)
-  end
-
-  def queue(%Sweep{heading: :idle, requests: reqs} = sweep, current_floor) do
-    case calculate_heading(sweep, current_floor) do
-      :idle ->
-        # No moving required.
-        reqs
-
-      new_heading ->
-        # Apply LOOK algorithm using the initial heading.
-        calculate_look_queue(reqs, current_floor, new_heading)
-    end
-  end
-
-  def queue(%Sweep{heading: heading, requests: requests}, current_floor) do
-    calculate_look_queue(requests, current_floor, heading)
+  def add_request(sweep, source, floor, current_floor) do
+    sweep
+    |> do_add_request(source, floor)
+    |> update_heading(current_floor)
   end
 
   @doc "Returns the next floor to stop at."
@@ -91,21 +69,22 @@ defmodule Elevator.Sweep do
     |> element_to_floor()
   end
 
-  @doc "Removes all requests for the given floor."
+  @doc "Removes all requests for the given floor and updates heading."
   @spec floor_serviced(t(), floor()) :: t()
-  def floor_serviced(%Sweep{requests: reqs} = sweep, floor) do
-    %{sweep | requests: Enum.reject(reqs, fn {_, f} -> f == floor end)}
-  end
-
-  @doc "Updates the heading based on current floor and requests."
-  @spec update_heading(t(), floor() | :unknown) :: t()
-  def update_heading(sweep, current_floor) do
-    %{sweep | heading: calculate_heading(sweep, current_floor)}
+  def floor_serviced(sweep, floor) do
+    sweep
+    |> do_remove_floor(floor)
+    |> update_heading(floor)
   end
 
   #
   # --- Private Functions ---
   #
+
+  @spec update_heading(t(), floor() | :unknown) :: t()
+  defp update_heading(sweep, current_floor) do
+    %{sweep | heading: do_update_heading(sweep, current_floor)}
+  end
 
   defp calculate_look_queue(requests, current_floor, heading) do
     # The LOOK Algorithm "Story":
@@ -162,6 +141,14 @@ defmodule Elevator.Sweep do
     sort_descending(immediate) ++ sort_ascending(return_journey)
   end
 
+  defp do_add_request(sweep, source, floor) do
+    %{sweep | requests: reqs ++ [{source, floor}]}
+  end
+
+  defp do_remove_floor(sweep, floor) do
+    %{sweep | requests: Enum.reject(sweep.requests, fn {_, f} -> f == floor end)}
+  end
+
   defp sort_ascending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :asc)
   defp sort_descending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :desc)
 
@@ -186,9 +173,9 @@ defmodule Elevator.Sweep do
   defp element_to_floor(nil), do: nil
   defp element_to_floor({_, f}), do: f
 
-  defp calculate_heading(%Sweep{requests: []}, _current_floor), do: :idle
+  defp do_update_heading(%Sweep{requests: []}, _current_floor), do: :idle
 
-  defp calculate_heading(sweep, current_floor) do
+  defp do_update_heading(sweep, current_floor) do
     cond do
       any_requests_above?(sweep, current_floor) -> :up
       any_requests_below?(sweep, current_floor) -> :down
