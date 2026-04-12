@@ -21,22 +21,16 @@ defmodule Elevator.Features.SweepTest do
     {:ok, %{context | sweep: %{context.sweep | heading: heading}, current_floor: floor}}
   end
 
-  # When requests are added for floors: 5, 2, 4
   # Given requests for floors: 2, 5
-  defgiven ~r/^requests for floors: (?<floors>.+)$/, %{floors: floors_str}, context do
-    floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
-
-    Enum.reduce(floors, {:ok, context}, fn floor, {:ok, ctx} ->
-      do_add_request(ctx, floor, :car)
-    end)
+  defgiven ~r/^car requests for floors: (?<floors>.+)$/, %{floors: floors_str}, context do
+    do_add_car_requests(context, floors_str)
   end
 
-  defwhen ~r/^requests are added for floors: (?<floors>.+)$/, %{floors: floors_str}, context do
-    floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
-
-    Enum.reduce(floors, {:ok, context}, fn floor, {:ok, ctx} ->
-      do_add_request(ctx, floor, :car)
-    end)
+  # When requests are added for floors: 5, 2, 4
+  defwhen ~r/^car requests are added for floors: (?<floors>.+)$/,
+          %{floors: floors_str},
+          context do
+    do_add_car_requests(context, floors_str)
   end
 
   # Then the queue should be: 2, 4, 5
@@ -70,6 +64,14 @@ defmodule Elevator.Features.SweepTest do
     {:ok, %{context | sweep: new_sweep}}
   end
 
+  defp do_add_car_requests(context, floors_str) do
+    floors = Arguments.parse_list(floors_str, &Arguments.parse_floor/1)
+
+    Enum.reduce(floors, {:ok, context}, fn floor, {:ok, ctx} ->
+      do_add_request(ctx, floor, :car)
+    end)
+  end
+
   # When the elevator reaches floor X
   # When the elevator is at floor X
   defwhen ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
@@ -99,7 +101,9 @@ defmodule Elevator.Features.SweepTest do
   end
 
   # Then there should be no requests for floor 3
-  defthen ~r/^there should be no requests for floor (?<floor>.+)$/, %{floor: floor_str}, context do
+  defthen ~r/^there should be no requests for floor (?<floor>.+)$/,
+          %{floor: floor_str},
+          context do
     floor = Arguments.parse_floor(floor_str)
     refute Enum.any?(Sweep.requests(context.sweep), fn {_, f} -> f == floor end)
     {:ok, context}
