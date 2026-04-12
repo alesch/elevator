@@ -58,7 +58,7 @@ defmodule Elevator.Features.SweepTest do
     context = trace(context)
     source = Arguments.parse_source(source_str)
     floor = Arguments.parse_floor(floor_str)
-    do_add_request(context, floor, source)
+    do_add_request(context, floor, source, context.current_floor)
   end
 
   # When floor 3 is serviced
@@ -101,7 +101,7 @@ defmodule Elevator.Features.SweepTest do
   defthen ~r/^the next stop should be (?<floor>.+)$/, %{floor: floor_str}, context do
     context = trace(context)
     floor = Arguments.parse_floor(floor_str)
-    next = context.sweep |> next_stop()
+    next = context.sweep |> Sweep.next_stop()
     assert next == floor
     {:ok, context}
   end
@@ -109,7 +109,7 @@ defmodule Elevator.Features.SweepTest do
   # Then the next stop should be none
   defthen ~r/^the next stop should be none$/, _vars, context do
     context = trace(context)
-    next = context.sweep |> next_stop()
+    next = context.sweep |> Sweep.next_stop()
     assert next == nil
     {:ok, context}
   end
@@ -128,7 +128,7 @@ defmodule Elevator.Features.SweepTest do
   #
 
   defp do_add_request(context, floor, source, current_floor) do
-    new_sweep = context.sweep |> add_request(source, floor, current_floor)
+    new_sweep = context.sweep |> Sweep.add_request(source, floor, current_floor)
     {:ok, %{context | sweep: new_sweep}}
   end
 
