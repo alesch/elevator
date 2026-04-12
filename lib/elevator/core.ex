@@ -63,18 +63,18 @@ defmodule Elevator.Core do
   @spec current_floor(t()) :: integer() | :unknown
   def current_floor(%Core{hardware: %{current_floor: f}}), do: f
 
-  @doc "Ordered list of floor requests, based on current floor."
+  @doc "Ordered list of floor requests."
   @spec requests(t()) :: [Elevator.Sweep.request()]
-  def requests(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
-    Elevator.Sweep.queue(s, f)
+  def requests(%Core{logic: %{sweep: s}}) do
+    Elevator.Sweep.queue(s)
   end
 
   @spec heading(t()) :: direction()
   def heading(%Core{logic: %{sweep: s}}), do: Elevator.Sweep.heading(s)
 
   @spec next_stop(t()) :: integer() | nil
-  def next_stop(%Core{logic: %{sweep: s}, hardware: %{current_floor: f}}) do
-    Elevator.Sweep.next_stop(s, f)
+  def next_stop(%Core{logic: %{sweep: s}}) do
+    Elevator.Sweep.next_stop(s)
   end
 
   # ---------------------------------------------------------------------------
@@ -386,11 +386,14 @@ defmodule Elevator.Core do
 
   @spec add_sweep_request(t(), Elevator.Sweep.source(), integer()) :: t()
   defp add_sweep_request(state, source, floor) do
+    f = current_floor(state)
+
     Map.update!(state, :logic, fn logic ->
-      Map.update!(logic, :sweep, &Elevator.Sweep.add_request(&1, source, floor))
+      Map.update!(logic, :sweep, &Elevator.Sweep.add_request(&1, source, floor, f))
     end)
   end
 
+  # fixme: review how this is used.
   @spec update_sweep_heading(t()) :: t()
   defp update_sweep_heading(state) do
     f = current_floor(state)
@@ -402,15 +405,9 @@ defmodule Elevator.Core do
 
   @spec floor_serviced(t()) :: t()
   defp floor_serviced(state) do
-    f = current_floor(state)
-
-    if is_integer(f) do
-      Map.update!(state, :logic, fn logic ->
-        Map.update!(logic, :sweep, &Elevator.Sweep.floor_serviced(&1, f))
-      end)
-    else
-      state
-    end
+    Map.update!(state, :logic, fn logic ->
+      Map.update!(logic, :sweep, &Elevator.Sweep.floor_serviced(&1))
+    end)
   end
 
   @spec warm_start?(integer() | :unknown, integer() | :unknown) :: boolean()
