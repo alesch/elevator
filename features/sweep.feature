@@ -20,11 +20,33 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Then the queue should be empty
     And the heading should be idle
 
+  Scenario: Calculating heading up
+    Given a new sweep
+    And the elevator is at floor 3
+    When a car request for floor 5 is added
+    Then the heading should be up
+
+  Scenario: Calculating heading down
+    Given a new sweep
+    And the elevator is at floor 3
+    When a car request for floor 1 is added
+    Then the heading should be down
+
   Scenario: duplicates are ignored
     Given a new sweep
     And the elevator is at floor 0
     When car requests are added for floors 2, 3, 2, 5
     Then the queue should be 2, 3, 5
+
+  Scenario: Ignore request for the current floor
+    Given a new sweep
+    And the elevator at floor 3
+    When a hall request for floor 3 is added
+    Then the next stop should be none
+    And the heading should be idle
+    When a car request for floor 3 is added
+    Then the next stop should be none
+    And the heading should be idle
 
   Scenario: Next stop follows the queue
     Given a new sweep
@@ -95,49 +117,14 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Then the next stop should be floor 5
     And the queue should be 5, 3
 
-
-
-
-  @S-MOVE-LOOK-HALL-DOWN
-  Scenario: Picking up hall requests on the way down
-    Given a sweep with heading down and the elevator at floor 4
-    And a car request for floor 1 is added
-    And a hall request for floor 3 is added
-    When the elevator is at floor 3
-    Then the next stop should be floor 3
-
-  @S-MOVE-LOOK-NEXT
-  Scenario: Calculating next stop
-    Given a sweep with heading up and the elevator at floor 1
-    And requests for floors: 2, 5
-    Then the next stop should be floor 2
-
-  @S-MOVE-LOOK-IDLE-START
-  Scenario: Calculating next stop from IDLE
-    Given a sweep with heading idle and the elevator at floor 3
-    And a car request for floor 5 is added
-    Then the next stop should be floor 5
-    And the heading should be up
-
-  @S-MOVE-LOOK-IDLE-SAME
-  Scenario: Request on current_floor while IDLE
-    Given a sweep with heading idle and the elevator at floor 3
-    And a car request for floor 3 is added
-    Then the next stop should be none
-    And the heading should be idle
-
-  @S-MOVE-LOOK-UP-SKIP
-  Scenario: Defer Hall Request on the way up (Asymmetry Rule)
-    Given a sweep with heading up and the elevator at floor 1
-    And a hall request for floor 5 is added
-    When the elevator is at floor 3
-    And a hall request for floor 3 is added
-    Then the next stop should be floor 5
-    And the queue should be 5, 3
+  #
+  # rehoming
+  #
 
   @S-MOVE-LOOK-UNKNOWN @R-HOME-STRATEGY @R-MOVE-LOOK
   Scenario: Unknown position defaults to downward heading if requests exist
-    Given a sweep with heading idle and the elevator at floor :unknown
+    Given a new sweep
+    And the elevator is at floor unknown
     When a car request for floor 0 is added
     Then the heading should be down
     And the queue should be 0
