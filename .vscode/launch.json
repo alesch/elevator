@@ -7,9 +7,31 @@
       "request": "launch",
       "task": "test",
       "taskArgs": [
+        "--trace",
         "${relativeFile}"
       ],
-      "projectDir": "${workspaceRoot}"
+      "projectDir": "${workspaceRoot}",
+      "requireFiles": [
+        "test/**/test_helper.exs",
+        "test/**/*.exs"
+      ]
+    },
+    {
+      "type": "mix_task",
+      "name": "mix test --only stop",
+      "request": "launch",
+      "task": "test",
+      "taskArgs": [
+        "--trace",
+        "--only",
+        "stop",
+        "${relativeFile}"
+      ],
+      "projectDir": "${workspaceRoot}",
+      "requireFiles": [
+        "test/**/test_helper.exs",
+        "test/**/*.exs"
+      ]
     },
     {
       "type": "mix_task",
@@ -19,7 +41,11 @@
       "taskArgs": [
         "--trace"
       ],
-      "projectDir": "${workspaceRoot}"
+      "projectDir": "${workspaceRoot}",
+      "requireFiles": [
+        "test/**/test_helper.exs",
+        "test/**/*.exs"
+      ]
     }
   ]
 }
