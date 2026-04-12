@@ -209,6 +209,13 @@ defmodule Elevator.Features.MovementTest do
     {:ok, %{context | state: s, actions: actions}}
   end
 
+  # When floor 5 is serviced
+  defwhen ~r/^floor (?<floor>.+) is serviced$/, %{floor: floor_str}, context do
+    floor = Args.parse_floor(floor_str)
+    {s, actions} = Core.process_arrival(context.state, floor)
+    {:ok, %{context | state: s, actions: actions}}
+  end
+
   defwhen ~r/^the elevator passes floor (?<floor>.+)$/, %{floor: floor_str}, context do
     # Passing a floor means arriving but NOT stopping.
     # Use process_arrival and we'll check if it stayed in :moving.
@@ -220,7 +227,7 @@ defmodule Elevator.Features.MovementTest do
   defwhen ~r/^passengers inside the car select floors (?<floors>.+)$/,
           %{floors: floors_str},
           context do
-    floors = parse_list(floors_str, &parse_floor/1)
+    floors = Args.parse_list(floors_str, &Args.parse_floor/1)
 
     s =
       Enum.reduce(floors, context.state, fn f, acc ->
@@ -234,7 +241,7 @@ defmodule Elevator.Features.MovementTest do
   defwhen ~r/^hall requests are received for floors (?<floors>.+)$/,
           %{floors: floors_str},
           context do
-    floors = parse_list(floors_str, &parse_floor/1)
+    floors = Args.parse_list(floors_str, &Args.parse_floor/1)
 
     s =
       Enum.reduce(floors, context.state, fn f, acc ->
