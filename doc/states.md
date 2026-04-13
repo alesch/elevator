@@ -14,6 +14,7 @@ This document is the **Single Source of Truth** for all operational phases and s
 | **`:opening`** | Motor stopped; issuing `{:open_door}`. Waiting for door sensor. | `:stopped` | **`:opening`** |
 | **`:docked`** | At floor, doors confirmed open, serving passengers. | `:stopped` | `:open` |
 | **`:closing`** | Service complete: doors are confirmed closing. | `:stopped` | **`:closing`** |
+| **`:leaving`** | Ready to move; issuing `{:move, dir}`. Waiting for motor start. | **`:running`** | `:closed` |
 
 ---
 
@@ -27,16 +28,17 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | **`:booting`** | `:startup_check` | `vault != sensor` | `{:crawl, :down}` | **`:rehoming`** |
 | **`:rehoming`** | `:floor_arrival` | `floor == 0` | `{:stop_motor}` | **`:arriving`** |
 | **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:opening`** |
-| **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:moving`** |
-| **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:moving`** |
+| **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:leaving`** |
+| **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:leaving`** |
 | **`:moving`** | `:floor_arrival` | `floor == target` | `{:stop_motor}` | **`:arriving`** |
 | **`:arriving`** | **`:motor_stopped`** | None | `{:open_door}` | **`:opening`** |
 | **`:opening`** | **`:door_opened`** | None | `{:set_timer, :door_timeout}` | **`:docked`** |
 | **`:docked`** | `:door_timeout` | None | `{:close_door}` | **`:closing`** |
 | **`:docked`** | `:door_close` | None | `{:close_door}` | **`:closing`** |
 | **`:closing`** | **`:door_closed`** | `requests.empty?` | None | **`:idle`** |
-| **`:closing`** | **`:door_closed`** | `not requests.empty?` | `{:move, dir}` | **`:moving`** |
+| **`:closing`** | **`:door_closed`** | `not requests.empty?` | `{:move, dir}` | **`:leaving`** |
 | **`:closing`** | `:door_obstructed` | None | `{:open_door}` | **`:opening`** |
+| **`:leaving`** | **`:motor_running`** | None | None | **`:moving`** |
 
 ---
 
