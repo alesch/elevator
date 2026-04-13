@@ -50,6 +50,7 @@ From these rules we derive the test scenarios.
       * **UP Journeys**: Priority is given to Car Requests.
       * **DOWN Journeys**: Pick up ALL requests (Car and Hall) on the way to maximize efficiency for returning cars.
   3. **Reverse**: When no work remains in the current heading, the elevator reverses to satisfy requests in the opposite direction.
+  4. **Prime Mover**: The very first request while idle sets the initial journey direction.
 
 * **Rule: Return to Base [R-MOVE-BASE]**
   * If the elevator remains idle for more than 5 minutes (300 seconds), the elevator moves to the base floor.
