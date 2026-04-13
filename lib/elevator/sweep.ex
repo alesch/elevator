@@ -154,14 +154,26 @@ defmodule Elevator.Sweep do
     sort_descending(immediate) ++ sort_ascending(return_journey)
   end
 
+  # --- Request Management ---
+
   @spec do_add_request(t(), source(), floor()) :: t()
   defp do_add_request(sweep, source, floor) do
-    if {source, floor} in sweep.requests do
-      # ignore if duplicate
-      sweep
+    request = {source, floor}
+
+    if floor_in_requests?(sweep.requests, request) do
+      # Floor already requested — promote to :car if needed
+      %{sweep | requests: promote_request(sweep.requests, request)}
     else
-      %{sweep | requests: sweep.requests ++ [{source, floor}]}
+      %{sweep | requests: sweep.requests ++ [request]}
     end
+  end
+
+  @spec promote_request([request()], request()) :: [request()]
+  defp promote_request(requests, {new_source, floor}) do
+    Enum.map(requests, fn
+      {old_source, ^floor} -> {promote_source(old_source, new_source), floor}
+      other -> other
+    end)
   end
 
   @spec do_remove_floor(t(), floor()) :: t()
@@ -206,4 +218,21 @@ defmodule Elevator.Sweep do
       true -> :idle
     end
   end
+
+  #
+  # --- Semantic Helpers ---
+  #
+
+  @spec same_floor?(request(), request()) :: boolean()
+  defp same_floor?({_, floor_a}, {_, floor_b}), do: floor_a == floor_b
+
+  @spec floor_in_requests?([request()], request()) :: boolean()
+  defp floor_in_requests?(requests, request) do
+    Enum.any?(requests, &same_floor?(&1, request))
+  end
+
+  @spec promote_source(source(), source()) :: source()
+  defp promote_source(:car, _), do: :car
+  defp promote_source(_, :car), do: :car
+  defp promote_source(source, _), do: source
 end
