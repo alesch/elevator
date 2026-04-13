@@ -2,13 +2,83 @@ Feature: Elevator Core State Machine
   As the elevator core
   I want to transition between operational phases explicitly
   To ensure logic is predictable and deadlock-free
+  # See states.md for all valid phases and transitions
+
+  #
+  # Phase :idle
+  #
+  @R-CORE-STATE
+  Scenario: idle means motor stopped, door closed and no requests pending
+    Given the core is in phase idle at floor 0
+    Then the motor is stopped
+    And the door is closed
+    And the heading is idle
+    And the queue is empty
 
   @S-PHASE-IDLE-MOVE @R-CORE-STATE
-  Scenario: :idle → :moving
-    Given the core is in phase idle
-    When a request for a different floor is received
+  Scenario: (:idle → :moving) Hall request different floor
+    Given the core is in phase idle at floor 0
+    When a car request for floor 3 is received
     Then the phase is moving
     And the motor is running
+    And the door is closed
+    And the heading is up
+
+  @S-PHASE-IDLE-ARRIVE @R-CORE-STATE
+  Scenario: (:idle → :arriving) Hall request same floor
+    Given the core is in phase idle at floor 0
+    When a hall request for floor 0 is received
+    Then the phase is arriving
+    And the door is opening
+
+  @S-PHASE-IDLE-INACTIVITY @R-CORE-STATE
+  Scenario: (:idle → :moving) Inactivity Timeout
+    Given the core is in phase idle at floor 3
+    And the last activity was 5 minutes ago
+    When the inactivity timeout expires
+    Then the phase is moving
+    And the queue is 0
+    And the heading is down
+
+  #
+  # Phase :moving
+  #
+  @S-PHASE-MOVE-ARRIVE @R-CORE-STATE
+  Scenario: (:moving -> :arriving) Target floor reached
+    Given the core is in phase idle at floor 0
+    And a car request for floor 3 is received
+    Then the phase is moving
+    When the arrival at floor 3 is received
+    Then the phase is arriving
+    And the motor is stopping
+    And the door is closed
+
+  #
+  # Phase :arriving
+  #
+  @R-CORE-STATE
+  Scenario: (:arriving -> :arriving) Doors open after motor is stopped
+    Given the core is in phase idle at floor 0
+    And a car request for floor 3 is received
+    Then the phase is moving
+    When the arrival at floor 3 is received
+    Then the phase is arriving
+    # ---
+    When the motor is stopped
+    Then the door is opening
+    And the phase is arriving
+
+  @S-PHASE-ARRIVE-DOCK @R-CORE-STATE
+  Scenario: (:arriving -> :docked) Doors opening after motor is stopped
+    Given the core is in phase idle at floor 0
+    And a car request for floor 3 is received
+    Then the phase is moving
+    When the arrival at floor 3 is received
+    Then the phase is arriving
+  # ---
+
+
+
 
   @S-PHASE-MOVE-ARRIVE @R-CORE-STATE
   Scenario: :moving → :arriving

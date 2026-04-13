@@ -6,7 +6,7 @@ This table maps every Business Rule defined in [`doc/core_rules.md`](core_rules.
 | :--- | :--- | :--- |
 | **[R-CORE-PURE]** | Pure Logic Core | `[S-SYS-REDUNDANT]` |
 | **[R-CORE-SHELL]** | Imperative Shell | `[S-SYS-PUBSUB]`, `[S-UI-JOURNEY]` |
-| **[R-CORE-STATE]** | Explicit Phase State Machine | `[S-MOVE-WAKEUP]`, `[S-MOVE-DOCKED]`, `[S-MOVE-CLOSING]`, `[S-PHASE-IDLE-MOVE]`, `[S-PHASE-MOVE-ARRIVE]`, `[S-PHASE-ARRIVE-DOCK]`, `[S-PHASE-DOCK-LEAVE]`, `[S-PHASE-LEAVE-MOVE]`, `[S-PHASE-LEAVE-IDLE]`, `[S-PHASE-LEAVE-DOCK]` |
+| **[R-CORE-STATE]** | Explicit Phase State Machine | `[S-MOVE-WAKEUP]`, `[S-MOVE-DOCKED]`, `[S-MOVE-CLOSING]`, `[S-PHASE-IDLE-MOVE]`, `[S-PHASE-MOVE-ARRIVE]`, `[S-PHASE-ARRIVE-DOCK]`, `[S-PHASE-DOCK-LEAVE]`, `[S-PHASE-LEAVE-MOVE]`, `[S-PHASE-LEAVE-IDLE]`, `[S-PHASE-LEAVE-DOCK]`, `[S-PHASE-IDLE-ARRIVE]` |
 | **[R-BOOT-GUARD]** | Boot Blocking | `[S-BOOT-BLOCK-REQ]` |
 | **[R-MOVE-INTENT]** | Intent vs. Action | (Implicitly covered by all Movement scenarios) |
 | **[R-MOVE-LOOK]** | The Four Rules of LOOK | `[S-MOVE-LOOK-UP]`, `[S-MOVE-LOOK-DOWN]`, `[S-MOVE-LOOK-CAR]`, `[S-MOVE-LOOK-HALL-DEFER]`, `[S-MOVE-LOOK-SERVICE]`, `[S-MOVE-LOOK-NEXT]`, `[S-MOVE-SWEEP-CAR]`, `[S-MOVE-SWEEP-HALL]`, `[S-MOVE-MULTI-CAR]`, `[S-MOVE-MULTI-HALL]`, `[S-PHASE-LEAVE-MOVE]`, `[S-PHASE-LEAVE-IDLE]`, `[S-MOVE-LOOK-UNKNOWN]`, `[S-MOVE-HEADING-MAINTENANCE]`, `[S-MOVE-LOOK-IDLE]`, `[S-MOVE-LOOK-PRIORITY]` |

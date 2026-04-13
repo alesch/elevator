@@ -28,6 +28,7 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | **`:rehoming`** | `:motor_stopped` | `is_integer(floor)` | None | **`:idle`** |
 | **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:arriving`** |
 | **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:moving`** |
+| **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:moving`** |
 | **`:moving`** | `:floor_arrival` | `floor == target` | `{:stop_motor}` | **`:arriving`** |
 | **`:arriving`** | `:motor_stopped` | Only if FICS derived | `{:open_door}` | **`:arriving`** |
 | **`:arriving`** | `:door_opened` | None | `{:set_timer, :door_timeout}` | **`:docked`** |
@@ -36,7 +37,6 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | **`:leaving`** | `:door_closed` | `requests.empty?` | None | **`:idle`** |
 | **`:leaving`** | `:door_closed` | `not requests.empty?` | `{:move, dir}` | **`:moving`** |
 | **`:leaving`** | `:door_obstructed` | None | `{:open_door}` | **`:arriving`** |
-| **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:moving`** |
 
 ---
 
