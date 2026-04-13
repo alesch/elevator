@@ -10,9 +10,10 @@ This document is the **Single Source of Truth** for all operational phases and s
 | **`:idle`** | At floor, stationary, no active work. | `:stopped` | `:closed` |
 | **`:rehoming`** | Recovering position by moving down slowly to Ground Floor (F0). | `:crawling` | `:closed` |
 | **`:moving`** | Traveling toward a target floor at normal speed. | `:running` | `:closed` |
-| **`:arriving`** | Target reached: motor braking and/or door opening sequence. | `:stopping` | `:opening` |
+| **`:arriving`** | Target reached: motor is braking. Waiting for confirmation of stop. | **`:stopping`** | `:closed` |
+| **`:opening`** | Motor stopped; issuing `{:open_door}`. Waiting for door sensor. | `:stopped` | **`:opening`** |
 | **`:docked`** | At floor, doors confirmed open, serving passengers. | `:stopped` | `:open` |
-| **`:leaving`** | Service complete: doors are confirmed closing. | `:stopped` | `:closing` |
+| **`:closing`** | Service complete: doors are confirmed closing. | `:stopped` | **`:closing`** |
 
 ---
 
@@ -24,19 +25,18 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | :--- | :--- | :--- | :--- | :--- |
 | **`:booting`** | `:startup_check` | `vault == sensor` | None | **`:idle`** |
 | **`:booting`** | `:startup_check` | `vault != sensor` | `{:crawl, :down}` | **`:rehoming`** |
-| **`:rehoming`** | `:floor_arrival` | `is_integer(floor)` | `{:stop_motor}` | **`:rehoming`** |
-| **`:rehoming`** | `:motor_stopped` | `is_integer(floor)` | None | **`:idle`** |
-| **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:arriving`** |
+| **`:rehoming`** | `:floor_arrival` | `floor == 0` | `{:stop_motor}` | **`:arriving`** |
+| **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:opening`** |
 | **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:moving`** |
 | **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:moving`** |
 | **`:moving`** | `:floor_arrival` | `floor == target` | `{:stop_motor}` | **`:arriving`** |
-| **`:arriving`** | `:motor_stopped` | Only if FICS derived | `{:open_door}` | **`:arriving`** |
-| **`:arriving`** | `:door_opened` | None | `{:set_timer, :door_timeout}` | **`:docked`** |
-| **`:docked`** | `:door_timeout` | None | `{:close_door}` | **`:leaving`** |
-| **`:docked`** | `:door_close` | None | `{:close_door}` | **`:leaving`** |
-| **`:leaving`** | `:door_closed` | `requests.empty?` | None | **`:idle`** |
-| **`:leaving`** | `:door_closed` | `not requests.empty?` | `{:move, dir}` | **`:moving`** |
-| **`:leaving`** | `:door_obstructed` | None | `{:open_door}` | **`:arriving`** |
+| **`:arriving`** | **`:motor_stopped`** | None | `{:open_door}` | **`:opening`** |
+| **`:opening`** | **`:door_opened`** | None | `{:set_timer, :door_timeout}` | **`:docked`** |
+| **`:docked`** | `:door_timeout` | None | `{:close_door}` | **`:closing`** |
+| **`:docked`** | `:door_close` | None | `{:close_door}` | **`:closing`** |
+| **`:closing`** | **`:door_closed`** | `requests.empty?` | None | **`:idle`** |
+| **`:closing`** | **`:door_closed`** | `not requests.empty?` | `{:move, dir}` | **`:moving`** |
+| **`:closing`** | `:door_obstructed` | None | `{:open_door}` | **`:opening`** |
 
 ---
 
@@ -74,18 +74,20 @@ stateDiagram-v2
     booting --> idle : :startup_check (agree)
     booting --> rehoming : :startup_check (mismatch)
     
-    rehoming --> idle : :floor_arrival (F0)
+    rehoming --> arriving : :floor_arrival (F0)
     
     idle --> moving : :request_floor (diff) / :inactivity_timeout
-    idle --> arriving : :request_floor (same)
+    idle --> opening : :request_floor (same)
     
     moving --> arriving : :floor_arrival (target)
     
-    arriving --> docked : :door_opened
+    arriving --> opening : :motor_stopped
     
-    docked --> leaving : :door_timeout / :door_close
+    opening --> docked : :door_opened
     
-    leaving --> moving : :door_closed (work remain)
-    leaving --> idle : :door_closed (no work)
-    leaving --> arriving : :door_obstructed
+    docked --> closing : :door_timeout / :door_close
+    
+    closing --> moving : :door_closed (work remain)
+    closing --> idle : :door_closed (no work)
+    closing --> opening : :door_obstructed
 ```
