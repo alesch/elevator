@@ -46,7 +46,6 @@ Feature: Elevator Sweep Algorithm (LOOK)
     When car requests are added for floors 2, 3, 2, 5
     Then the queue should be 2, 3, 5
 
-  @stop
   Scenario: Request for the current floor do not change heading
     Given a new sweep
     And the elevator is at floor 3
@@ -101,11 +100,32 @@ Feature: Elevator Sweep Algorithm (LOOK)
     Then the queue should be 4, 5, 2
 
   @S-MOVE-LOOK-DOWN
-  Scenario: Downward sweep orders ahead-requests first
+  Scenario: Prioritize people leaving the elevator
     Given a new sweep
     And the elevator is at floor 3
     When car requests are added for floors 1, 5, 4
-    Then the queue should be 1, 5, 4
+    Then the queue should be 1, 4, 5
+
+  @S-MOVE-LOOK-IDLE
+  Scenario: The first request while idle sets the initial heading.
+    Given a new sweep
+    And the elevator is at floor 3
+    When car requests are added for floors 2, 4
+    Then the heading should be down
+    When floor 2 is serviced
+    And floor 4 is serviced
+    Then the heading should be idle
+    When car requests are added for floors 4, 2
+    Then the heading should be up
+
+  @S-MOVE-LOOK-PRIORITY
+  Scenario: LOOK priority before asymmetry rule
+    Given a new sweep
+    And the elevator is at floor 3
+    When car requests are added for floors 2, 4
+    # because F2 was added first, heading becomes down
+    # and sweeps are not interrupted until they end.
+    Then the queue should be 2, 4
 
   @S-MOVE-LOOK-CAR
   Scenario: Stopping for car requests on the way up
