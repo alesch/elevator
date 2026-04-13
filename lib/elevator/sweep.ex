@@ -212,10 +212,30 @@ defmodule Elevator.Sweep do
   defp do_update_heading(%Sweep{requests: []}, _current_floor), do: :idle
 
   defp do_update_heading(sweep, current_floor) do
-    cond do
-      any_requests_above?(sweep, current_floor) -> :up
-      any_requests_below?(sweep, current_floor) -> :down
-      true -> :idle
+    case sweep.heading do
+      :idle ->
+        # Starting fresh — pick a direction based on where requests are
+        cond do
+          any_requests_above?(sweep, current_floor) -> :up
+          any_requests_below?(sweep, current_floor) -> :down
+          true -> :idle
+        end
+
+      :up ->
+        # Keep going up if there are still requests above; otherwise reverse or idle
+        cond do
+          any_requests_above?(sweep, current_floor) -> :up
+          any_requests_below?(sweep, current_floor) -> :down
+          true -> :idle
+        end
+
+      :down ->
+        # Keep going down if there are still requests below; otherwise reverse or idle
+        cond do
+          any_requests_below?(sweep, current_floor) -> :down
+          any_requests_above?(sweep, current_floor) -> :up
+          true -> :idle
+        end
     end
   end
 
