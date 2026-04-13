@@ -26,7 +26,7 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 | :--- | :--- | :--- | :--- | :--- |
 | **`:booting`** | `:startup_check` | `vault == sensor` | None | **`:idle`** |
 | **`:booting`** | `:startup_check` | `vault != sensor` | `{:crawl, :down}` | **`:rehoming`** |
-| **`:rehoming`** | `:floor_arrival` | `floor == 0` | `{:stop_motor}` | **`:arriving`** |
+| **`:rehoming`** | `:floor_arrival` | `is_integer(floor)` | `{:stop_motor}` | **`:arriving`** |
 | **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:opening`** |
 | **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:leaving`** |
 | **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:leaving`** |
