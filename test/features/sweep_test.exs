@@ -100,9 +100,9 @@ defmodule Elevator.Features.SweepTest do
   # Then the next stop should be X
   defthen ~r/^the next stop should be (?<floor>.+)$/, %{floor: floor_str}, context do
     context = trace(context)
-    floor = Arguments.parse_floor(floor_str)
-    next = context.sweep |> Sweep.next_stop(context.current_floor)
-    assert next == floor
+    expected_floor = Arguments.parse_floor(floor_str)
+    next_floor = context.sweep |> Sweep.next_stop(context.current_floor)
+    assert next_floor == expected_floor
     {:ok, context}
   end
 
