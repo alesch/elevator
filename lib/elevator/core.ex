@@ -63,18 +63,17 @@ defmodule Elevator.Core do
   @spec current_floor(t()) :: integer() | :unknown
   def current_floor(%Core{hardware: %{current_floor: f}}), do: f
 
-  @doc "Ordered list of floor requests."
-  @spec requests(t()) :: [Elevator.Sweep.request()]
-  def requests(%Core{logic: %{sweep: s}}) do
-    Elevator.Sweep.queue(s)
-  end
+  @doc "Ordered list of the floor queue."
+  @spec queue(t()) :: [floor()]
+  def queue(%Core{} = state),
+    do: Elevator.Sweep.queue(state.logic.sweep, state.hardware.current_floor)
 
   @spec heading(t()) :: direction()
   def heading(%Core{logic: %{sweep: s}}), do: Elevator.Sweep.heading(s)
 
   @spec next_stop(t()) :: integer() | nil
-  def next_stop(%Core{logic: %{sweep: s}}) do
-    Elevator.Sweep.next_stop(s)
+  def next_stop(%Core{} = state) do
+    Elevator.Sweep.next_stop(state.logic.sweep, state.hardware.current_floor)
   end
 
   # ---------------------------------------------------------------------------
