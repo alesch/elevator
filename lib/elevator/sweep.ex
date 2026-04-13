@@ -175,11 +175,6 @@ defmodule Elevator.Sweep do
   @spec sort_descending([request()]) :: [request()]
   defp sort_descending(requests), do: Enum.sort_by(requests, fn {_, f} -> f end, :desc)
 
-  @spec sort_by_heading([request()], :up | :down | :idle) :: [request()]
-  defp sort_by_heading(requests, :up), do: sort_ascending(requests)
-  defp sort_by_heading(requests, :down), do: sort_descending(requests)
-  defp sort_by_heading(requests, :idle), do: requests
-
   @spec any_requests_above?(t(), floor() | :unknown) :: boolean()
   defp any_requests_above?(_sweep, :unknown), do: false
 
