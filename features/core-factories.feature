@@ -22,7 +22,7 @@ Feature: Elevator Core State Machine
         And the door is open
         And the heading is idle
         And the queue is empty
-        And the current floor position is floor 3
+        And the current floor position is 3
         And the phase is docked
 
     Scenario: Moving from and to
