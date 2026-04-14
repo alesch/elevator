@@ -222,12 +222,6 @@ defmodule Elevator.Gherkin.CoreSteps do
     {:ok, context}
   end
 
-  defthen ~r/^the current position is (?<floor>.+)$/, %{floor: floor_str}, context do
-    expected = Args.parse_floor(floor_str)
-    assert Core.current_floor(context.state) == expected
-    {:ok, context}
-  end
-
   defthen ~r/^the door timeout timer is set$/, _vars, context do
     assert Enum.any?(context.actions, fn a -> match?({:set_timer, :door_timeout, _}, a) end)
     {:ok, context}
