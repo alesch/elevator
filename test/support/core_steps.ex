@@ -203,6 +203,11 @@ defmodule Elevator.Gherkin.CoreSteps do
     {:ok, context}
   end
 
+  defthen ~r/^the queue is empty$/, _vars, context do
+    assert Core.queue(context.state) == []
+    {:ok, context}
+  end
+
   defthen ~r/^the queue is (?<val>.+)$/, %{val: val_str}, context do
     expected = Args.parse_list(val_str, &Args.parse_floor/1)
     actual = Core.queue(context.state)

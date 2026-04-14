@@ -299,9 +299,7 @@ defmodule Elevator.Core do
   end
 
   defp do_transit(%Core{logic: %{phase: :booting}, signal: :rehoming_started} = state) do
-    state
-    |> put_in([Access.key(:logic), :phase], :rehoming)
-    |> add_sweep_request(:car, 0)
+    put_in(state.logic.phase, :rehoming)
   end
 
   # Rehoming -> Arriving
@@ -438,7 +436,7 @@ defmodule Elevator.Core do
         actions ++ [{:stop_motor}]
 
       entered_rehoming ->
-        actions ++ [{:crawl, heading(transitions_applied)}]
+        actions ++ [{:crawl, :down}]
 
       entered_leaving ->
         # [R-MOVE-LOOK] Heading should already be set by transit logic calling next_stop
