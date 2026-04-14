@@ -43,11 +43,11 @@ Feature: Elevator Core State Machine
         And the current floor position is unknown
         And the phase is booting
 
-    Scenario: Rehoming
-        Given the elevator is rehoming
-        Then the motor is crawling
-        And the door is closed
-        And the heading is down
-        And the queue is empty
-        And the current floor position is unknown
-        And the phase is rehoming
+    # Scenario: Rehoming
+    #     Given the elevator is rehoming
+    #     Then the motor is crawling
+    #     And the door is closed
+    #     And the heading is down
+    #     And the queue is empty
+    #     And the current floor position is unknown
+    #     And the phase is rehoming

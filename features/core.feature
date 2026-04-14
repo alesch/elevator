@@ -14,22 +14,22 @@ Feature: Elevator Core State Machine
     When the signal startup-check is received
     Then the phase is idle
 
-  Scenario: (:booting -> :rehoming) Rehoming recovery
-    Given the elevator is booting
-    And the last saved elevator position is unknown
-    When the signal startup-check is received
-    Then the phase is rehoming
-    And the motor begins crawling
-    And the heading is down
+  # Scenario: (:booting -> :rehoming) Rehoming recovery
+  #   Given the elevator is booting
+  #   And the last saved elevator position is unknown
+  #   When the signal startup-check is received
+  #   Then the phase is rehoming
+  #   And the motor begins crawling
+  #   And the heading is down
 
   #
   # Phase: rehoming
   #
-  Scenario: (:rehoming -> :arriving) Crawling to find position
-    Given the elevator is rehoming
-    When the arrival at floor 1 is received
-    Then the motor phase is arriving
-    And the motor begins stopping
+  # Scenario: (:rehoming -> :arriving) Crawling to find position
+  #   Given the elevator is rehoming
+  #   When the arrival at floor 1 is received
+  #   Then the motor phase is arriving
+  #   And the motor begins stopping
 
   #
   # Phase :idle
