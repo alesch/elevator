@@ -38,7 +38,7 @@ Feature: Elevator Core State Machine
   Scenario: (:idle → :moving) Hall request different floor
     Given the core is in phase idle at floor 0
     When a car request for floor 3 is received
-    Then the phase is moving
+    Then the phase is leaving
     And the motor begins running
     And the door is closed
     And the heading is up
@@ -47,7 +47,7 @@ Feature: Elevator Core State Machine
   Scenario: (:idle → :arriving) Hall request same floor
     Given the core is in phase idle at floor 0
     When a hall request for floor 0 is received
-    Then the phase is arriving
+    Then the phase is opening
     And the door begins opening
 
   @S-PHASE-IDLE-INACTIVITY @R-CORE-STATE
@@ -55,7 +55,7 @@ Feature: Elevator Core State Machine
     Given the core is in phase idle at floor 3
     And the last activity was 5 minutes ago
     When the inactivity timeout expires
-    Then the phase is moving
+    Then the phase is leaving
     And the queue is 0
     And the heading is down
 

@@ -206,7 +206,7 @@ defmodule Elevator.Gherkin.CoreSteps do
   defthen ~r/^the queue is (?<val>.+)$/, %{val: val_str}, context do
     expected = Args.parse_list(val_str, &Args.parse_floor/1)
     actual = Core.queue(context.state)
-    assert actual == expected, "Expected queue #{inspect(expected)}, got #{inspect(actual)}"
+    assert actual == expected
     {:ok, context}
   end
 
