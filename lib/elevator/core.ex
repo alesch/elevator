@@ -27,7 +27,7 @@ defmodule Elevator.Core do
               last_activity_at: 0
             }
 
-  @type phase :: :booting | :idle | :moving | :arriving | :docked | :leaving | :rehoming
+  @type phase :: :booting | :idle | :moving | :arriving | :opening | :docked | :closing | :leaving | :rehoming
   @type door_status :: :closed | :opening | :open | :closing | :obstructed
   @type motor_status :: :stopped | :running | :stopping | :crawling
 
@@ -98,8 +98,8 @@ defmodule Elevator.Core do
     booting()
     |> handle_event(:startup_check, %{vault: nil, sensor: nil})
     |> elem(0)
-    # The system is now in :rehoming but motor hasn't confirmed running
-    |> handle_event(:motor_running)
+    # Simulate hardware confirming the {:crawl, :down} action
+    |> handle_event(:motor_crawling)
     |> elem(0)
   end
 
@@ -215,12 +215,10 @@ defmodule Elevator.Core do
     if warm_start?(v, s) do
       state
       |> put_in([Access.key(:hardware), :current_floor], v)
-      # fixme
       |> Map.put(:signal, :recovery_complete)
     else
-      Map.put(state, :signal, :rehoming_started)
-      # fixme
-      |> put_in([Access.key(:hardware), :motor_status], :crawling)
+      state
+      |> Map.put(:signal, :rehoming_started)
     end
   end
 
@@ -306,31 +304,26 @@ defmodule Elevator.Core do
     |> add_sweep_request(:car, 0)
   end
 
-  # Rehoming
-  defp do_transit(
-         %Core{
-           logic: %{phase: :rehoming},
-           hardware: %{current_floor: floor, motor_status: :stopped}
-         } = state
-       )
+  # Rehoming -> Arriving
+  defp do_transit(%Core{logic: %{phase: :rehoming}, hardware: %{current_floor: floor}} = state)
        when is_integer(floor) do
-    put_in(state.logic.phase, :idle)
+    put_in(state.logic.phase, :arriving)
   end
 
-  # Idle
+  # Idle -> Opening or Leaving
   defp do_transit(%Core{logic: %{phase: :idle}, signal: sig} = state) do
     nxt = next_stop(state)
     has_work = not is_nil(nxt)
 
     cond do
       has_work and nxt == current_floor(state) ->
-        state |> put_in([Access.key(:logic), :phase], :arriving) |> floor_serviced()
+        state |> put_in([Access.key(:logic), :phase], :opening) |> floor_serviced()
 
       has_work ->
-        put_in(state.logic.phase, :moving)
+        put_in(state.logic.phase, :leaving)
 
       sig == :door_open ->
-        state |> put_in([Access.key(:logic), :phase], :arriving) |> floor_serviced()
+        state |> put_in([Access.key(:logic), :phase], :opening) |> floor_serviced()
 
       true ->
         state
@@ -346,11 +339,15 @@ defmodule Elevator.Core do
     end
   end
 
-  # Arriving -> Docked
-  defp do_transit(%Core{logic: %{phase: :arriving}, hardware: %{door_status: :open}} = state) do
+  # Arriving -> Opening
+  defp do_transit(%Core{logic: %{phase: :arriving}, hardware: %{motor_status: :stopped}} = state) do
+    put_in(state.logic.phase, :opening)
+  end
+
+  # Opening -> Docked
+  defp do_transit(%Core{logic: %{phase: :opening}, hardware: %{door_status: :open}} = state) do
     state
     |> put_in([Access.key(:logic), :phase], :docked)
-    |> floor_serviced()
   end
 
   # Docked -> Closing
@@ -374,7 +371,8 @@ defmodule Elevator.Core do
   end
 
   # Leaving -> Moving
-  defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{motor_status: :running}} = state) do
+  defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{motor_status: status}} = state)
+       when status in [:running, :crawling] do
     put_in(state.logic.phase, :moving)
   end
 
@@ -432,30 +430,18 @@ defmodule Elevator.Core do
   @spec update_motor_action([action()], t(), t()) :: [action()]
   defp update_motor_action(actions, baseline, transitions_applied) do
     entered_arriving = phase_entered?(baseline, transitions_applied, :arriving)
-    entered_idle = phase_entered?(baseline, transitions_applied, :idle)
+    entered_leaving = phase_entered?(baseline, transitions_applied, :leaving)
     entered_rehoming = phase_entered?(baseline, transitions_applied, :rehoming)
-    entered_moving = phase_entered?(baseline, transitions_applied, :moving)
 
     cond do
       entered_arriving and transitions_applied.hardware.motor_status != :stopped ->
         actions ++ [{:stop_motor}]
 
-      entered_idle and transitions_applied.hardware.motor_status != :stopped ->
-        actions ++ [{:stop_motor}]
-
       entered_rehoming ->
         actions ++ [{:crawl, heading(transitions_applied)}]
 
-      entered_moving ->
-        actions ++ [{:move, heading(transitions_applied)}]
-
-      transitions_applied.logic.phase == :rehoming and
-        is_integer(transitions_applied.hardware.current_floor) and
-          transitions_applied.hardware.motor_status == :crawling ->
-        actions ++ [{:stop_motor}]
-
-      transitions_applied.logic.phase == :moving and
-          heading(baseline) != heading(transitions_applied) ->
+      entered_leaving ->
+        # [R-MOVE-LOOK] Heading should already be set by transit logic calling next_stop
         actions ++ [{:move, heading(transitions_applied)}]
 
       true ->
@@ -465,18 +451,14 @@ defmodule Elevator.Core do
 
   @spec update_door_action([action()], t(), t()) :: [action()]
   defp update_door_action(actions, baseline, transitions_applied) do
-    new_ready_open = door_ready_to_open?(transitions_applied)
-    old_ready_open = door_ready_to_open?(baseline)
-
-    new_ready_close = door_ready_to_close?(transitions_applied)
-    old_ready_close = door_ready_to_close?(baseline)
+    new_ready_open = phase_entered?(baseline, transitions_applied, :opening)
+    new_ready_close = phase_entered?(baseline, transitions_applied, :closing)
 
     cond do
-      new_ready_open and not old_ready_open and transitions_applied.hardware.door_status != :open ->
+      new_ready_open and transitions_applied.hardware.door_status != :open ->
         actions ++ [{:open_door}]
 
-      transitions_applied.logic.phase == :closing and baseline.logic.phase != :closing and
-          transitions_applied.hardware.door_status != :closed ->
+      new_ready_close and transitions_applied.hardware.door_status != :closed ->
         actions ++ [{:close_door}]
 
       true ->
