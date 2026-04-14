@@ -12,8 +12,10 @@ defmodule Elevator.Gherkin.Arguments do
   def parse_floor(val) when is_integer(val), do: val
 
   def parse_floor(val) when val in [":unknown", "unknown", "UNKNOWN"], do: :unknown
+
   def parse_floor(val) when val in [nil, ""],
     do: raise(ArgumentError, "Floor argument is missing or empty.")
+
   def parse_floor(val) when val in ["GROUND", "Ground", "ground", ":ground "], do: 0
   def parse_floor(val) when val in ["BASE", "Base", "base", ":base"], do: 0
   def parse_floor("F" <> n), do: String.to_integer(n)
@@ -43,7 +45,17 @@ defmodule Elevator.Gherkin.Arguments do
           "Invalid heading: #{inspect(val)}. Expected 'up', 'down', or 'idle'."
   end
 
-  @valid_phases [:booting, :idle, :moving, :arriving, :docked, :leaving, :rehoming]
+  @valid_phases [
+    :booting,
+    :idle,
+    :moving,
+    :arriving,
+    :docked,
+    :leaving,
+    :rehoming,
+    :opening,
+    :closing
+  ]
 
   @doc """
   Parses a phase argument from Gherkin text to an atom.
@@ -52,10 +64,12 @@ defmodule Elevator.Gherkin.Arguments do
   """
   def parse_phase(val) when is_binary(val) do
     phase = val |> String.trim_leading(":") |> String.downcase() |> String.to_atom()
+
     if phase in @valid_phases do
       phase
     else
-      raise ArgumentError, "Invalid phase: #{inspect(val)}. Expected one of: #{inspect(@valid_phases)}"
+      raise ArgumentError,
+            "Invalid phase: #{inspect(val)}. Expected one of: #{inspect(@valid_phases)}"
     end
   end
 
@@ -73,10 +87,12 @@ defmodule Elevator.Gherkin.Arguments do
   """
   def parse_motor_status(val) when is_binary(val) do
     status = val |> String.trim_leading(":") |> String.downcase() |> String.to_atom()
+
     if status in @valid_motor_statuses do
       status
     else
-      raise ArgumentError, "Invalid motor status: #{inspect(val)}. Expected one of: #{inspect(@valid_motor_statuses)}"
+      raise ArgumentError,
+            "Invalid motor status: #{inspect(val)}. Expected one of: #{inspect(@valid_motor_statuses)}"
     end
   end
 
@@ -87,10 +103,12 @@ defmodule Elevator.Gherkin.Arguments do
   """
   def parse_door_status(val) when is_binary(val) do
     status = val |> String.trim_leading(":") |> String.downcase() |> String.to_atom()
+
     if status in @valid_door_statuses do
       status
     else
-      raise ArgumentError, "Invalid door status: #{inspect(val)}. Expected one of: #{inspect(@valid_door_statuses)}"
+      raise ArgumentError,
+            "Invalid door status: #{inspect(val)}. Expected one of: #{inspect(@valid_door_statuses)}"
     end
   end
 

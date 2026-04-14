@@ -215,9 +215,12 @@ defmodule Elevator.Core do
     if warm_start?(v, s) do
       state
       |> put_in([Access.key(:hardware), :current_floor], v)
+      # fixme
       |> Map.put(:signal, :recovery_complete)
     else
       Map.put(state, :signal, :rehoming_started)
+      # fixme
+      |> put_in([Access.key(:hardware), :motor_status], :crawling)
     end
   end
 
@@ -350,28 +353,29 @@ defmodule Elevator.Core do
     |> floor_serviced()
   end
 
-  # Docked -> Leaving
+  # Docked -> Closing
   defp do_transit(%Core{logic: %{phase: :docked}, signal: sig} = state)
        when sig in [:door_timeout, :door_close] do
-    put_in(state.logic.phase, :leaving)
+    put_in(state.logic.phase, :closing)
   end
 
-  # Leaving -> Arriving (Obstruction or Open)
-  defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{door_sensor: :blocked}} = state) do
-    put_in(state.logic.phase, :arriving)
+  # Closing -> Opening (Obstruction)
+  defp do_transit(%Core{logic: %{phase: :closing}, hardware: %{door_sensor: :blocked}} = state) do
+    put_in(state.logic.phase, :opening)
   end
 
-  defp do_transit(%Core{logic: %{phase: :leaving}, signal: :door_open} = state) do
-    put_in(state.logic.phase, :arriving)
-  end
-
-  # Leaving -> Settle
-  defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{door_status: :closed}} = state) do
+  # Closing -> Settle (Idle or Leaving)
+  defp do_transit(%Core{logic: %{phase: :closing}, hardware: %{door_status: :closed}} = state) do
     if heading(state) == :idle do
       put_in(state.logic.phase, :idle)
     else
-      put_in(state.logic.phase, :moving)
+      put_in(state.logic.phase, :leaving)
     end
+  end
+
+  # Leaving -> Moving
+  defp do_transit(%Core{logic: %{phase: :leaving}, hardware: %{motor_status: :running}} = state) do
+    put_in(state.logic.phase, :moving)
   end
 
   # Default
@@ -471,7 +475,7 @@ defmodule Elevator.Core do
       new_ready_open and not old_ready_open and transitions_applied.hardware.door_status != :open ->
         actions ++ [{:open_door}]
 
-      new_ready_close and not old_ready_close and
+      transitions_applied.logic.phase == :closing and baseline.logic.phase != :closing and
           transitions_applied.hardware.door_status != :closed ->
         actions ++ [{:close_door}]
 
@@ -554,10 +558,10 @@ defmodule Elevator.Core do
   end
 
   defp door_ready_to_open?(state) do
-    state.logic.phase == :arriving and state.hardware.motor_status == :stopped
+    state.logic.phase == :opening
   end
 
   defp door_ready_to_close?(state) do
-    state.logic.phase == :leaving
+    state.logic.phase == :closing
   end
 end
