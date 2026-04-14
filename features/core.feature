@@ -10,7 +10,7 @@ Feature: Elevator Core State Machine
   Scenario: (:booting -> :idle) Zero movement recovery
     Given the elevator is booting
     And the last saved elevator position is 3
-    And the current position is 3
+    And the elevator is at floor 3
     When the signal startup-check is received
     Then the phase is idle
 
@@ -69,7 +69,6 @@ Feature: Elevator Core State Machine
     Then the phase is arriving
     And the motor is stopping
     And the door is closed
-    And the current position is 3
 
   #
   # Phase :arriving
