@@ -41,7 +41,7 @@ defmodule Elevator.Gherkin.CoreSteps do
 
   # --- Given: State Modifiers (Pre-conditions) ---
 
-  defgiven ~r/^the current position is (?<floor>.+)$/, %{floor: floor_str}, context do
+  defgiven ~r/^the current floor position is (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
     state = put_in(context.state.hardware.current_floor, floor)
     {:ok, %{context | state: state}}

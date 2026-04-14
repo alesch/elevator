@@ -22,7 +22,7 @@ Feature: Elevator Core State Machine
         And the door is open
         And the heading is idle
         And the queue is empty
-        And the current position is at floor 3
+        And the current floor position is floor 3
         And the phase is docked
 
     Scenario: Moving from and to
@@ -31,7 +31,7 @@ Feature: Elevator Core State Machine
         And the door is closed
         And the heading is up
         And the queue is 3
-        And the current position is unknown
+        And the current floor position is unknown
         And the phase is moving
 
     Scenario: Booting
@@ -40,7 +40,7 @@ Feature: Elevator Core State Machine
         And the door is closed
         And the heading is idle
         And the queue is empty
-        And the current position is unknown
+        And the current floor position is unknown
         And the phase is booting
 
     Scenario: Rehoming
@@ -49,5 +49,5 @@ Feature: Elevator Core State Machine
         And the door is closed
         And the heading is down
         And the queue is empty
-        And the current position is unknown
+        And the current floor position is unknown
         And the phase is rehoming
