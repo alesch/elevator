@@ -42,31 +42,9 @@ graph TD
 
 ## 3. Boot & Recovery Sequence
 
+FIXME:
 The system performs a "Smart Homing" check during the recovery of the Hardware Stack.
 
-```mermaid
-sequenceDiagram
-    participant V as Elevator.Vault
-    participant S as Elevator.Sensor
-    participant C as Elevator.Controller
-    participant M as Elevator.Motor
-
-    Note over C,M: Hardware Reboot Sequence
-    S->>V: get_floor() (Sync on init)
-    V-->>S: Last Known Floor (e.g., F1)
-    
-    C->>V: get_floor()
-    V-->>C: Last Known Floor (e.g., F1)
-    C->>S: get_floor()
-    S-->>C: Current Sensor Status (e.g., F1)
-    
-    alt Floors Match (Zero-Move)
-        C->>C: Transition to :normal
-    else Mismatch or Between Floors
-        C->>C: Transition to :rehoming
-        C->>M: crawl(:down)
-    end
-```
 
 ## 4. Component Responsibilities
 
