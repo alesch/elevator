@@ -47,6 +47,12 @@ defmodule Elevator.Gherkin.CoreSteps do
     {:ok, %{context | state: state}}
   end
 
+  defgiven ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
+    floor = Args.parse_floor(floor_str)
+    state = put_in(context.state.hardware.current_floor, floor)
+    {:ok, %{context | state: state}}
+  end
+
   defgiven ~r/^the last saved elevator position is (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
     # We store the vault (saved position) in the context to use in startup-check
@@ -95,6 +101,11 @@ defmodule Elevator.Gherkin.CoreSteps do
 
   defwhen ~r/^the motor is stopped$/, _vars, context do
     {state, actions} = Core.handle_event(context.state, :motor_stopped)
+    {:ok, %{context | state: state, actions: actions}}
+  end
+
+  defwhen ~r/^the motor is running$/, _vars, context do
+    {state, actions} = Core.handle_event(context.state, :motor_running)
     {:ok, %{context | state: state, actions: actions}}
   end
 

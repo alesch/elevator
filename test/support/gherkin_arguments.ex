@@ -116,8 +116,16 @@ defmodule Elevator.Gherkin.Arguments do
   Parses a button argument from Gherkin text to an atom.
   Supports leading colons (e.g., ":door_open", "door_open").
   """
+  def parse_button("door-open"), do: :door_open
+  def parse_button("door-close"), do: :door_close
+
   def parse_button(val) when is_binary(val) do
     val |> String.trim_leading(":") |> String.to_atom()
+  end
+
+  def parse_button(val) do
+    raise ArgumentError,
+          "Invalid button: #{inspect(val)}. Expected 'door-open' or 'door-close'."
   end
 
   @doc """
