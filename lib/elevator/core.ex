@@ -118,7 +118,7 @@ defmodule Elevator.Core do
   @spec docked_at(integer()) :: t()
   def docked_at(floor) do
     idle_at(floor)
-    |> request_floor(:car, floor)
+    |> request_floor({:car, floor})
     |> elem(0)
     |> handle_event(:door_opened)
     |> elem(0)
@@ -128,7 +128,7 @@ defmodule Elevator.Core do
   @spec moving_to(integer(), integer()) :: t()
   def moving_to(from, to) do
     idle_at(from)
-    |> request_floor(:car, to)
+    |> request_floor({:car, to})
     |> elem(0)
     |> handle_event(:motor_running)
     |> elem(0)
@@ -138,14 +138,14 @@ defmodule Elevator.Core do
   # ## Public API (Entry Points)
   # ---------------------------------------------------------------------------
 
-  @spec request_floor(t(), Elevator.Sweep.source(), integer()) :: {t(), [action()]}
-  def request_floor(%Core{logic: %{phase: phase}} = state, _source, _floor)
+  @spec request_floor(t(), request()) :: {t(), [action()]}
+  def request_floor(%Core{logic: %{phase: phase}} = state, _request)
       when phase in [:booting, :rehoming],
       do: {state, []}
 
-  def request_floor(%Core{} = state, source, floor) when is_integer(floor) do
+  def request_floor(%Core{} = state, {source, floor} = request) when is_integer(floor) do
     state
-    |> Map.put(:signal, {:request, source, floor})
+    |> Map.put(:signal, {:request, request})
     |> pulse()
   end
 
@@ -189,7 +189,7 @@ defmodule Elevator.Core do
   end
 
   @spec ingest_signals(t()) :: t()
-  defp ingest_signals(%Core{signal: {:request, source, floor}} = state) do
+  defp ingest_signals(%Core{signal: {:request, {source, floor}}} = state) do
     state
     |> add_sweep_request(source, floor)
   end
@@ -406,8 +406,10 @@ defmodule Elevator.Core do
 
   @spec floor_serviced(t()) :: t()
   defp floor_serviced(state) do
+    f = current_floor(state)
+
     Map.update!(state, :logic, fn logic ->
-      Map.update!(logic, :sweep, &Elevator.Sweep.floor_serviced(&1))
+      Map.update!(logic, :sweep, &Elevator.Sweep.floor_serviced(&1, f))
     end)
   end
 

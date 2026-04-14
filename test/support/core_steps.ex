@@ -5,22 +5,22 @@ defmodule Elevator.Gherkin.CoreSteps do
   """
   use Cabbage.Feature
 
+  alias __MODULE__, as: CoreSteps
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
-  import ExUnit.Assertions
 
   # --- Given: Factory Initializers ---
 
   defgiven ~r/^the core is in phase idle at floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
-    {:ok, %{context | state: Core.idle_at(floor), actions: []}}
+    {:ok, Map.merge(context, %{state: Core.idle_at(floor), actions: []})}
   end
 
   defgiven ~r/^the core is in phase docked at floor (?<floor>.+)$/,
            %{floor: floor_str},
            context do
     floor = Args.parse_floor(floor_str)
-    {:ok, %{context | state: Core.docked_at(floor), actions: []}}
+    {:ok, Map.merge(context, %{state: Core.docked_at(floor), actions: []})}
   end
 
   defgiven ~r/^the core is moving from floor (?<from>.+) to floor (?<to>.+)$/,
@@ -28,15 +28,15 @@ defmodule Elevator.Gherkin.CoreSteps do
            context do
     from = Args.parse_floor(f_str)
     to = Args.parse_floor(t_str)
-    {:ok, %{context | state: Core.moving_to(from, to), actions: []}}
+    {:ok, Map.merge(context, %{state: Core.moving_to(from, to), actions: []})}
   end
 
   defgiven ~r/^the elevator is booting$/, _vars, context do
-    {:ok, %{context | state: Core.booting(), actions: []}}
+    {:ok, Map.merge(context, %{state: Core.booting(), actions: []})}
   end
 
   defgiven ~r/^the elevator is rehoming$/, _vars, context do
-    {:ok, %{context | state: Core.rehoming(), actions: []}}
+    {:ok, Map.merge(context, %{state: Core.rehoming(), actions: []})}
   end
 
   # --- Given: State Modifiers (Pre-conditions) ---
@@ -53,10 +53,13 @@ defmodule Elevator.Gherkin.CoreSteps do
     {:ok, Map.put(context, :vault_floor, floor)}
   end
 
+  defgiven ~r/^the last activity was (?<val>.+) minutes ago$/, _vars, context do
+    # Pure state doesn't track relative time internally, we just simulate the timeout signal
+    {:ok, context}
+  end
+
   defgiven ~r/^a car request for floor (?<floor>.+)$/, %{floor: floor_str}, context do
-    floor = Args.parse_floor(floor_str)
-    {state, actions} = Core.request_floor(context.state, :car, floor)
-    {:ok, %{context | state: state, actions: actions}}
+    CoreSteps.receive_request(context, :car, floor_str)
   end
 
   # --- When: Events ---
@@ -72,15 +75,11 @@ defmodule Elevator.Gherkin.CoreSteps do
   end
 
   defwhen ~r/^a car request for floor (?<floor>.+) is received$/, %{floor: floor_str}, context do
-    floor = Args.parse_floor(floor_str)
-    {state, actions} = Core.request_floor(context.state, :car, floor)
-    {:ok, %{context | state: state, actions: actions}}
+    CoreSteps.receive_request(context, :car, floor_str)
   end
 
   defwhen ~r/^a hall request for floor (?<floor>.+) is received$/, %{floor: floor_str}, context do
-    floor = Args.parse_floor(floor_str)
-    {state, actions} = Core.request_floor(context.state, :hall, floor)
-    {:ok, %{context | state: state, actions: actions}}
+    CoreSteps.receive_request(context, :hall, floor_str)
   end
 
   defwhen ~r/^the inactivity timeout expires$/, _vars, context do
@@ -133,7 +132,6 @@ defmodule Elevator.Gherkin.CoreSteps do
     {:ok, context}
   end
 
-  # Special case for core.feature: "the motor phase is arriving"
   defthen ~r/^the motor phase is (?<phase>.+)$/, %{phase: phase_str}, context do
     expected = Args.parse_phase(phase_str)
     assert Core.phase(context.state) == expected
@@ -146,30 +144,26 @@ defmodule Elevator.Gherkin.CoreSteps do
 
     case status do
       :running ->
-        assert Core.motor_status(context.state) == :running or
-                 Enum.any?(actions, fn a -> match?({:move, _}, a) end)
+        assert Enum.any?(actions, fn a -> match?({:move, _}, a) or match?({:crawl, _}, a) end),
+               "Expected motor to start running, but no :move/:crawl action in #{inspect(actions)}"
 
       :crawling ->
-        assert Core.motor_status(context.state) == :crawling or
-                 Enum.any?(actions, fn a -> match?({:crawl, _}, a) end)
+        assert Enum.any?(actions, fn a -> match?({:crawl, _}, a) end),
+               "Expected motor to crawl, but no :crawl action in #{inspect(actions)}"
 
       :stopping ->
-        assert Core.motor_status(context.state) == :stopping or
-                 {:stop_motor} in actions
+        assert {:stop_motor} in actions,
+               "Expected motor to stop, but :stop_motor not in #{inspect(actions)}"
 
       :stopped ->
-        # If we just told it to stop, it's effectively "stopping" or "stopped"
-        # but the state machine might still say :stopped if already there.
-        assert Core.motor_status(context.state) == :stopped or
-                 {:stop_motor} in actions
+        assert {:stop_motor} in actions or Core.motor_status(context.state) == :stopped
     end
 
     {:ok, context}
   end
 
-  # Special case: "the motor stopped" (Then)
   defthen ~r/^the motor stopped$/, _vars, context do
-    assert Core.motor_status(context.state) == :stopped or {:stop_motor} in context.actions
+    assert {:stop_motor} in context.actions or Core.motor_status(context.state) == :stopped
     {:ok, context}
   end
 
@@ -182,24 +176,20 @@ defmodule Elevator.Gherkin.CoreSteps do
         assert Core.door_status(context.state) == :open
 
       :closed ->
-        assert Core.door_status(context.state) == :closed or
-                 {:close_door} in actions
+        assert Core.door_status(context.state) == :closed or {:close_door} in actions
 
       :opening ->
-        assert Core.door_status(context.state) == :opening or
-                 {:open_door} in actions
+        assert {:open_door} in actions
 
       :closing ->
-        assert Core.door_status(context.state) == :closing or
-                 {:close_door} in actions
+        assert {:close_door} in actions
     end
 
     {:ok, context}
   end
 
-  # Special case: "door is opening" (Then)
   defthen ~r/^door is opening$/, _vars, context do
-    assert Core.door_status(context.state) == :opening or {:open_door} in context.actions
+    assert {:open_door} in context.actions or Core.door_status(context.state) == :opening
     {:ok, context}
   end
 
@@ -225,5 +215,13 @@ defmodule Elevator.Gherkin.CoreSteps do
   defthen ~r/^the door timeout timer is set$/, _vars, context do
     assert Enum.any?(context.actions, fn a -> match?({:set_timer, :door_timeout, _}, a) end)
     {:ok, context}
+  end
+
+  # --- Helpers ---
+
+  def receive_request(context, source, floor_str) do
+    floor = Args.parse_floor(floor_str)
+    {state, actions} = Core.request_floor(context.state, {source, floor})
+    {:ok, %{context | state: state, actions: actions}}
   end
 end

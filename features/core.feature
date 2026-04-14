@@ -17,7 +17,7 @@ Feature: Elevator Core State Machine
   Scenario: (:booting -> :rehoming) Rehoming recovery
     Given the elevator is booting
     And the last saved elevator position is unknown
-    When When the signal startup-check is received
+    When the signal startup-check is received
     Then the phase is rehoming
     And the motor is crawling
     And the heading is down
@@ -64,7 +64,7 @@ Feature: Elevator Core State Machine
   #
   @S-PHASE-MOVE-ARRIVE @R-CORE-STATE
   Scenario: (:moving -> :arriving) Target floor reached
-    Given Given the core is moving from floor 2 to floor 3
+    Given the core is moving from floor 2 to floor 3
     When the arrival at floor 3 is received
     Then the phase is arriving
     And the motor is stopping
