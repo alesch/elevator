@@ -34,6 +34,7 @@ defmodule Elevator.Core do
   @type direction :: :up | :down | :idle
   @type startup_payload :: %{vault: integer() | nil, sensor: integer() | nil}
   @type event_payload :: integer() | startup_payload() | nil
+  @type floor :: integer()
 
   @type action ::
           {:set_timer, atom(), integer()}
