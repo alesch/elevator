@@ -35,6 +35,7 @@ defmodule Elevator.Core do
   @type startup_payload :: %{vault: integer() | nil, sensor: integer() | nil}
   @type event_payload :: integer() | startup_payload() | nil
   @type floor :: integer()
+  @type request :: {:car | :hall, floor}
 
   @type action ::
           {:set_timer, atom(), integer()}

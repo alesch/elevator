@@ -1,6 +1,6 @@
-defmodule Elevator.Features.CoreTest do
+defmodule Elevator.Features.CoreFactoriesTest do
   use Cabbage.Feature,
-    file: "core.feature",
+    file: "core-factories.feature",
     async: false
 
   import_steps(Elevator.Gherkin.CoreSteps)

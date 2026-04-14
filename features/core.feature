@@ -27,7 +27,7 @@ Feature: Elevator Core State Machine
   #
   Scenario: (:rehoming -> :arriving) Crawling to find position
     Given the elevator is rehoming
-    When any floor arrival is received
+    When the arrival at floor 1 is received
     Then the motor phase is arriving
     And the motor is stopping
 
