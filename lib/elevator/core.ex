@@ -289,11 +289,7 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @spec transit(t()) :: t()
-  defp transit(%Core{} = state) do
-    state
-    |> do_transit()
-    |> update_sweep_heading()
-  end
+  defp transit(%Core{} = state), do: do_transit(state)
 
   @spec do_transit(t()) :: t()
   # Booting
@@ -391,16 +387,6 @@ defmodule Elevator.Core do
 
     Map.update!(state, :logic, fn logic ->
       Map.update!(logic, :sweep, &Elevator.Sweep.add_request(&1, source, floor, f))
-    end)
-  end
-
-  # fixme: review how this is used.
-  @spec update_sweep_heading(t()) :: t()
-  defp update_sweep_heading(state) do
-    f = current_floor(state)
-
-    Map.update!(state, :logic, fn logic ->
-      Map.update!(logic, :sweep, &Elevator.Sweep.update_heading(&1, f))
     end)
   end
 

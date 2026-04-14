@@ -19,7 +19,7 @@ Feature: Elevator Core State Machine
     And the last saved elevator position is unknown
     When the signal startup-check is received
     Then the phase is rehoming
-    And the motor is crawling
+    And the motor begins crawling
     And the heading is down
 
   #
@@ -29,7 +29,7 @@ Feature: Elevator Core State Machine
     Given the elevator is rehoming
     When the arrival at floor 1 is received
     Then the motor phase is arriving
-    And the motor is stopping
+    And the motor begins stopping
 
   #
   # Phase :idle
@@ -39,7 +39,7 @@ Feature: Elevator Core State Machine
     Given the core is in phase idle at floor 0
     When a car request for floor 3 is received
     Then the phase is moving
-    And the motor is running
+    And the motor begins running
     And the door is closed
     And the heading is up
 
@@ -48,7 +48,7 @@ Feature: Elevator Core State Machine
     Given the core is in phase idle at floor 0
     When a hall request for floor 0 is received
     Then the phase is arriving
-    And the door is opening
+    And the door begins opening
 
   @S-PHASE-IDLE-INACTIVITY @R-CORE-STATE
   Scenario: (:idle → :moving) Inactivity Timeout
@@ -67,7 +67,7 @@ Feature: Elevator Core State Machine
     Given the core is moving from floor 2 to floor 3
     When the arrival at floor 3 is received
     Then the phase is arriving
-    And the motor is stopping
+    And the motor begins stopping
     And the door is closed
 
   #
@@ -103,13 +103,13 @@ Feature: Elevator Core State Machine
   Scenario: (:docked -> :closing) Transition after door timeout
     Given the core is in phase docked at floor 3
     When the door timeout is received
-    Then the door is closing
+    Then the door begins closing
     And the phase is closing
 
   Scenario: (:docked -> :closing) Transition after button door-close is pressed
     Given the core is in phase docked at floor 3
     When the button door-close is pressed
-    Then the door is closing
+    Then the door begins closing
     And the phase is closing
 
   #
@@ -122,22 +122,22 @@ Feature: Elevator Core State Machine
     When the door timeout is received
     And the door is closed
     Then the phase is leaving
-    And the motor stopped
+    And the motor is stopped
 
   @S-PHASE-LEAVE-ARRIVE @R-CORE-STATE @R-SAFE-OBSTRUCT
   Scenario: (:closing → :opening) Door obstruction
     Given the core is in phase docked at floor 3
     And the door timeout is received
-    Then the door is closing
+    Then the door begins closing
     When the door is obstructed
     Then the phase is opening
-    And door is opening
+    And the door begins opening
 
   @S-PHASE-LEAVE-IDLE @R-CORE-STATE @R-MOVE-LOOK
   Scenario: (:closing → :idle) Door timeout and no requests pending
     Given the core is in phase docked at floor 3
     And the door timeout is received
-    Then the door is closing
+    Then the door begins closing
     When the door is closed
     Then the motor is stopped
     And the phase is idle
@@ -151,7 +151,7 @@ Feature: Elevator Core State Machine
     Given the core is in phase docked at floor 3
     And a car request for floor 0 is received
     When the door timeout is received
-    Then the door is closing
+    Then the door begins closing
     When the door is closed
-    Then the motor is running
+    Then the motor begins running
     And the phase is moving

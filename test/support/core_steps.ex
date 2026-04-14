@@ -124,7 +124,47 @@ defmodule Elevator.Gherkin.CoreSteps do
     {:ok, %{context | state: state, actions: actions}}
   end
 
-  # --- Then: Assertions ---
+  # --- Then: Assertions (Logic Commands / Side Effects) ---
+
+  defthen ~r/^the motor begins (?<status>.+)$/, %{status: status_str}, context do
+    status = Args.parse_motor_status(status_str)
+    actions = context.actions
+
+    case status do
+      :running ->
+        assert Enum.any?(actions, fn a -> match?({:move, _}, a) end),
+               "Expected motor command :move, but found #{inspect(actions)}"
+
+      :crawling ->
+        assert Enum.any?(actions, fn a -> match?({:crawl, _}, a) end),
+               "Expected motor command :crawl, but found #{inspect(actions)}"
+
+      :stopping ->
+        assert {:stop_motor} in actions,
+               "Expected motor command :stop_motor, but found #{inspect(actions)}"
+    end
+
+    {:ok, context}
+  end
+
+  defthen ~r/^the door begins (?<status>.+)$/, %{status: status_str}, context do
+    status = Args.parse_door_status(status_str)
+    actions = context.actions
+
+    case status do
+      :opening ->
+        assert {:open_door} in actions,
+               "Expected door command :open_door, but found #{inspect(actions)}"
+
+      :closing ->
+        assert {:close_door} in actions,
+               "Expected door command :close_door, but found #{inspect(actions)}"
+    end
+
+    {:ok, context}
+  end
+
+  # --- Then: Assertions (Hardware State Verification) ---
 
   defthen ~r/^the phase is (?<phase>.+)$/, %{phase: phase_str}, context do
     expected = Args.parse_phase(phase_str)
@@ -139,57 +179,21 @@ defmodule Elevator.Gherkin.CoreSteps do
   end
 
   defthen ~r/^the motor is (?<status>.+)$/, %{status: status_str}, context do
-    status = Args.parse_motor_status(status_str)
-    actions = context.actions
-
-    case status do
-      :running ->
-        assert Enum.any?(actions, fn a -> match?({:move, _}, a) or match?({:crawl, _}, a) end),
-               "Expected motor to start running, but no :move/:crawl action in #{inspect(actions)}"
-
-      :crawling ->
-        assert Enum.any?(actions, fn a -> match?({:crawl, _}, a) end),
-               "Expected motor to crawl, but no :crawl action in #{inspect(actions)}"
-
-      :stopping ->
-        assert {:stop_motor} in actions,
-               "Expected motor to stop, but :stop_motor not in #{inspect(actions)}"
-
-      :stopped ->
-        assert {:stop_motor} in actions or Core.motor_status(context.state) == :stopped
-    end
-
+    expected = Args.parse_motor_status(status_str)
+    actual = Core.motor_status(context.state)
+    assert actual == expected
     {:ok, context}
   end
 
   defthen ~r/^the motor stopped$/, _vars, context do
-    assert {:stop_motor} in context.actions or Core.motor_status(context.state) == :stopped
+    assert Core.motor_status(context.state) == :stopped
     {:ok, context}
   end
 
   defthen ~r/^the door is (?<status>.+)$/, %{status: status_str}, context do
-    status = Args.parse_door_status(status_str)
-    actions = context.actions
-
-    case status do
-      :open ->
-        assert Core.door_status(context.state) == :open
-
-      :closed ->
-        assert Core.door_status(context.state) == :closed or {:close_door} in actions
-
-      :opening ->
-        assert {:open_door} in actions
-
-      :closing ->
-        assert {:close_door} in actions
-    end
-
-    {:ok, context}
-  end
-
-  defthen ~r/^door is opening$/, _vars, context do
-    assert {:open_door} in context.actions or Core.door_status(context.state) == :opening
+    expected = Args.parse_door_status(status_str)
+    actual = Core.door_status(context.state)
+    assert actual == expected
     {:ok, context}
   end
 
