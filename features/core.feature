@@ -154,4 +154,5 @@ Feature: Elevator Core State Machine
     Then the door begins closing
     When the door is closed
     Then the motor begins running
+    When the motor is running
     And the phase is moving
