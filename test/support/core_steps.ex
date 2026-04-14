@@ -43,14 +43,12 @@ defmodule Elevator.Gherkin.CoreSteps do
 
   defgiven ~r/^the current floor position is (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
-    state = put_in(context.state.hardware.current_floor, floor)
-    {:ok, %{context | state: state}}
+    {:ok, put_in(context.state.hardware.current_floor, floor)}
   end
 
   defgiven ~r/^the elevator is at floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
-    state = put_in(context.state.hardware.current_floor, floor)
-    {:ok, %{context | state: state}}
+    {:ok, put_in(context.state.hardware.current_floor, floor)}
   end
 
   defgiven ~r/^the last saved elevator position is (?<floor>.+)$/, %{floor: floor_str}, context do
