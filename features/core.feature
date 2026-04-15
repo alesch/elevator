@@ -9,14 +9,14 @@ Feature: Elevator Core State Machine
   #
 
   Scenario: (:booting -> :opening) Zero movement recovery
-    Given the elevator is booting
+    Given the core is booting
     And the last saved elevator position is 3
     And the elevator is at floor 3
     When the signal startup-check is received
     Then the phase is opening
 
   Scenario: (:booting -> :rehoming) Rehoming recovery
-    Given the elevator is booting
+    Given the core is booting
     And the last saved elevator position is unknown
     When the signal startup-check is received
     Then the phase is rehoming
@@ -27,7 +27,7 @@ Feature: Elevator Core State Machine
   #
 
   Scenario: (:rehoming -> :arriving) Crawling to find position
-    Given the elevator is rehoming
+    Given the core is rehoming
     When the arrival at floor 1 is received
     Then the motor phase is arriving
     And the motor begins stopping
@@ -163,25 +163,25 @@ Feature: Elevator Core State Machine
 
   @S-BOOT-BLOCK-REQ @R-BOOT-GUARD
   Scenario Outline: Request Blocking during Booting
-    Given the elevator is in phase <phase>
+    Given the core is <phase>
     Then the queue is empty
     When a <source> request for floor <target> is received
     Then the queue is empty
 
     Examples:
-      | phase     | source | target |
-      | :booting  | :car   |      2 |
-      | :rehoming | :hall  |      3 |
+      | phase    | source | target |
+      | booting  | car    |      2 |
+      | rehoming | hall   |      3 |
 
   @S-BOOT-BLOCK-BUTTON @R-BOOT-GUARD
   Scenario Outline: Button Blocking during Booting
-    Given the elevator is in phase <phase>
+    Given the core is <phase>
     When the button <button> is pressed
     Then no action should be taken
 
     Examples:
-      | phase     | button      |
-      | :booting  | :door_open  |
-      | :booting  | :door_close |
-      | :rehoming | :door_close |
-      | :rehoming | :door_open  |
+      | phase    | button      |
+      | booting  | :door_open  |
+      | booting  | :door_close |
+      | rehoming | :door_close |
+      | rehoming | :door_open  |

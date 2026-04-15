@@ -31,11 +31,11 @@ defmodule Elevator.Gherkin.CoreSteps do
     {:ok, Map.merge(context, %{state: Core.moving_to(from, to), actions: []})}
   end
 
-  defgiven ~r/^the elevator is booting$/, _vars, context do
+  defgiven ~r/^the core is booting$/, _vars, context do
     {:ok, Map.merge(context, %{state: Core.booting(), actions: []})}
   end
 
-  defgiven ~r/^the elevator is rehoming$/, _vars, context do
+  defgiven ~r/^the core is rehoming$/, _vars, context do
     {:ok, Map.merge(context, %{state: Core.rehoming(), actions: []})}
   end
 
@@ -232,6 +232,11 @@ defmodule Elevator.Gherkin.CoreSteps do
 
   defthen ~r/^the door timeout timer is set$/, _vars, context do
     assert Enum.any?(context.actions, fn a -> match?({:set_timer, :door_timeout, _}, a) end)
+    {:ok, context}
+  end
+
+  defthen ~r/^no action should be taken$/, _vars, context do
+    assert context.actions == []
     {:ok, context}
   end
 
