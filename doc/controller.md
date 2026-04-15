@@ -12,24 +12,7 @@ The `Elevator.Controller` is the **Imperative Shell** of the system. It handles 
 
 ## Component Integration (FICS)
 
-The Controller acts as the glue between the **Pure Logic** and **Side Effects**:
-
-```mermaid
-sequenceDiagram
-    participant H as Hardware / Timer
-    participant C as Elevator.Controller
-    participant B as Elevator.Core (Brain)
-    participant V as Elevator.Vault
-
-    H ->> C: Event (e.g., :motor_stopped)
-    C ->> B: handle_event(state, event, now)
-    B -->> C: {new_state, actions}
-    C ->> C: Update local state
-    loop For each Action
-        C ->> H: Side Effect (e.g., :open_door)
-    end
-    C ->> V: Persistence (if floor arrival)
-```
+The Controller acts as the glue between the **Pure Logic** and **Side Effects**. See the sequence diagram in the source for a visual overview.
 
 ## Public API
 
@@ -42,7 +25,7 @@ sequenceDiagram
 ### Diagnostics (Sync calls)
 
 - `get_state()`: Returns a snapshot of the current `%Elevator.Core{}` state.
-- `get_timer_ref()`: Returns the Erlang timer reference for the "Return to Base" sequence.
+- `get_timer_ref()`: Returns a map of `%{timer_id => reference()}` for all active timers. Intended for diagnostics only.
 
 ### System Control
 
@@ -50,7 +33,7 @@ sequenceDiagram
 
 ## Hardware Discovery & Architecture
 
-The Controller uses an discovery strategy managed by the **`Elevator.HardwareSupervisor`**:
+The Controller uses a discovery strategy managed by the **`Elevator.HardwareSupervisor`**:
 
 1. **Registry Lookup**: Actors (Motor, Door, Sensor) register themselves with the **`Elevator.Registry`**. The Controller performs a lookup to obtain their PIDs during command execution.
 2. **Dependency Injection**: For testing, specific PIDs can still be provided during `init/1` (via the `:motor`, `:door`, etc. keys in `opts`) to bypass registry lookup.
@@ -77,9 +60,14 @@ The Controller translates hardware signals and timer expirations into discrete e
 | **`:startup_check`** | Sent during `handle_continue` to verify position recovery. |
 | **`:floor_arrival`** | Triggered by the physical floor sensors via `process_arrival/2`. |
 | **`:motor_stopped`** | Feedback from the motor driver confirming zero velocity. |
+| **`:motor_running`** | Feedback from the motor driver confirming the motor is now moving. |
+| **`:motor_crawling`** | Feedback from the motor driver confirming low-speed crawl mode. |
 | **`:door_opened`** | Feedback from the door driver confirming full open status. |
 | **`:door_closed`** | Feedback from the door driver confirming full closed status. |
+| **`:door_opening`** | Feedback from the door driver confirming the door has begun opening. |
+| **`:door_closing`** | Feedback from the door driver confirming the door has begun closing. |
 | **`:door_obstructed`** | Signal from the door safety beam (IR sensor). |
+| **`:door_cleared`** | Signal from the door safety beam confirming the obstruction has been removed. |
 | **`:door_timeout`** | The logic-controlled timer for how long doors remain open. |
 | **`:door_open`** | Manual override button from the car panel. |
 | **`:door_close`** | Manual override button from the car panel. |
@@ -95,14 +83,15 @@ The Controller translates hardware signals and timer expirations into discrete e
 | `{:stop_motor}` | Calls `Hardware.Motor.stop(pid)`. |
 | `{:open_door}` | Calls `Hardware.Door.open(pid)`. |
 | `{:close_door}` | Calls `Hardware.Door.close(pid)`. |
-| `{:set_timer, id, ms}` | Executes `Process.send_after(self(), {:timeout, id}, ms)`. |
-| `{:cancel_timer, id}` | *MVP Note: Currently a NO-OP. Cancellation is handled by idempotency in the Brain.* |
+| `{:set_timer, id, ms}` | Calls `Process.send_after(self(), {:timeout, id}, ms)` and stores the ref in `data.timers[id]`. |
+| `{:persist_arrival, floor}` | Calls `Elevator.Vault.put_floor(pid, floor)`. |
 
 ## Observability (Telemetry)
 
-The Controller emits the following standard telemetry events:
+The Controller emits the following telemetry events:
 
-- `[:elevator, :controller, :recovery]`: Emitted on successful Zero-Move recovery.
-- `[:elevator, :controller, :rehoming]`: Emitted when physical homing begins.
-- `[:elevator, :controller, :request]`: Emitted when a new request is successfully submitted.
-- `[:elevator, :controller, :arrival]`: Emitted on every floor arrival before persistence.
+- `[:elevator, :controller, :event]`: Emitted in `pulse_and_commit` on every processed event. Metadata includes `:type` and event-specific fields.
+- `[:elevator, :controller, :timer_expired]`: Emitted when a `{:timeout, id}` message is received. Metadata: `%{id: id}`.
+- `[:elevator, :controller, :hardware_failure]`: Emitted when a required hardware dependency cannot be found in the registry. Metadata: `%{key: key}`.
+- `[:elevator, :controller, :unexpected_message]`: Emitted in the catch-all `handle_info` clause for unrecognised messages. Metadata: `%{message: msg}`.
+- `[:elevator, :controller, :unhandled_action]`: Emitted in the catch-all `do_execute` clause for unrecognised actions. Metadata: `%{action: action}`.
