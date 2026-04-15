@@ -159,7 +159,7 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @spec request_floor(t(), request()) :: {t(), [action()]}
-  def request_floor(%Core{} = state, {source, floor} = request) when is_integer(floor) do
+  def request_floor(%Core{} = state, {_source, floor} = request) when is_integer(floor) do
     state
     |> Map.put(:signal, {:request, request})
     |> pulse()
@@ -323,33 +323,6 @@ defmodule Elevator.Core do
     |> idle_transition(signal)
   end
 
-  defp queue_request(state, {:request, {source, floor}}),
-    do: add_sweep_request(state, source, floor)
-
-  defp queue_request(state, :inactivity_timeout) do
-    if current_floor(state) != @base_floor,
-      do: add_sweep_request(state, :car, @base_floor),
-      else: state
-  end
-
-  defp queue_request(state, _signal), do: state
-
-  defp idle_transition(state, signal) do
-    cond do
-      already_at_next_stop?(state) ->
-        state |> put_in([Access.key(:logic), :phase], :opening) |> floor_serviced()
-
-      has_next_stop?(state) ->
-        put_in(state.logic.phase, :leaving)
-
-      signal == :door_open ->
-        state |> put_in([Access.key(:logic), :phase], :opening) |> floor_serviced()
-
-      true ->
-        state
-    end
-  end
-
   # Moving -> Arriving
   defp do_transit(%Core{logic: %{phase: :moving}, signal: :floor_arrival} = state) do
     if current_floor(state) == next_stop(state) do
@@ -412,6 +385,33 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
   # ## Calculation Helpers
   # ---------------------------------------------------------------------------
+
+  defp queue_request(state, {:request, {source, floor}}),
+    do: add_sweep_request(state, source, floor)
+
+  defp queue_request(state, :inactivity_timeout) do
+    if current_floor(state) != @base_floor,
+      do: add_sweep_request(state, :car, @base_floor),
+      else: state
+  end
+
+  defp queue_request(state, _signal), do: state
+
+  defp idle_transition(state, signal) do
+    cond do
+      already_at_next_stop?(state) ->
+        state |> put_in([Access.key(:logic), :phase], :opening) |> floor_serviced()
+
+      has_next_stop?(state) ->
+        put_in(state.logic.phase, :leaving)
+
+      signal == :door_open ->
+        state |> put_in([Access.key(:logic), :phase], :opening) |> floor_serviced()
+
+      true ->
+        state
+    end
+  end
 
   @spec update_current_floor(t(), integer() | nil) :: t()
   defp update_current_floor(state, floor) when is_integer(floor),
