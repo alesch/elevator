@@ -125,7 +125,7 @@ defmodule Elevator.Controller do
     |> pulse_and_commit(
       :request_floor,
       %{source: source, floor: floor},
-      Core.request_floor(data.state, source, floor)
+      Core.request_floor(data.state, {source, floor})
     )
   end
 
