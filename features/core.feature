@@ -157,3 +157,31 @@ Feature: Elevator Core State Machine
     Then the motor begins running
     When the motor is running
     And the phase is moving
+  #
+  # Buttons ignored during boot and rehoming
+  #
+
+  @S-BOOT-BLOCK-REQ @R-BOOT-GUARD
+  Scenario Outline: Request Blocking during Booting
+    Given the elevator is in phase <phase>
+    Then the queue is empty
+    When a <source> request for floor <target> is received
+    Then the queue is empty
+
+    Examples:
+      | phase     | source | target |
+      | :booting  | :car   |      2 |
+      | :rehoming | :hall  |      3 |
+
+  @S-BOOT-BLOCK-BUTTON @R-BOOT-GUARD
+  Scenario Outline: Button Blocking during Booting
+    Given the elevator is in phase <phase>
+    When the button <button> is pressed
+    Then no action should be taken
+
+    Examples:
+      | phase     | button      |
+      | :booting  | :door_open  |
+      | :booting  | :door_close |
+      | :rehoming | :door_close |
+      | :rehoming | :door_open  |
