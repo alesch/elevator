@@ -40,13 +40,7 @@ graph TD
 > [!IMPORTANT]
 > The top-level `:one_for_one` strategy acts as a firewall. If the `HardwareStack` crashes (e.g., due to a door obstruction), the `Vault` process is **not** restarted, preserving the last known floor arrival.
 
-## 3. Boot & Recovery Sequence
-
-FIXME:
-The system performs a "Smart Homing" check during the recovery of the Hardware Stack.
-
-
-## 4. Component Responsibilities
+## 3. Component Responsibilities
 
 | Component | Responsibility | Failure Impact |
 | :--- | :--- | :--- |
@@ -55,7 +49,19 @@ The system performs a "Smart Homing" check during the recovery of the Hardware S
 | **Controller**| **The Servo**: Hardware mirror & change detection | If crashes, Hardware Stack reboots (Firewall). |
 | **Motor** | Physical motion execution | Supports `:running` and `:crawling` statuses for REHOMING. |
 | **Door** | Cabin access safety | Source of `obstruction` events for the Core. |
-| **Sensor | Floor sensors | Signals when the elevator reaches a floor. |
+| **Sensor** | Floor sensors | Signals when the elevator reaches a floor. |
+
+## 4. Boot & Recovery Sequence
+
+When the elevator boots up, it checks whether it knows its position.
+
+If its memory agrees with what the floor sensor is reporting, then it acknowledges the position, opens its doors and is ready for normal service.
+
+If the values disagree, or if either reading is missing, the elevator cannot trust its position. To find a trustable position, it moves slowly downward until a floor sensor confirms a location.
+
+Once it has found its footing, it stops, opens its doors, and resumes normal service from there.
+
+Either way, the startup sequence ends with open doors.
 
 ## 5. The Golden Rule
 

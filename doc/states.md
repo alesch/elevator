@@ -24,9 +24,9 @@ Formal definition of state changes based on **State, Event, Condition, and Actio
 
 | Current State | Event (Trigger) | Condition | Action (Effect) | Next State |
 | :--- | :--- | :--- | :--- | :--- |
-| **`:booting`** | `:startup_check` | `vault == sensor` | None | **`:idle`** |
-| **`:booting`** | `:startup_check` | `vault != sensor` | `{:crawl, :down}` | **`:rehoming`** |
-| **`:rehoming`** | `:floor_arrival` | `is_integer(floor)` | `{:stop_motor}` | **`:arriving`** |
+| **`:booting`** | `:startup_check` | `vault == sensor` | None | **`:opening`** |
+| **`:booting`** | `:startup_check` | `vault != sensor` or either is unknown | `{:crawl, :down}` | **`:rehoming`** |
+| **`:rehoming`** | `:floor_arrival` | `is_integer(floor)` | `{:persist_arrival}, {:stop_motor}` | **`:arriving`** |
 | **`:idle`** | `:request_floor` | `target == current` | `{:open_door}` | **`:opening`** |
 | **`:idle`** | `:request_floor` | `target != current` | `{:move, dir}` | **`:leaving`** |
 | **`:idle`** | `:inactivity_timeout` | `floor != 0` | Request Floor 0 | **`:leaving`** |
