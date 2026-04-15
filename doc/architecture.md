@@ -7,11 +7,17 @@ This document describes the architecture of the elevator system, focusing on its
 The system follows the **Functional Core, Imperative Shell (FICS)** pattern. This separates the risky, real-world interactions from the pure, safe logic.
 
 * **The Functional Core (The Brain)**: `Elevator.Core` is a "pure" module. It does not perform any hardware I/O, network requests, or side effects. It takes a state, an event, and returns a new state.
-* **The Imperative Shell (The Servo/Interface)**: This is where all the "messy" real-world interaction happens. This includes:
-  * **`Elevator.Controller`**: Manages physical hardware (Motor, Doors).
-  * **The Web Layer (Phoenix/LiveView)**: Handles user interaction and shows the elevator's status to the world in real-time.
+* **The Imperative Shell (The Servo/Interface)**: `Elevator.Controller: Manages physical hardware (Motor, Doors). This is where all the "messy" real-world interaction happens. This includes:
 
-## 2. Supervision Tree (The Firewall Strategy)
+## 2 The Web Layer (Phoenix/LiveView)
+Handles user interaction and shows the elevator's status to the world in real-time.
+
+### From the browser to the core: LiveView captures the browser events browser and calls the public API of `Elevator.Controller`.
+
+### From the core to the browser: `Elevator.Controller` broadcasts state changes to a message bus every time the state is updated. The LiveView subscribes to this topic and updates its own state when a message is received.
+
+
+## 3. Supervision Tree (The Firewall Strategy)
 
 We use a nested supervision strategy to isolate hardware-level failures from the system's "memory" (the Vault).
 
@@ -40,7 +46,7 @@ graph TD
 > [!IMPORTANT]
 > The top-level `:one_for_one` strategy acts as a firewall. If the `HardwareStack` crashes (e.g., due to a door obstruction), the `Vault` process is **not** restarted, preserving the last known floor arrival.
 
-## 3. Component Responsibilities
+## 4. Component Responsibilities
 
 | Component | Responsibility | Failure Impact |
 | :--- | :--- | :--- |
@@ -51,7 +57,7 @@ graph TD
 | **Door** | Cabin access safety | Source of `obstruction` events for the Core. |
 | **Sensor** | Floor sensors | Signals when the elevator reaches a floor. |
 
-## 4. Boot & Recovery Sequence
+## 5. Boot & Recovery Sequence
 
 When the elevator boots up, it checks whether it knows its position.
 
@@ -63,10 +69,10 @@ Once it has found its footing, it stops, opens its doors, and resumes normal ser
 
 Either way, the startup sequence ends with open doors.
 
-## 5. The Golden Rule
+## 6. The Golden Rule
 
 The Core enforces a hard constraint: **The motor MUST be in the `:stopped` status unless the `door_status` is confirmed to be `:closed`.**
 
-## 6. Technical State Transition Matrix
+## 7. Technical State Transition Matrix
 
 See the table here: [states.md](./states.md)
