@@ -105,20 +105,31 @@ defmodule Elevator.Core do
 
   @doc """
   Factory: Returns an elevator idle at the given floor.
-  Zero-movement rehoming.
+  Drives through the post-docking sequence: docked -> closing -> idle.
   """
   @spec idle_at(integer()) :: t()
   def idle_at(floor) do
-    booting()
-    |> handle_event(:startup_check, %{vault: floor, sensor: floor})
+    docked_at(floor)
+    |> handle_event(:door_timeout)
+    |> elem(0)
+    |> handle_event(:door_closed)
     |> elem(0)
   end
 
-  @doc "Factory: Returns an elevator docked (door open) at the given floor."
+  @doc """
+  Factory: Returns an elevator docked (door open) at the given floor.
+  Drives through the cold-start rehoming sequence: rehoming -> arriving -> opening -> docked.
+  """
   @spec docked_at(integer()) :: t()
   def docked_at(floor) do
-    idle_at(floor)
-    |> request_floor({:car, floor})
+    booting()
+    |> handle_event(:startup_check, %{vault: nil, sensor: nil})
+    |> elem(0)
+    |> handle_event(:motor_crawling)
+    |> elem(0)
+    |> handle_event(:floor_arrival, floor)
+    |> elem(0)
+    |> handle_event(:motor_stopped)
     |> elem(0)
     |> handle_event(:door_opened)
     |> elem(0)
@@ -194,15 +205,6 @@ defmodule Elevator.Core do
     |> add_sweep_request(source, floor)
   end
 
-  defp ingest_signals(%Core{signal: :inactivity_timeout} = state) do
-    if current_floor(state) != @base_floor do
-      state
-      |> add_sweep_request(:car, @base_floor)
-    else
-      state
-    end
-  end
-
   defp ingest_signals(state), do: state
 
   # ---------------------------------------------------------------------------
@@ -211,15 +213,10 @@ defmodule Elevator.Core do
 
   # Hardware Ingestion
   @spec do_ingest_event(t(), atom(), event_payload()) :: t()
-  defp do_ingest_event(state, :startup_check, %{vault: v, sensor: s}) do
-    if warm_start?(v, s) do
-      state
-      |> put_in([Access.key(:hardware), :current_floor], v)
-      |> Map.put(:signal, :recovery_complete)
-    else
-      state
-      |> Map.put(:signal, :rehoming_started)
-    end
+  defp do_ingest_event(state, :startup_check, %{vault: vault, sensor: sensor}) do
+    state
+    |> then(fn s -> if is_integer(sensor), do: put_in(s.hardware.current_floor, sensor), else: s end)
+    |> Map.put(:signal, {:startup_check, vault, sensor})
   end
 
   defp do_ingest_event(state, :floor_arrival, floor),
@@ -254,11 +251,11 @@ defmodule Elevator.Core do
 
   defp do_ingest_event(state, :door_cleared, _), do: put_in(state.hardware.door_sensor, :clear)
 
-  defp do_ingest_event(%Core{logic: %{phase: :idle}} = state, :inactivity_timeout, _) do
+  defp do_ingest_event(state, :inactivity_timeout, _) do
     %{state | signal: :inactivity_timeout}
   end
 
-  defp do_ingest_event(%Core{logic: %{phase: :docked}} = state, :door_timeout, _) do
+  defp do_ingest_event(state, :door_timeout, _) do
     %{state | signal: :door_timeout}
   end
 
@@ -267,9 +264,7 @@ defmodule Elevator.Core do
   # Buttons
   @spec do_ingest_button(t(), atom(), integer()) :: t()
   defp do_ingest_button(%Core{logic: %{phase: :docked}} = state, :door_open, now) do
-    state
-    |> put_in([Access.key(:logic), :last_activity_at], now)
-    |> Map.put(:signal, :door_open)
+    Map.put(state, :signal, {:door_open, now})
   end
 
   defp do_ingest_button(%Core{logic: %{phase: phase}} = state, :door_open, _now)
@@ -294,12 +289,14 @@ defmodule Elevator.Core do
 
   @spec do_transit(t()) :: t()
   # Booting
-  defp do_transit(%Core{logic: %{phase: :booting}, signal: :recovery_complete} = state) do
-    put_in(state.logic.phase, :idle)
-  end
-
-  defp do_transit(%Core{logic: %{phase: :booting}, signal: :rehoming_started} = state) do
-    put_in(state.logic.phase, :rehoming)
+  defp do_transit(
+         %Core{logic: %{phase: :booting}, signal: {:startup_check, vault, sensor}} = state
+       ) do
+    if warm_start?(vault, sensor) do
+      put_in(state.logic.phase, :opening)
+    else
+      put_in(state.logic.phase, :rehoming)
+    end
   end
 
   # Rehoming -> Arriving
@@ -310,6 +307,13 @@ defmodule Elevator.Core do
 
   # Idle -> Opening or Leaving
   defp do_transit(%Core{logic: %{phase: :idle}, signal: sig} = state) do
+    state =
+      if sig == :inactivity_timeout and current_floor(state) != @base_floor do
+        add_sweep_request(state, :car, @base_floor)
+      else
+        state
+      end
+
     nxt = next_stop(state)
     has_work = not is_nil(nxt)
 
@@ -346,6 +350,11 @@ defmodule Elevator.Core do
   defp do_transit(%Core{logic: %{phase: :opening}, hardware: %{door_status: :open}} = state) do
     state
     |> put_in([Access.key(:logic), :phase], :docked)
+  end
+
+  # Docked -> record activity (door_open button extends timer)
+  defp do_transit(%Core{logic: %{phase: :docked}, signal: {:door_open, now}} = state) do
+    put_in(state, [Access.key(:logic), :last_activity_at], now)
   end
 
   # Docked -> Closing
