@@ -49,7 +49,7 @@ defmodule Elevator.Features.ControllerTest do
   # ---------------------------------------------------------------------------
 
   defthen ~r/^a state update is broadcast on elevator:status$/, _vars, context do
-    assert %{logic: %{phase: :arriving}} = context.broadcasted_state
+    assert_receive {:elevator_state, %{logic: %{phase: :arriving}}}
 
     {:ok, context}
   end
