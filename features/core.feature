@@ -3,37 +3,38 @@ Feature: Elevator Core State Machine
   I want to transition between operational phases explicitly
   To ensure logic is predictable and deadlock-free
   # See states.md for all valid phases and transitions
-
+  #
   #
   # Phase: booting
   #
-  Scenario: (:booting -> :idle) Zero movement recovery
+
+  Scenario: (:booting -> :opening) Zero movement recovery
     Given the elevator is booting
     And the last saved elevator position is 3
     And the elevator is at floor 3
     When the signal startup-check is received
-    Then the phase is idle
+    Then the phase is opening
 
-  # Scenario: (:booting -> :rehoming) Rehoming recovery
-  #   Given the elevator is booting
-  #   And the last saved elevator position is unknown
-  #   When the signal startup-check is received
-  #   Then the phase is rehoming
-  #   And the motor begins crawling
-  #   And the heading is down
-
+  Scenario: (:booting -> :rehoming) Rehoming recovery
+    Given the elevator is booting
+    And the last saved elevator position is unknown
+    When the signal startup-check is received
+    Then the phase is rehoming
+    And the motor begins crawling
+    And the heading is down
   #
   # Phase: rehoming
   #
-  # Scenario: (:rehoming -> :arriving) Crawling to find position
-  #   Given the elevator is rehoming
-  #   When the arrival at floor 1 is received
-  #   Then the motor phase is arriving
-  #   And the motor begins stopping
 
+  Scenario: (:rehoming -> :arriving) Crawling to find position
+    Given the elevator is rehoming
+    When the arrival at floor 1 is received
+    Then the motor phase is arriving
+    And the motor begins stopping
   #
   # Phase :idle
   #
+
   @S-PHASE-IDLE-MOVE @R-CORE-STATE
   Scenario: (:idle → :moving) Hall request different floor
     Given the core is in phase idle at floor 0
@@ -58,10 +59,10 @@ Feature: Elevator Core State Machine
     Then the phase is leaving
     And the queue is 0
     And the heading is down
-
   #
   # Phase :moving
   #
+
   @S-PHASE-MOVE-ARRIVE @R-CORE-STATE
   Scenario: (:moving -> :arriving) Target floor reached
     Given the core is moving from floor 2 to floor 3
@@ -69,10 +70,10 @@ Feature: Elevator Core State Machine
     Then the phase is arriving
     And the motor begins stopping
     And the door is closed
-
   #
   # Phase :arriving
   #
+
   @S-PHASE-MOVE-ARRIVE @R-CORE-STATE
   Scenario: (:arriving -> :opening) Transition after motor is stopped
     Given the core is moving from floor 2 to floor 3
@@ -81,10 +82,10 @@ Feature: Elevator Core State Machine
     # ---
     When the motor is stopped
     Then the phase is opening
-
   #
   # Phase: opening
   #
+
   @S-PHASE-ARRIVE-DOCK @R-CORE-STATE
   Scenario: (:opening -> :docked) Transition after door opened
     Given the core is moving from floor 2 to floor 3
@@ -96,10 +97,10 @@ Feature: Elevator Core State Machine
     When the door is open
     Then the phase is docked
     And the door timeout timer is set
-
   #
   # Phase: docked
   #
+
   Scenario: (:docked -> :closing) Transition after door timeout
     Given the core is in phase docked at floor 3
     When the door timeout is received
@@ -111,10 +112,10 @@ Feature: Elevator Core State Machine
     When the button door-close is pressed
     Then the door begins closing
     And the phase is closing
-
   #
   # Phase: closing
   #
+
   @S-PHASE-DOCK-LEAVE @R-CORE-STATE
   Scenario: (:closing → :leaving) Transition after door is closed and requests pending
     Given the core is in phase docked at floor 3
@@ -142,10 +143,10 @@ Feature: Elevator Core State Machine
     Then the motor is stopped
     And the phase is idle
     And the queue is empty
-
   #
   # Phase: leaving
   #
+
   @S-PHASE-LEAVE-MOVE @R-CORE-STATE @R-MOVE-LOOK
   Scenario: :leaving → :moving
     Given the core is in phase docked at floor 3
