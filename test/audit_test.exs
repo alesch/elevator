@@ -21,14 +21,14 @@ defmodule Elevator.AuditTest do
         state =
           case heading do
             :idle -> Core.idle_at(current)
-            :up when current < 5 -> Core.idle_at(current) |> Core.request_floor(:car, 5) |> elem(0)
-            :down when current > 0 -> Core.idle_at(current) |> Core.request_floor(:car, 0) |> elem(0)
+            :up when current < 5 -> Core.idle_at(current) |> Core.request_floor({:car, 5}) |> elem(0)
+            :down when current > 0 -> Core.idle_at(current) |> Core.request_floor({:car, 0}) |> elem(0)
             _ -> nil
           end
 
         if state do
           # ACT: Receive request
-          {new_state, _actions} = Core.request_floor(state, source, target)
+          {new_state, _actions} = Core.request_floor(state, {source, target})
 
           # ASSERT 1: Immediate Arrival Logic
           # Exception: Asymmetry Rule ([R-MOVE-LOOK]) defers Hall requests          # Rule: Target Arrival Logic
