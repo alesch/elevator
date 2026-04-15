@@ -21,7 +21,7 @@ Feature: Elevator Core State Machine
     When the signal startup-check is received
     Then the phase is rehoming
     And the motor begins crawling
-    And the heading is down
+    And the heading is idle
   #
   # Phase: rehoming
   #
