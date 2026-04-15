@@ -29,10 +29,9 @@ defmodule Elevator.Features.ControllerTest do
   # ---------------------------------------------------------------------------
 
   # Simulates the hardware sensor firing a floor-arrival event directly at the
-  # controller, then waits for the resulting PubSub broadcast.  Because
-  # pulse_and_commit/4 calls execute_actions/2 *before* broadcast_state/1, all
-  # hardware casts (e.g. stop_now to the motor) are already in our mailbox by
-  # the time the broadcast arrives.
+  # controller.  get_state/1 is a synchronous call, so it returns only after
+  # floor_arrival has been fully processed — meaning execute_actions/2 has
+  # dispatched all hardware casts and broadcast_state/1 has fired.
   defwhen ~r/^the floor sensor reads floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
     send(context.controller, {:floor_arrival, floor})
