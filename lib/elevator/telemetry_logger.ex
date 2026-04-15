@@ -180,7 +180,12 @@ defmodule Elevator.TelemetryLogger do
     end
   end
 
-  def handle_event([:elevator, :hardware, :door, :transit_complete], _measurements, metadata, _config) do
+  def handle_event(
+        [:elevator, :hardware, :door, :transit_complete],
+        _measurements,
+        metadata,
+        _config
+      ) do
     result = Map.get(metadata, :result, :unknown)
     log_and_broadcast("🚪", "Door: Fully #{result}.")
   end
@@ -189,7 +194,12 @@ defmodule Elevator.TelemetryLogger do
     log_and_broadcast("🚪", "Door: Obstruction Detected!")
   end
 
-  def handle_event([:elevator, :hardware, :door, :unexpected_message], _measurements, metadata, _config) do
+  def handle_event(
+        [:elevator, :hardware, :door, :unexpected_message],
+        _measurements,
+        metadata,
+        _config
+      ) do
     msg = Map.get(metadata, :message)
     log_and_broadcast("🚪", "Door: Unexpected Message: #{inspect(msg)}")
   end

@@ -160,14 +160,14 @@ defmodule Elevator.Hardware.Motor do
     |> update_motion_state(status, direction, interval_ms)
     |> start_transit_timer()
   end
- 
+
   @spec handle_redundant_request(t(), atom()) :: t()
   defp handle_redundant_request(%{status: status} = state, action) do
     :telemetry.execute([:elevator, :hardware, :motor, action], %{}, %{
       status: status,
       redundant: true
     })
- 
+
     state
   end
 

@@ -25,7 +25,8 @@ defmodule Elevator.Features.CoreSECATest do
 
   # SECA row: :booting + :startup_check + vault != sensor -> :rehoming
   test "(:booting -> :rehoming) cold start: vault does not match sensor" do
-    {state, actions} = Core.booting() |> Core.handle_event(:startup_check, %{vault: nil, sensor: nil})
+    {state, actions} =
+      Core.booting() |> Core.handle_event(:startup_check, %{vault: nil, sensor: nil})
 
     assert Core.phase(state) == :rehoming
     assert {:crawl, :down} in actions

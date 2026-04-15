@@ -20,10 +20,17 @@ defmodule Elevator.AuditTest do
       Enum.each(combinations, fn {current, heading, target, source} ->
         state =
           case heading do
-            :idle -> Core.idle_at(current)
-            :up when current < 5 -> Core.idle_at(current) |> Core.request_floor({:car, 5}) |> elem(0)
-            :down when current > 0 -> Core.idle_at(current) |> Core.request_floor({:car, 0}) |> elem(0)
-            _ -> nil
+            :idle ->
+              Core.idle_at(current)
+
+            :up when current < 5 ->
+              Core.idle_at(current) |> Core.request_floor({:car, 5}) |> elem(0)
+
+            :down when current > 0 ->
+              Core.idle_at(current) |> Core.request_floor({:car, 0}) |> elem(0)
+
+            _ ->
+              nil
           end
 
         if state do
@@ -33,7 +40,6 @@ defmodule Elevator.AuditTest do
           # ASSERT 1: Immediate Arrival Logic
           # Exception: Asymmetry Rule ([R-MOVE-LOOK]) defers Hall requests          # Rule: Target Arrival Logic
           # (Formerly handled immediate arrival checks here; now delegated to movement.feature)
-
 
           # ASSERT 3: Never Idle with Work
           if target != current do
