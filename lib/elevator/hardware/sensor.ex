@@ -1,16 +1,16 @@
 defmodule Elevator.Hardware.Sensor do
   @moduledoc """
   The 'Nervous System' of the building.
-  It listens for physical 'Motor Pulses' and emits logical 'Floor Arrivals.'
+  A passive floor memory: it tracks the elevator's position by listening
+  for {:floor_arrival, floor} events from World.
+  World is the authoritative source of floor crossings.
   """
   use GenServer
-  require Logger
 
-  defstruct [:current_floor, :controller]
+  defstruct [:current_floor]
 
   @type t :: %__MODULE__{
-          current_floor: integer(),
-          controller: pid() | atom() | nil
+          current_floor: integer()
         }
 
   # ---------------------------------------------------------------------------
@@ -37,25 +37,21 @@ defmodule Elevator.Hardware.Sensor do
   @impl true
   @spec init(keyword()) :: {:ok, t()} | {:stop, term()}
   def init(opts) do
-    # Register brain only if it's a named process (Supervisor/Production)
     if Keyword.get(opts, :name) != nil do
       {:ok, _} = Registry.register(Elevator.Registry, :sensor, nil)
     end
 
-    # 1. Recover physical floor from the Vault
     vault = Keyword.get(opts, :vault)
     vault_floor = get_initial_floor(vault)
 
-    # 2. Handle final bootstrap state
     floor = vault_floor || Keyword.get(opts, :current_floor, 0)
-    controller = Keyword.get(opts, :controller)
 
     :telemetry.execute([:elevator, :hardware, :sensor, :init], %{}, %{
       floor: floor,
       recovered: not is_nil(vault_floor)
     })
 
-    {:ok, %__MODULE__{current_floor: floor, controller: controller}}
+    {:ok, %__MODULE__{current_floor: floor}}
   end
 
   @impl true
@@ -65,29 +61,16 @@ defmodule Elevator.Hardware.Sensor do
   end
 
   @impl true
-  @spec handle_info({:motor_pulse, :up | :down}, t()) :: {:noreply, t()}
-  def handle_info({:motor_pulse, direction}, %{current_floor: current} = state) do
-    # Calculate new floor based on physical direction pulse
-    next_floor = calculate_next_floor(current, direction)
-
-    :telemetry.execute([:elevator, :hardware, :sensor, :arrival], %{}, %{floor: next_floor})
-
-    # Notify the Brain (Controller)
-    notify_controller(state, next_floor)
-
-    {:noreply, %{state | current_floor: next_floor}}
+  @spec handle_info({:floor_arrival, integer()}, t()) :: {:noreply, t()}
+  def handle_info({:floor_arrival, floor}, state) do
+    :telemetry.execute([:elevator, :hardware, :sensor, :arrival], %{}, %{floor: floor})
+    {:noreply, %{state | current_floor: floor}}
   end
 
   @impl true
   @spec handle_info(term(), t()) :: {:noreply, t()}
   def handle_info(msg, state) do
-    Logger.warning("Sensor: Unexpected message #{inspect(msg)} in state: #{inspect(state)}")
-
-    :telemetry.execute([:elevator, :hardware, :sensor, :unexpected_message], %{}, %{
-      message: msg,
-      state: state
-    })
-
+    :telemetry.execute([:elevator, :hardware, :sensor, :unexpected_message], %{}, %{message: msg})
     {:noreply, state}
   end
 
@@ -95,40 +78,13 @@ defmodule Elevator.Hardware.Sensor do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec calculate_next_floor(integer(), :up | :down) :: integer()
-  defp calculate_next_floor(current, :up), do: current + 1
-  defp calculate_next_floor(current, :down), do: current - 1
-
   defp get_initial_floor(vault) do
     target = vault || lookup_vault()
     if target, do: Elevator.Vault.get_floor(target), else: nil
   end
 
-  @spec notify_controller(t(), integer()) :: :ok
-  defp notify_controller(state, floor) do
-    target = state.controller || lookup_controller()
-
-    if target do
-      send(target, {:floor_arrival, floor})
-    else
-      :telemetry.execute([:elevator, :hardware, :sensor, :notification_failure], %{}, %{
-        target: :controller,
-        floor: floor
-      })
-
-      :ok
-    end
-  end
-
   defp lookup_vault do
     case Registry.lookup(Elevator.Registry, :vault) do
-      [{pid, _}] -> pid
-      _ -> nil
-    end
-  end
-
-  defp lookup_controller do
-    case Registry.lookup(Elevator.Registry, :controller) do
       [{pid, _}] -> pid
       _ -> nil
     end

@@ -117,6 +117,7 @@ defmodule Elevator.World do
 
     if brake_count >= @brake_ticks do
       notify(state, :motor_stopped)
+      if pid = registry_lookup(:motor), do: send(pid, :motor_stopped)
       {:noreply, %{state | motor: :stopped, direction: nil, brake_count: 0}}
     else
       {:noreply, %{state | brake_count: brake_count}}
@@ -130,6 +131,7 @@ defmodule Elevator.World do
     if tick_count >= threshold do
       next_floor = advance_floor(state.floor, state.direction)
       notify(state, {:floor_arrival, next_floor})
+      if pid = registry_lookup(:sensor), do: send(pid, {:floor_arrival, next_floor})
       {:noreply, %{state | floor: next_floor, tick_count: 0}}
     else
       {:noreply, %{state | tick_count: tick_count}}

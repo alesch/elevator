@@ -88,6 +88,7 @@ defmodule Elevator.Controller do
     # Register brain only if it's a named process (Supervisor/Production)
     if Keyword.get(opts, :name) != nil do
       {:ok, _} = Registry.register(Elevator.Registry, :controller, nil)
+      Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:hardware")
     end
 
     data = %{
@@ -200,15 +201,15 @@ defmodule Elevator.Controller do
   end
 
   @impl true
-  @spec handle_info(:motor_running, t()) :: {:noreply, t()}
-  def handle_info(:motor_running, data) do
+  @spec handle_info({:motor_running, :up | :down}, t()) :: {:noreply, t()}
+  def handle_info({:motor_running, _dir}, data) do
     data
     |> pulse_and_commit(:motor_running, %{}, Core.handle_event(data.state, :motor_running))
   end
 
   @impl true
-  @spec handle_info(:motor_crawling, t()) :: {:noreply, t()}
-  def handle_info(:motor_crawling, data) do
+  @spec handle_info({:motor_crawling, :up | :down}, t()) :: {:noreply, t()}
+  def handle_info({:motor_crawling, _dir}, data) do
     data
     |> pulse_and_commit(:motor_crawling, %{}, Core.handle_event(data.state, :motor_crawling))
   end

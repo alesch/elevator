@@ -28,7 +28,13 @@ defmodule Elevator.Application do
         {Phoenix.PubSub, [name: Elevator.PubSub]},
 
         # 4. Persistence Layer (Vault)
-        {Elevator.Vault, [name: Elevator.Vault]}
+        {Elevator.Vault, [name: Elevator.Vault]},
+
+        # 5. Virtual Clock
+        {Elevator.Time, [name: Elevator.Time]},
+
+        # 6. Physical Simulation
+        {Elevator.World, [name: Elevator.World, floor: 1]}
       ] ++ hardware_profile()
 
     opts = [strategy: :one_for_one, name: Elevator.Supervisor]

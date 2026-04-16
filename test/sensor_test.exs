@@ -1,54 +1,45 @@
 defmodule Elevator.SensorTest do
   @moduledoc """
-  Proves the Nervous System: Floor detection and Notification.
+  Proves Sensor is a passive floor tracker.
+  It updates its floor when it receives {:floor_arrival, floor} from World.
+  No controller notification — World notifies Controller directly.
   """
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
+
   alias Elevator.Hardware.Sensor
 
   setup do
-    # Start the Vault first to satisfy the dependency in Sensor.init
-    # We use name: nil to avoid name collisions between parallel tests.
     vault = start_supervised!({Elevator.Vault, [name: nil]})
-
-    # Inject self() as the controller to catch notifications locally
-    pid =
-      start_supervised!({Sensor, [current_floor: 1, vault: vault, controller: self(), name: nil]})
-
-    %{sensor: pid, vault: vault}
+    pid = start_supervised!({Sensor, [current_floor: 1, vault: vault, name: nil]})
+    %{sensor: pid}
   end
 
   test "[S-HW-SENSOR]: starts at the specified floor", %{sensor: pid} do
     assert Sensor.get_floor(pid) == 1
   end
 
-  test "[S-HW-SENSOR]: motor pulse UP increments the floor", %{sensor: pid} do
-    # Simulate a pulse from the Motor
-    send(pid, {:motor_pulse, :up})
-
-    # Wait for the async process (Sync peek)
+  test "[S-HW-SENSOR]: floor_arrival updates the tracked floor upward", %{sensor: pid} do
+    send(pid, {:floor_arrival, 2})
     _ = Sensor.get_floor(pid)
-
     assert Sensor.get_floor(pid) == 2
   end
 
-  test "[S-HW-SENSOR]: motor pulse DOWN decrements the floor", %{sensor: _pid, vault: vault} do
-    # Stop the default sensor from setup to start a new one with F3
-    stop_supervised!(Sensor)
+  test "[S-HW-SENSOR]: floor_arrival updates the tracked floor downward", %{sensor: _pid} do
+    vault = start_supervised!({Elevator.Vault, [name: nil]}, id: :vault2)
 
     pid =
-      start_supervised!({Sensor, [current_floor: 3, vault: vault, controller: self(), name: nil]})
+      start_supervised!({Sensor, [current_floor: 3, vault: vault, name: nil]}, id: :sensor2)
 
-    send(pid, {:motor_pulse, :down})
-
+    send(pid, {:floor_arrival, 2})
     _ = Sensor.get_floor(pid)
-
     assert Sensor.get_floor(pid) == 2
   end
 
-  test "[S-HW-SENSOR]: sensor notifies the Controller upon arrival", %{sensor: pid} do
-    send(pid, {:motor_pulse, :up})
-
-    # The Sensor should notify the Controller (the test process): {:floor_arrival, 2}
-    assert_receive {:floor_arrival, 2}
+  test "[S-HW-SENSOR]: consecutive arrivals update floor each time", %{sensor: pid} do
+    send(pid, {:floor_arrival, 2})
+    _ = Sensor.get_floor(pid)
+    send(pid, {:floor_arrival, 3})
+    _ = Sensor.get_floor(pid)
+    assert Sensor.get_floor(pid) == 3
   end
 end
