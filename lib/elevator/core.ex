@@ -337,9 +337,11 @@ defmodule Elevator.Core do
     put_in(state.logic.phase, :opening)
   end
 
-  # Opening -> Docked
+  # Opening -> Docked: service the current floor, start door timer
   defp do_transit(%Core{logic: %{phase: :opening}, signal: :door_opened} = state) do
-    put_in(state.logic.phase, :docked)
+    state
+    |> floor_serviced()
+    |> put_in([Access.key(:logic), :phase], :docked)
   end
 
   # Docked -> record activity (door_open button extends timer)
