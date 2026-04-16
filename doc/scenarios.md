@@ -93,6 +93,7 @@ Keep in sync when scenarios are added or renamed.
 | `@S-SYS-REDUNDANT` | — | Redundant motor commands log a warning and do not re-trigger timers |
 | `@S-REQ-SPAM` | — | Duplicate floor requests are silently ignored, no warning logged |
 | `@S-SYS-PUBSUB` | — | Any core state change is broadcast over PubSub on `elevator:status` |
+| `@S-SYS-E2E-FULL-TRIP` | `:idle → :moving → :docked → :moving → :docked → :idle → :moving → :docked` | Full trip: two car requests serviced in LOOK order, then inactivity return to base |
 
 ---
 

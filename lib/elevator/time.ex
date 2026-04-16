@@ -58,8 +58,12 @@ defmodule Elevator.Time do
   @impl true
   @spec init(keyword()) :: {:ok, t()}
   def init(opts) do
+    if Keyword.get(opts, :name) != nil do
+      {:ok, _} = Registry.register(Elevator.Registry, :time, nil)
+    end
+
     tick_ms = Keyword.get(opts, :tick_ms, @default_tick_ms)
-    speed = Keyword.get(opts, :speed, @default_speed)
+    speed = Keyword.get(opts, :speed, Application.get_env(:elevator, :time_speed, @default_speed))
     pubsub = Keyword.get(opts, :pubsub, Elevator.PubSub)
 
     state = %{

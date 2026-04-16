@@ -171,7 +171,12 @@ defmodule Elevator.Hardware.Door do
 
   @spec start_timer(t(), term(), integer()) :: t()
   defp start_timer(state, msg, ms) do
-    timer = Process.send_after(self(), msg, ms)
+    timer =
+      case Registry.lookup(Elevator.Registry, :time) do
+        [{pid, _}] -> Elevator.Time.send_after(pid, self(), ms, msg)
+        _ -> Process.send_after(self(), msg, ms)
+      end
+
     %{state | timer: timer}
   end
 

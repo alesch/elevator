@@ -15,7 +15,8 @@ config :phoenix, :plug_init_mode, :runtime
 # Disabling the hardware stack and server for unit tests 
 # to allow isolated testing of functional modules.
 config :elevator,
-  hardware_stack_enabled: false
+  hardware_stack_enabled: false,
+  time_speed: 1000.0
 
 config :cabbage,
   features: "features/"

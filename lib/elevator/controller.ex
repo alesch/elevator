@@ -17,7 +17,8 @@ defmodule Elevator.Controller do
 
   @type t :: %{
           state: Elevator.Core.t(),
-          deps: deps()
+          deps: deps(),
+          timers: %{atom() => reference()}
         }
 
   # ---------------------------------------------------------------------------
@@ -98,7 +99,8 @@ defmodule Elevator.Controller do
         door: Keyword.get(opts, :door),
         sensor: Keyword.get(opts, :sensor),
         vault: Keyword.get(opts, :vault)
-      }
+      },
+      timers: %{}
     }
 
     {:ok, data, {:continue, :homing_check}}
@@ -286,8 +288,18 @@ defmodule Elevator.Controller do
   end
 
   defp do_execute({:set_timer, id, ms}, acc) do
-    Process.send_after(self(), {:timeout, id}, ms)
-    acc
+    if ref = acc.timers[id], do: Process.cancel_timer(ref)
+
+    ref =
+      lookup_hardware(acc, :time, &Elevator.Time.send_after(&1, self(), ms, {:timeout, id})) ||
+        Process.send_after(self(), {:timeout, id}, ms)
+
+    %{acc | timers: Map.put(acc.timers, id, ref)}
+  end
+
+  defp do_execute({:cancel_timer, id}, acc) do
+    if ref = acc.timers[id], do: Process.cancel_timer(ref)
+    %{acc | timers: Map.delete(acc.timers, id)}
   end
 
   defp do_execute({:persist_arrival, floor}, acc) do
