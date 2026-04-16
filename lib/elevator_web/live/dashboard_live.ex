@@ -9,6 +9,8 @@ defmodule ElevatorWeb.DashboardLive do
   import ElevatorWeb.DashboardComponents
   import ElevatorWeb.DashboardHelpers
 
+  alias Elevator.Core
+
   # ---------------------------------------------------------------------------
   # ## LiveView Callbacks
   # ---------------------------------------------------------------------------
@@ -26,20 +28,20 @@ defmodule ElevatorWeb.DashboardLive do
     state =
       case Registry.lookup(Elevator.Registry, :controller) do
         [{pid, _}] -> Elevator.Controller.get_state(pid)
-        _ -> %Elevator.Core{}
+        _ -> %Core{}
       end
 
     {:ok,
      assign(socket,
-       current_floor: state.current_floor,
-       visual_floor: visual_floor(state.current_floor, state.motor_status, state.heading),
-       is_moving: state.motor_status == :running,
-       requests: state.requests,
+       current_floor: state.hardware.current_floor,
+       visual_floor: visual_floor(state.hardware.current_floor, state.hardware.motor_status, Core.heading(state)),
+       is_moving: state.hardware.motor_status == :running,
+       requests: state.logic.sweep.requests,
        target_floor: get_target_floor(state),
-       door_state: state.door_status,
-       motor_state: state.motor_status,
-       sensor_state: state.door_sensor,
-       controller_state: state.phase,
+       door_state: state.hardware.door_status,
+       motor_state: state.hardware.motor_status,
+       sensor_state: state.hardware.door_sensor,
+       controller_state: state.logic.phase,
        activity_log: [
          %{actor: "🧠", id: 1, time: current_time(), msg: "LiveView Connected."}
        ]
@@ -53,15 +55,15 @@ defmodule ElevatorWeb.DashboardLive do
     {:noreply,
      socket
      |> assign(
-       current_floor: state.current_floor,
-       visual_floor: visual_floor(state.current_floor, state.motor_status, state.heading),
-       is_moving: state.motor_status == :running,
-       requests: state.requests,
+       current_floor: state.hardware.current_floor,
+       visual_floor: visual_floor(state.hardware.current_floor, state.hardware.motor_status, Core.heading(state)),
+       is_moving: state.hardware.motor_status == :running,
+       requests: state.logic.sweep.requests,
        target_floor: get_target_floor(state),
-       door_state: state.door_status,
-       motor_state: state.motor_status,
-       sensor_state: state.door_sensor,
-       controller_state: state.phase
+       door_state: state.hardware.door_status,
+       motor_state: state.hardware.motor_status,
+       sensor_state: state.hardware.door_sensor,
+       controller_state: state.logic.phase
      )}
   end
 
@@ -216,11 +218,14 @@ defmodule ElevatorWeb.DashboardLive do
     """
   end
 
-  defp get_target_floor(%{requests: [], phase: :rehoming}), do: 0
-  defp get_target_floor(%{requests: []}), do: nil
+  defp get_target_floor(%Core{logic: %{phase: :rehoming, sweep: %{requests: []}}}), do: 0
+  defp get_target_floor(%Core{logic: %{sweep: %{requests: []}}}), do: nil
 
-  defp get_target_floor(%{requests: requests, current_floor: current, heading: heading}) do
-    case heading do
+  defp get_target_floor(%Core{} = state) do
+    requests = state.logic.sweep.requests
+    current = state.hardware.current_floor
+
+    case Core.heading(state) do
       :up ->
         requests
         |> Enum.map(fn {_, f} -> f end)
