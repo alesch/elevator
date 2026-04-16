@@ -1,103 +1,111 @@
 defmodule Elevator.MotorTest do
   @moduledoc """
-  Proves the 2-second transit physics of the Motor actor.
+  Proves the event-broadcasting behavior of Motor.
+
+  Motor is a thin broadcaster: it publishes motor events to "elevator:hardware"
+  and transitions state when World confirms braking is complete (:motor_stopped).
+  All physical timing is owned by World.
   """
   use ExUnit.Case, async: true
+
   alias Elevator.Hardware.Motor
 
   setup do
-    # Inject self() as the sensor to catch pulses locally
-    # Use name: nil to prevent global registration and avoid collisions in parallel tests
-    pid = start_supervised!({Motor, [sensor: self(), name: nil]})
+    # Subscribe before starting Motor to avoid missing the first broadcast.
+    Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:hardware")
+    pid = start_supervised!({Motor, [name: nil]})
     %{motor: pid}
   end
 
+  # ---------------------------------------------------------------------------
+  # Initial state
+  # ---------------------------------------------------------------------------
+
   test "[S-HW-MOTOR]: starts in a stopped state", %{motor: pid} do
-    assert %{status: :stopped, direction: nil, timer: nil} = Motor.get_state(pid)
-    # Verify the speed field is gone (Simplified state)
-    refute Map.has_key?(Motor.get_state(pid), :speed)
+    state = Motor.get_state(pid)
+    assert state.status == :stopped
+    assert state.direction == nil
+    refute Map.has_key?(state, :timer)
   end
 
-  test "[S-HW-MOTOR]: move/2 starts the normal transit timer", %{motor: pid} do
+  # ---------------------------------------------------------------------------
+  # Move broadcasts
+  # ---------------------------------------------------------------------------
+
+  test "[S-HW-MOTOR]: move/2 broadcasts {:motor_running, direction} and updates state",
+       %{motor: pid} do
     Motor.move(pid, :up)
 
+    assert_receive {:motor_running, :up}
     state = Motor.get_state(pid)
     assert state.status == :running
     assert state.direction == :up
-    assert is_reference(state.timer)
-
-    # Deterministic Proof: Audit the timer remaining time (~1500ms)
-    remaining = Process.read_timer(state.timer)
-    assert remaining > 0 and remaining <= 1500
   end
 
-  test "[S-HW-MOTOR]: crawl/2 starts the slow transit timer", %{motor: pid} do
-    Motor.crawl(pid, :up)
+  test "[S-HW-MOTOR]: crawl/2 broadcasts {:motor_crawling, direction} and updates state",
+       %{motor: pid} do
+    Motor.crawl(pid, :down)
 
+    assert_receive {:motor_crawling, :down}
     state = Motor.get_state(pid)
     assert state.status == :crawling
-    assert state.direction == :up
-    assert is_reference(state.timer)
-
-    # Deterministic Proof: Audit the timer remaining time (~4500ms)
-    remaining = Process.read_timer(state.timer)
-    assert remaining > 1500 and remaining <= 4500
+    assert state.direction == :down
   end
 
-  test "[S-HW-MOTOR]: stopping motion enters :stopping state with a brake timer", %{motor: pid} do
-    # Start moving
-    Motor.move(pid, :up)
+  # ---------------------------------------------------------------------------
+  # Stop broadcasts
+  # ---------------------------------------------------------------------------
 
-    # Stop moving
+  test "[S-HW-MOTOR]: stop/1 broadcasts :motor_stopping and enters :stopping state",
+       %{motor: pid} do
+    Motor.move(pid, :up)
+    assert_receive {:motor_running, :up}
+
     Motor.stop(pid)
 
+    assert_receive :motor_stopping
     state = Motor.get_state(pid)
     assert state.status == :stopping
-    assert is_reference(state.timer)
-
-    # Deterministic Proof of brake timer (500ms)
-    remaining = Process.read_timer(state.timer)
-    assert remaining > 0 and remaining <= 500
   end
 
-  test "[S-HW-MOTOR]: motor transitions to :stopped after braking", %{motor: pid} do
-    Motor.move(pid, :up)
+  test "[S-HW-MOTOR]: stop/1 is idempotent when already stopped", %{motor: pid} do
     Motor.stop(pid)
-
-    # Wait for brake timer to fire (500ms + margin)
-    Process.sleep(600)
 
     state = Motor.get_state(pid)
     assert state.status == :stopped
-    assert state.timer == nil
   end
 
-  test "[S-HW-MOTOR]: consecutive moves reset the timer correctly", %{motor: pid} do
+  # ---------------------------------------------------------------------------
+  # World feedback
+  # ---------------------------------------------------------------------------
+
+  test "[S-HW-MOTOR]: :motor_stopped from World transitions to :stopped", %{motor: pid} do
     Motor.move(pid, :up)
-    %{} = state1 = Motor.get_state(pid)
-    ref1 = state1.timer
+    assert_receive {:motor_running, :up}
+    Motor.stop(pid)
+    assert_receive :motor_stopping
+
+    send(pid, :motor_stopped)
+
+    state = Motor.get_state(pid)
+    assert state.status == :stopped
+    assert state.direction == nil
+  end
+
+  # ---------------------------------------------------------------------------
+  # Direction change
+  # ---------------------------------------------------------------------------
+
+  test "[S-HW-MOTOR]: a second move updates direction and broadcasts new event",
+       %{motor: pid} do
+    Motor.move(pid, :up)
+    assert_receive {:motor_running, :up}
 
     Motor.crawl(pid, :down)
-    %{} = state2 = Motor.get_state(pid)
-    ref2 = state2.timer
+    assert_receive {:motor_crawling, :down}
 
-    assert ref1 != ref2
-    # Verify the first timer was cancelled
-    assert Process.read_timer(ref1) == false
-    # Verify the new timer is active (with slow timing)
-    remaining = Process.read_timer(ref2)
-    assert is_integer(remaining)
-    assert remaining > 1500
-  end
-
-  test "[S-HW-MOTOR]: motor notifies the sensor upon pulse", %{motor: pid} do
-    # Start moving to trigger pulses
-    Motor.move(pid, :up)
-
-    # Manually trigger the pulse info to bypass waiting 2s
-    send(pid, {:pulse, :up})
-
-    # The Motor should notify the Sensor (the test process): {:motor_pulse, :up}
-    assert_receive {:motor_pulse, :up}
+    state = Motor.get_state(pid)
+    assert state.status == :crawling
+    assert state.direction == :down
   end
 end
