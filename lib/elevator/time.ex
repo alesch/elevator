@@ -63,7 +63,13 @@ defmodule Elevator.Time do
     end
 
     tick_ms = Keyword.get(opts, :tick_ms, @default_tick_ms)
-    speed = Keyword.get(opts, :speed, Application.get_env(:elevator, :time_speed, @default_speed))
+
+    default_speed =
+      if Keyword.get(opts, :name) != nil,
+        do: Application.get_env(:elevator, :time_speed, @default_speed),
+        else: @default_speed
+
+    speed = Keyword.get(opts, :speed, default_speed)
     pubsub = Keyword.get(opts, :pubsub, Elevator.PubSub)
 
     state = %{
