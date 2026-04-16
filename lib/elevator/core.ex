@@ -454,6 +454,7 @@ defmodule Elevator.Core do
   # ---------------------------------------------------------------------------
 
   @spec derive_actions(t()) :: [action()]
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp derive_actions(
          %Core{
            logic: %{phase: phase},

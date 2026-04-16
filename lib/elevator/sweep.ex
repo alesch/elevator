@@ -211,6 +211,7 @@ defmodule Elevator.Sweep do
   @spec do_update_heading(t(), floor() | :unknown) :: :up | :down | :idle
   defp do_update_heading(%Sweep{requests: []}, _current_floor), do: :idle
 
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   defp do_update_heading(sweep, current_floor) do
     case sweep.heading do
       :idle ->
