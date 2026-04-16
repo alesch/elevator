@@ -93,7 +93,6 @@ Keep in sync when scenarios are added or renamed.
 | `@S-SYS-REDUNDANT` | — | Redundant motor commands log a warning and do not re-trigger timers |
 | `@S-REQ-SPAM` | — | Duplicate floor requests are silently ignored, no warning logged |
 | `@S-SYS-PUBSUB` | — | Any core state change is broadcast over PubSub on `elevator:status` |
-| `@S-REQ-CONCURRENCY` | — | Concurrent hall requests are all recorded exactly once, none dropped |
 
 ---
 
