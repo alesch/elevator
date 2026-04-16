@@ -22,6 +22,7 @@ defmodule ElevatorWeb.DashboardLive do
       Logger.info("Dashboard: Connected")
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:telemetry")
+      Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:simulation")
     end
 
     # Initial state from the real Controller (via Discovery Layer)
@@ -30,6 +31,8 @@ defmodule ElevatorWeb.DashboardLive do
         [{pid, _}] -> Elevator.Controller.get_state(pid)
         _ -> %Core{}
       end
+
+    {transit_ms, brake_ms} = time_durations()
 
     {:ok,
      assign(socket,
@@ -42,6 +45,8 @@ defmodule ElevatorWeb.DashboardLive do
        motor_state: state.hardware.motor_status,
        sensor_state: state.hardware.door_sensor,
        controller_state: state.logic.phase,
+       transit_ms: transit_ms,
+       brake_ms: brake_ms,
        activity_log: [
          %{actor: "🧠", id: 1, time: current_time(), msg: "LiveView Connected."}
        ]
@@ -76,6 +81,14 @@ defmodule ElevatorWeb.DashboardLive do
      update(socket, :activity_log, fn logs ->
        Enum.take(logs ++ [entry], -30)
      end)}
+  end
+
+  @impl true
+  @spec handle_info({:tick, non_neg_integer()}, Phoenix.LiveView.Socket.t()) ::
+          {:noreply, Phoenix.LiveView.Socket.t()}
+  def handle_info({:tick, _counter}, socket) do
+    {transit_ms, brake_ms} = time_durations()
+    {:noreply, assign(socket, transit_ms: transit_ms, brake_ms: brake_ms)}
   end
 
   # Catch-all for unexpected industrial messages
@@ -150,7 +163,7 @@ defmodule ElevatorWeb.DashboardLive do
                   <div class="rehoming-banner">REHOMING</div>
                 <% end %>
 
-                <div class="car-container" style={"bottom: #{floor_to_pixels(@visual_floor)}px;"}>
+                <div class="car-container" style={car_style(@visual_floor, @motor_state, @transit_ms, @brake_ms)}>
                   <.elevator_car door_state={@door_state} slow={@controller_state == :rehoming} />
                 </div>
               </div>
@@ -246,5 +259,20 @@ defmodule ElevatorWeb.DashboardLive do
   @spec current_time() :: String.t()
   defp current_time do
     Time.utc_now() |> Time.to_string() |> String.slice(0, 8)
+  end
+
+  # Returns {transit_ms, brake_ms} computed from the live Time state.
+  # transit_ms: one floor at running speed (6 ticks)
+  # brake_ms:   braking phase (2 ticks)
+  @spec time_durations() :: {pos_integer(), pos_integer()}
+  defp time_durations do
+    time_state =
+      case Registry.lookup(Elevator.Registry, :time) do
+        [{pid, _}] -> Elevator.Time.get_state(pid)
+        _ -> %{tick_ms: 250, speed: 1.0}
+      end
+
+    scaled_tick = round(time_state.tick_ms / time_state.speed)
+    {scaled_tick * 6, scaled_tick * 2}
   end
 end

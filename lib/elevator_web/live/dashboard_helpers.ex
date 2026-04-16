@@ -8,6 +8,24 @@ defmodule ElevatorWeb.DashboardHelpers do
   # ## Visual Helpers
   # ---------------------------------------------------------------------------
 
+  @doc """
+  Builds the inline style for the car container.
+  Switches transition duration and easing between the travel and braking phases.
+  """
+  @spec car_style(integer() | :unknown, atom(), pos_integer(), pos_integer()) :: String.t()
+  def car_style(visual_floor, motor_state, transit_ms, brake_ms) do
+    px = floor_to_pixels(visual_floor)
+
+    transition =
+      case motor_state do
+        s when s in [:running, :crawling] -> "bottom #{transit_ms}ms linear"
+        :stopping -> "bottom #{brake_ms}ms ease-out"
+        _ -> "none"
+      end
+
+    "bottom: #{px}px; transition: #{transition};"
+  end
+
   @doc "Maps a floor number to its vertical pixel offset in the shaft visualization."
   @spec floor_to_pixels(integer() | :unknown) :: integer()
   def floor_to_pixels(:unknown), do: 0

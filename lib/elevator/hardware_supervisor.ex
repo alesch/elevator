@@ -21,17 +21,13 @@ defmodule Elevator.HardwareSupervisor do
       {Elevator.Hardware.Motor, [name: Elevator.Hardware.Motor]},
 
       # 2. The Nervous System
-      {Elevator.Hardware.Sensor, [current_floor: 1, name: Elevator.Hardware.Sensor]},
+      {Elevator.Hardware.Sensor, [current_floor: 0, name: Elevator.Hardware.Sensor]},
 
       # 3. The Safety Boundary
       {Elevator.Hardware.Door, [name: Elevator.Hardware.Door]},
 
       # 4. The Orchestrator (The Brain)
-      {Elevator.Controller,
-       [
-         current_floor: 1,
-         name: Elevator.Controller
-       ]}
+      {Elevator.Controller, [name: Elevator.Controller]}
     ]
 
     Supervisor.init(children, strategy: :one_for_all)

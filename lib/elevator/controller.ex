@@ -70,7 +70,7 @@ defmodule Elevator.Controller do
   """
   @spec reset() :: :ok
   def reset do
-    Elevator.Vault.put_floor(Elevator.Vault, nil)
+    Elevator.Vault.put_floor(Elevator.Vault, 0)
 
     if pid = Process.whereis(Elevator.HardwareSupervisor) do
       Process.exit(pid, :kill)
