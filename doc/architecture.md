@@ -48,16 +48,30 @@ graph TD
 
 ## 4. Component Responsibilities
 
-| Component | Responsibility | Failure Impact |
-| :--- | :--- | :--- |
-| **Vault** | Persistent storage of floor arrival | If wiped, system results in full homing from F0. |
-| **Core** | **The Brain**: Autonomous logic & safety interlocks | If logic fails. |
-| **Controller**| **The Servo**: Hardware mirror & change detection | If crashes, Hardware Stack reboots (Firewall). |
-| **Motor** | Physical motion execution | Supports `:running` and `:crawling` statuses for REHOMING. |
-| **Door** | Cabin access safety | Source of `obstruction` events for the Core. |
-| **Sensor** | Floor sensors | Signals when the elevator reaches a floor. |
+| Component | Responsibility |
+| :--- | :--- |
+| **Time** | Ticks at a configurable rate; schedules timers for other modules. Knows nothing about elevators. |
+| **World** | Simulates physical reality: given motor speed and direction, fires floor-crossing events after the appropriate number of ticks. |
+| **Core** | Logical rules: state transitions and safety interlocks. Pure — no side effects. |
+| **Controller** | The Servo: executes actions from Core against real hardware. |
+| **Vault** | Persistent storage of last known floor. If wiped, system rehomes from F0. |
+| **Motor** | Executes direction/speed commands; reports status (running, crawling, stopped). |
+| **Door** | Executes open/close commands; reports status and obstruction events. |
+| **Sensor** | In hardware mode: receives physical floor signals. In simulation mode: replaced by World. |
 
-## 5. Boot & Recovery Sequence
+## 5. Message Bus Channels
+
+Components communicate via Phoenix PubSub topics. No direct coupling is required between publishers and subscribers.
+
+| Channel | Publishers | Subscribers |
+| :--- | :--- | :--- |
+| `"elevator:hardware"` | Motor, Door, Sensor, World | Controller, World |
+| `"elevator:simulation"` | Time | World, Web Dashboard |
+| `"elevator:status"` | Controller | LiveView |
+
+> **Note:** In simulation mode, `World` publishes `{:floor_arrival, floor}` onto `"elevator:hardware"` after the appropriate number of ticks — replacing the direct Motor → Sensor pulse coupling.
+
+## 6. Boot & Recovery Sequence
 
 When the elevator boots up, it checks whether it knows its position.
 
@@ -69,10 +83,10 @@ Once it has found its footing, it stops, opens its doors, and resumes normal ser
 
 Either way, the startup sequence ends with open doors.
 
-## 6. The Golden Rule
+## 7. The Golden Rule
 
 The Core enforces a hard constraint: **The motor MUST be in the `:stopped` status unless the `door_status` is confirmed to be `:closed`.**
 
-## 7. Technical State Transition Matrix
+## 8. Technical State Transition Matrix
 
 See the table here: [states.md](./states.md)
