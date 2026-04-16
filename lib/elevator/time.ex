@@ -6,7 +6,6 @@ defmodule Elevator.Time do
   speed multiplier, so tests can run at e.g. 100x without waiting for real time.
   """
   use GenServer
-  require Logger
 
   @default_tick_ms 250
   @default_speed 1.0
@@ -97,7 +96,7 @@ defmodule Elevator.Time do
 
   @impl true
   def handle_info(msg, state) do
-    Logger.warning("Time: Unexpected message #{inspect(msg)}")
+    :telemetry.execute([:elevator, :time, :unexpected_message], %{}, %{message: msg})
     {:noreply, state}
   end
 

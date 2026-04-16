@@ -17,17 +17,18 @@ defmodule Elevator.World do
     @brake_ticks               2  (2 × 250ms = 500ms)
   """
   use GenServer
-  require Logger
+  alias Elevator.Core
 
   @ticks_per_floor %{running: 6, crawling: 18}
   @brake_ticks 2
 
-  @type motor_status :: :stopped | :running | :crawling | :stopping
+  # Physical direction: nil when stopped, :up/:down when moving.
+  # Distinct from Core.direction(), which uses :idle instead of nil.
   @type direction :: :up | :down | nil
 
   @type t :: %{
-          floor: integer(),
-          motor: motor_status(),
+          floor: Core.floor(),
+          motor: Core.motor_status(),
           direction: direction(),
           tick_count: non_neg_integer(),
           brake_count: non_neg_integer(),
@@ -142,7 +143,7 @@ defmodule Elevator.World do
 
   @impl true
   def handle_info(msg, state) do
-    Logger.debug("World: ignoring message #{inspect(msg)}")
+    :telemetry.execute([:elevator, :world, :unexpected_message], %{}, %{message: msg})
     {:noreply, state}
   end
 
