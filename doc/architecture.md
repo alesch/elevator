@@ -25,9 +25,13 @@ We use a nested supervision strategy to isolate hardware-level failures from the
 graph TD
     Root["Elevator.Supervisor (one_for_one)"]
     Vault["Elevator.Vault (Persistent Agent)"]
+    Time["Elevator.Time (Virtual Clock)"]
+    World["Elevator.World (Physical Simulation)"]
     Stack["HardwareStack (one_for_all sub-supervisor)"]
     
     Root --> Vault
+    Root --> Time
+    Root --> World
     Root --> Stack
     
     subgraph "Hardware Stack"
@@ -69,9 +73,13 @@ Components communicate via Phoenix PubSub topics. No direct coupling is required
 | `"elevator:simulation"` | Time | World, Web Dashboard |
 | `"elevator:status"` | Controller | LiveView |
 
-> **Note:** In simulation mode, `World` publishes `{:floor_arrival, floor}` onto `"elevator:hardware"` after the appropriate number of ticks — replacing the direct Motor → Sensor pulse coupling.
+## 6. Simulation & Testing
 
-## 6. Boot & Recovery Sequence
+Rather than using real-time delays scattered across components, all timing flows through a virtual clock (`Elevator.Time`) and a physical simulation layer (`Elevator.World`). Tests can run at any chosen speed multiplier without changing application logic.
+
+See [simulation.md](./simulation.md) for the full specification: tick constants, speed multiplier, event flows, and test isolation patterns.
+
+## 7. Boot & Recovery Sequence
 
 When the elevator boots up, it checks whether it knows its position.
 
@@ -83,10 +91,10 @@ Once it has found its footing, it stops, opens its doors, and resumes normal ser
 
 Either way, the startup sequence ends with open doors.
 
-## 7. The Golden Rule
+## 8. The Golden Rule
 
 The Core enforces a hard constraint: **The motor MUST be in the `:stopped` status unless the `door_status` is confirmed to be `:closed`.**
 
-## 8. Technical State Transition Matrix
+## 9. Technical State Transition Matrix
 
 See the table here: [states.md](./states.md)
