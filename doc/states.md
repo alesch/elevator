@@ -50,6 +50,7 @@ The following events update the system's "Reality" but might trigger an immediat
 | :--- | :--- |
 | **`:motor_running`** | Updates `hardware.motor_status` to `:running`. |
 | **`:motor_crawling`** | Updates `hardware.motor_status` to `:crawling`. |
+| **`:motor_stopping`** | Updates `hardware.motor_status` to `:stopping`. |
 | **`:door_opening`** | Updates `hardware.door_status` to `:opening`. |
 | **`:door_closing`** | Updates `hardware.door_status` to `:closing`. |
 | **`:door_cleared`** | Updates `hardware.door_sensor` to `:clear`. |
