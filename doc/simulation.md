@@ -17,6 +17,8 @@ Test instances start with `name: nil` and skip the PubSub subscription — ticks
 
 `Elevator.World` simulates physical reality by counting ticks from Time.
 
+The `World` will poke the doors, motor and sensors, at the right time to simulate the reality of time passing and its mechanical workings taking place (motor breaking, doors opening, a sensor firing).
+
 **Physical constants** (at 250ms/tick):
 
 | Scenario | Ticks | Wall time |
@@ -28,23 +30,16 @@ Test instances start with `name: nil` and skip the PubSub subscription — ticks
 **Event flow for a floor crossing:**
 
 ```
-Motor broadcasts {:motor_running, :up}
-World receives it → starts counting ticks
-After 6 ticks → World fires {:floor_arrival, 3}
-  → Controller receives it (via registry)
-  → Sensor receives it (via registry)
+Fixme: 
 ```
 
-**Event flow for braking:**
+**Event flow for motor stopping:**
 
 ```
-Motor broadcasts :motor_stopping
-World receives it → starts counting brake ticks
-After 2 ticks → World fires :motor_stopped
-  → Controller receives it (via registry)
-  → Motor receives it (via registry) → transitions to :stopped
+Controller  →  bus broadcast  {:command, :stop}
+Motor       ←  (bus subscription)
+Motor       →  bus broadcast  :motor_stopping       (announces intent)
+World       →  Motor (direct, registry lookup)  :motor_stopped   (after brake ticks)
+Motor       →  bus broadcast  :motor_stopped         (announces completion)
+Controller  ←  (bus subscription)
 ```
-
-The floor sensor fires at the crossing tick before braking begins. Braking is a separate 2-tick countdown that starts only after `:motor_stopping` is received.
-
-Test instances start with `name: nil` and skip both PubSub subscriptions. Motor events and ticks are injected directly via `send/2`.
