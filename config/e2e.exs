@@ -9,4 +9,5 @@ config :logger, level: :warning
 
 config :elevator,
   hardware_stack_enabled: true,
-  e2e_routes: true
+  e2e_routes: true,
+  time_speed: 5.0
