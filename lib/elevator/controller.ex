@@ -259,12 +259,24 @@ defmodule Elevator.Controller do
   end
 
   defp do_execute({:move, dir}, acc) do
-    Phoenix.PubSub.broadcast_from(Elevator.PubSub, self(), "elevator:hardware", {:command, :move, dir})
+    Phoenix.PubSub.broadcast_from(
+      Elevator.PubSub,
+      self(),
+      "elevator:hardware",
+      {:command, :move, dir}
+    )
+
     acc
   end
 
   defp do_execute({:crawl, dir}, acc) do
-    Phoenix.PubSub.broadcast_from(Elevator.PubSub, self(), "elevator:hardware", {:command, :crawl, dir})
+    Phoenix.PubSub.broadcast_from(
+      Elevator.PubSub,
+      self(),
+      "elevator:hardware",
+      {:command, :crawl, dir}
+    )
+
     acc
   end
 
@@ -279,7 +291,13 @@ defmodule Elevator.Controller do
   end
 
   defp do_execute({:close_door}, acc) do
-    Phoenix.PubSub.broadcast_from(Elevator.PubSub, self(), "elevator:hardware", {:command, :close})
+    Phoenix.PubSub.broadcast_from(
+      Elevator.PubSub,
+      self(),
+      "elevator:hardware",
+      {:command, :close}
+    )
+
     acc
   end
 

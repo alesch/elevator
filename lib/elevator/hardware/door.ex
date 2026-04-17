@@ -113,7 +113,8 @@ defmodule Elevator.Hardware.Door do
   # ---------------------------------------------------------------------------
 
   @impl true
-  def handle_info({:command, :open}, %{status: status} = state) when status in [:open, :opening] do
+  def handle_info({:command, :open}, %{status: status} = state)
+      when status in [:open, :opening] do
     {:noreply, handle_redundant_request(state, :open)}
   end
 

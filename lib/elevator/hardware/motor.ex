@@ -72,7 +72,13 @@ defmodule Elevator.Hardware.Motor do
       speed: :running
     })
 
-    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_running, direction})
+    Phoenix.PubSub.broadcast_from(
+      state.pubsub,
+      self(),
+      "elevator:hardware",
+      {:motor_running, direction}
+    )
+
     {:noreply, %{state | status: :running, direction: direction}}
   end
 
@@ -83,7 +89,13 @@ defmodule Elevator.Hardware.Motor do
       speed: :crawling
     })
 
-    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_crawling, direction})
+    Phoenix.PubSub.broadcast_from(
+      state.pubsub,
+      self(),
+      "elevator:hardware",
+      {:motor_crawling, direction}
+    )
+
     {:noreply, %{state | status: :crawling, direction: direction}}
   end
 
@@ -116,7 +128,13 @@ defmodule Elevator.Hardware.Motor do
       speed: :running
     })
 
-    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_running, direction})
+    Phoenix.PubSub.broadcast_from(
+      state.pubsub,
+      self(),
+      "elevator:hardware",
+      {:motor_running, direction}
+    )
+
     {:noreply, %{state | status: :running, direction: direction}}
   end
 
@@ -127,12 +145,19 @@ defmodule Elevator.Hardware.Motor do
       speed: :crawling
     })
 
-    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_crawling, direction})
+    Phoenix.PubSub.broadcast_from(
+      state.pubsub,
+      self(),
+      "elevator:hardware",
+      {:motor_crawling, direction}
+    )
+
     {:noreply, %{state | status: :crawling, direction: direction}}
   end
 
   @impl true
-  def handle_info({:command, :stop}, %{status: status} = state) when status in [:stopped, :stopping] do
+  def handle_info({:command, :stop}, %{status: status} = state)
+      when status in [:stopped, :stopping] do
     :telemetry.execute([:elevator, :hardware, :motor, :stop], %{}, %{
       status: status,
       redundant: true

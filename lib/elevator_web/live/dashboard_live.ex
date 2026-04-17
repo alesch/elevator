@@ -37,7 +37,12 @@ defmodule ElevatorWeb.DashboardLive do
     {:ok,
      assign(socket,
        current_floor: state.hardware.current_floor,
-       visual_floor: visual_floor(state.hardware.current_floor, state.hardware.motor_status, Core.heading(state)),
+       visual_floor:
+         visual_floor(
+           state.hardware.current_floor,
+           state.hardware.motor_status,
+           Core.heading(state)
+         ),
        is_moving: state.hardware.motor_status == :running,
        requests: state.logic.sweep.requests,
        target_floor: get_target_floor(state),
@@ -61,7 +66,12 @@ defmodule ElevatorWeb.DashboardLive do
      socket
      |> assign(
        current_floor: state.hardware.current_floor,
-       visual_floor: visual_floor(state.hardware.current_floor, state.hardware.motor_status, Core.heading(state)),
+       visual_floor:
+         visual_floor(
+           state.hardware.current_floor,
+           state.hardware.motor_status,
+           Core.heading(state)
+         ),
        is_moving: state.hardware.motor_status == :running,
        requests: state.logic.sweep.requests,
        target_floor: get_target_floor(state),
