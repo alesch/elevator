@@ -41,7 +41,7 @@ defmodule Elevator.Vault do
       {:ok, _} = Registry.register(Elevator.Registry, :vault, nil)
     end
 
-    {:ok, nil}
+    {:ok, 0}
   end
 
   @impl true

@@ -10,6 +10,8 @@ defmodule Elevator.SensorTest do
 
   setup do
     vault = start_supervised!({Elevator.Vault, [name: nil]})
+    # Clear vault so the sensor falls back to the current_floor: option.
+    Elevator.Vault.put_floor(vault, nil)
     pid = start_supervised!({Sensor, [current_floor: 1, vault: vault, name: nil]})
     %{sensor: pid}
   end
