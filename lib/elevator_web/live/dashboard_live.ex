@@ -101,8 +101,14 @@ defmodule ElevatorWeb.DashboardLive do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:tick, _counter}, socket) do
     {transit_ms, brake_ms, door_ms} = time_durations()
-    {:noreply, assign(socket, transit_ms: transit_ms, brake_ms: brake_ms, door_ms: door_ms,
-                              tick_blink: !socket.assigns.tick_blink)}
+
+    {:noreply,
+     assign(socket,
+       transit_ms: transit_ms,
+       brake_ms: brake_ms,
+       door_ms: door_ms,
+       tick_blink: !socket.assigns.tick_blink
+     )}
   end
 
   # Catch-all for unexpected industrial messages
