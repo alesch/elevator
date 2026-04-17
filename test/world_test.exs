@@ -18,7 +18,7 @@ defmodule Elevator.WorldTest do
   setup do
     # Inject self() as the controller so World sends events directly to this
     # test process. This avoids PubSub cross-test pollution in async: true mode.
-    pid = start_supervised!({World, [name: nil, floor: 0, controller: self()]})
+    pid = start_supervised!({World, [name: nil, floor: 0, controller: self(), motor_pid: self()]})
     %{world: pid}
   end
 

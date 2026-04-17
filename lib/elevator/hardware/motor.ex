@@ -108,6 +108,7 @@ defmodule Elevator.Hardware.Motor do
 
   @impl true
   def handle_info(:motor_stopped, state) do
+    Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", :motor_stopped)
     {:noreply, %{state | status: :stopped, direction: nil}}
   end
 

@@ -7,9 +7,8 @@ defmodule Elevator.World do
     "elevator:simulation" — clock ticks from Elevator.Time
     "elevator:hardware"   — motor events (running, crawling, stopping)
 
-  World publishes to "elevator:hardware":
-    {:floor_arrival, floor}  — elevator crossed a floor sensor
-    :motor_stopped           — braking complete
+  World publishes to Motor directly:
+    :motor_stopped  — braking complete (Motor then broadcasts this on "elevator:hardware")
 
   Physical constants (at 250ms/tick):
     @ticks_per_floor  running:  6  (6 × 250ms = 1500ms)
@@ -33,7 +32,8 @@ defmodule Elevator.World do
           tick_count: non_neg_integer(),
           brake_count: non_neg_integer(),
           pubsub: atom(),
-          controller: pid() | atom() | nil
+          controller: pid() | atom() | nil,
+          motor_pid: pid() | atom() | nil
         }
 
   # ---------------------------------------------------------------------------
@@ -70,16 +70,19 @@ defmodule Elevator.World do
     end
 
     controller = Keyword.get(opts, :controller)
+    motor_pid = Keyword.get(opts, :motor_pid)
 
     {:ok,
      %{
+       # floor is the physical position of the elevator car
        floor: Keyword.get(opts, :floor, 0),
        motor: :stopped,
        direction: nil,
        tick_count: 0,
        brake_count: 0,
        pubsub: pubsub,
-       controller: controller
+       controller: controller,
+       motor_pid: motor_pid
      }}
   end
 
@@ -116,8 +119,7 @@ defmodule Elevator.World do
     brake_count = state.brake_count + 1
 
     if brake_count >= @brake_ticks do
-      notify(state, :motor_stopped)
-      if pid = registry_lookup(:motor), do: send(pid, :motor_stopped)
+      notify_motor(state, :motor_stopped)
       {:noreply, %{state | motor: :stopped, direction: nil, brake_count: 0}}
     else
       {:noreply, %{state | brake_count: brake_count}}
@@ -172,6 +174,15 @@ defmodule Elevator.World do
         Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", message)
     end
 
+    :ok
+  end
+
+  # Notify the motor: injected pid takes priority (test isolation),
+  # falling back to registry lookup. Motor then broadcasts on the bus.
+  @spec notify_motor(t(), term()) :: :ok
+  defp notify_motor(state, message) do
+    pid = state.motor_pid || registry_lookup(:motor)
+    if pid, do: send(pid, message)
     :ok
   end
 
