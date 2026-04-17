@@ -465,3 +465,24 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.2);
 }
+
+/* Page Footer */
+.page-footer {
+    position: fixed;
+    bottom: 8px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.6rem;
+    color: #2a3a4a;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+}
+
+/* GitHub Ribbon */
+.github-ribbon {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 9999;
+}

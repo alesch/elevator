@@ -158,6 +158,10 @@ defmodule ElevatorWeb.DashboardLive do
   @impl true
   def render(assigns) do
     ~H"""
+    <a class="github-ribbon" href="https://github.com/alesch/elevator" target="_blank" rel="noopener">
+      <img width="149" height="149" src={~p"/images/forkme.png"} alt="Fork me on GitHub" />
+    </a>
+
     <div class="dashboard-container">
       <div class="main-content">
         <!-- SHAFT PANEL (25%) -->
@@ -229,6 +233,10 @@ defmodule ElevatorWeb.DashboardLive do
         <.footer_item icon="🚪" label="Doors" state={@door_state} />
         <.queue_item requests={@requests} />
       </div>
+    </div>
+
+    <div class="page-footer">
+      Coded by Alex Schenkman, Gemini 3 Flash, and Claude Sonnet 4.6.
     </div>
     """
   end
