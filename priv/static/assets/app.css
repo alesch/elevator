@@ -338,9 +338,6 @@ body {
     padding-left: 10px;
 }
 
-.log-entry.system {
-    color: var(--cyan-bright);
-}
 .log-entry.error {
     color: var(--red-danger);
 }
