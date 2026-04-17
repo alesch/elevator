@@ -5,7 +5,7 @@ defmodule Elevator.Gherkin.CoreSteps do
   """
   use Cabbage.Feature
 
-  alias __MODULE__, as: CoreSteps
+  # alias __MODULE__, as: CoreSteps
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
 
