@@ -4,7 +4,6 @@ defmodule Elevator.Core do
   Uses a pure FICS Architecture (Reality, Transient Signals, Logic Meaning).
   """
   alias __MODULE__, as: Core
-  require Logger
 
   # ---------------------------------------------------------------------------
   # ## Data Structure & Initialization

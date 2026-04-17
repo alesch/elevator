@@ -155,6 +155,18 @@ defmodule Elevator.Hardware.Motor do
     {:noreply, %{state | status: :stopped, direction: nil}}
   end
 
+  # Known hardware bus traffic not relevant to Motor — ignore silently.
+  # These are broadcast by Door, Sensor, and Controller on "elevator:hardware".
+  @impl true
+  def handle_info({:command, :open}, state), do: {:noreply, state}
+  def handle_info({:command, :close}, state), do: {:noreply, state}
+  def handle_info({:floor_arrival, _}, state), do: {:noreply, state}
+  def handle_info(:door_opening, state), do: {:noreply, state}
+  def handle_info(:door_closing, state), do: {:noreply, state}
+  def handle_info(:door_opened, state), do: {:noreply, state}
+  def handle_info(:door_closed, state), do: {:noreply, state}
+  def handle_info(:door_obstructed, state), do: {:noreply, state}
+
   @impl true
   def handle_info(msg, state) do
     :telemetry.execute([:elevator, :hardware, :motor, :unexpected_message], %{}, %{message: msg})

@@ -1,11 +1,10 @@
 defmodule Elevator.Application do
   @moduledoc """
   The Application entry point for the Elevator system.
-  Manages the root supervision tree, including discovery, persistence, 
+  Manages the root supervision tree, including discovery, persistence,
   and the hardware stack.
   """
   use Application
-  require Logger
 
   # ---------------------------------------------------------------------------
   # ## Public API

@@ -8,7 +8,6 @@ defmodule Elevator.Hardware.Door do
   World counts ticks and delivers :fully_opened / :fully_closed directly.
   """
   use GenServer
-  require Logger
 
   # ---------------------------------------------------------------------------
   # ## Public API
@@ -171,13 +170,7 @@ defmodule Elevator.Hardware.Door do
   @impl true
   @spec handle_info(term(), map()) :: {:noreply, map()}
   def handle_info(msg, state) do
-    Logger.warning("Door: Unexpected message #{inspect(msg)} in state: #{inspect(state)}")
-
-    :telemetry.execute([:elevator, :hardware, :door, :unexpected_message], %{}, %{
-      message: msg,
-      state: state
-    })
-
+    :telemetry.execute([:elevator, :hardware, :door, :unexpected_message], %{}, %{message: msg})
     {:noreply, state}
   end
 

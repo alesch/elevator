@@ -4,7 +4,6 @@ defmodule Elevator.Vault do
   Preserves the last known arrival floor across crashes.
   """
   use GenServer
-  require Logger
 
   # ---------------------------------------------------------------------------
   # ## Public API
@@ -61,7 +60,7 @@ defmodule Elevator.Vault do
   @impl true
   @spec handle_info(term(), any()) :: {:noreply, any()}
   def handle_info(msg, state) do
-    Logger.warning("Vault: Unexpected message #{inspect(msg)} in state: #{inspect(state)}")
+    :telemetry.execute([:elevator, :vault, :unexpected_message], %{}, %{message: msg})
     {:noreply, state}
   end
 end
