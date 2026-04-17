@@ -2,7 +2,7 @@ import Config
 
 config :elevator, ElevatorWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: "gGCmB2RPBCP/eHiYZPyyu+4tBB/p/p0nJLbg/VQFFrcF/+SlbnHncjxeO0rV9H/t",
+  secret_key_base: System.get_env("SECRET_KEY_BASE"),
   server: true
 
 config :logger, level: :warning

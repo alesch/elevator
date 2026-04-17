@@ -5,7 +5,7 @@ config :elevator, ElevatorWeb.Endpoint,
   check_origin: false,
   code_reloader: true,
   debug_errors: true,
-  secret_key_base: "gGCmB2RPBCP/eHiYZPyyu+4tBB/p/p0nJLbg/VQFFrcF/+SlbnHncjxeO0rV9H/t",
+  secret_key_base: System.get_env("SECRET_KEY_BASE"),
   watchers: []
 
 config :elevator, dev_routes: true
