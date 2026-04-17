@@ -54,7 +54,7 @@ defmodule ElevatorWeb.DashboardHelpers do
              :docked,
              :moving
            ],
-      do: "#00f2ff"
+      do: "#4a9aa3"
 
   # Amber (Intent & Transitions)
   def state_color(state)
