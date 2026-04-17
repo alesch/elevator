@@ -2,12 +2,13 @@ defmodule Elevator.Hardware.Door do
   @moduledoc """
   The 'Safety Boundary' of the system.
   A 5-state machine: :opening, :open, :closing, :closed, :obstructed.
+
+  Door subscribes to "elevator:hardware" and handles commands from Controller.
+  World owns the physical timing — Door announces intent immediately, then
+  World counts ticks and delivers :fully_opened / :fully_closed directly.
   """
   use GenServer
   require Logger
-
-  # 1 second for opening/closing
-  @op_ms 1000
 
   # ---------------------------------------------------------------------------
   # ## Public API
@@ -46,8 +47,7 @@ defmodule Elevator.Hardware.Door do
 
   @type t :: %{
           status: :open | :closed | :opening | :closing | :obstructed,
-          timer: reference() | nil,
-          controller: pid() | nil
+          pubsub: atom()
         }
 
   # ---------------------------------------------------------------------------
@@ -57,14 +57,14 @@ defmodule Elevator.Hardware.Door do
   @impl true
   @spec init(keyword()) :: {:ok, t()}
   def init(opts) do
-    # Register brain only if it's a named process (Supervisor/Production)
+    pubsub = Keyword.get(opts, :pubsub, Elevator.PubSub)
+
     if Keyword.get(opts, :name) != nil do
       {:ok, _} = Registry.register(Elevator.Registry, :door, nil)
+      Phoenix.PubSub.subscribe(pubsub, "elevator:hardware")
     end
 
-    controller = Keyword.get(opts, :controller)
-
-    {:ok, %{status: :closed, timer: nil, controller: controller}}
+    {:ok, %{status: :closed, pubsub: pubsub}}
   end
 
   @impl true
@@ -72,6 +72,10 @@ defmodule Elevator.Hardware.Door do
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
   end
+
+  # ---------------------------------------------------------------------------
+  # Direct casts (used by tests and the public API)
+  # ---------------------------------------------------------------------------
 
   @impl true
   @spec handle_cast(:open, t()) :: {:noreply, t()}
@@ -81,7 +85,8 @@ defmodule Elevator.Hardware.Door do
 
   def handle_cast(:open, state) do
     :telemetry.execute([:elevator, :hardware, :door, :open], %{}, %{redundant: false})
-    {:noreply, start_transit(state, :opening, :fully_opened)}
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :door_opening)
+    {:noreply, %{state | status: :opening}}
   end
 
   @impl true
@@ -92,41 +97,76 @@ defmodule Elevator.Hardware.Door do
 
   def handle_cast(:close, state) do
     :telemetry.execute([:elevator, :hardware, :door, :close], %{}, %{redundant: false})
-    {:noreply, start_transit(state, :closing, :fully_closed)}
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :door_closing)
+    {:noreply, %{state | status: :closing}}
   end
 
   @impl true
   @spec handle_cast(:door_obstructed, t()) :: {:noreply, t()}
   def handle_cast(:door_obstructed, state) do
     :telemetry.execute([:elevator, :hardware, :door, :obstruction], %{}, %{})
-
-    state =
-      state
-      |> cancel_timer()
-      |> update_status(:obstructed)
-
-    notify_controller(state, :door_obstructed)
-
-    {:noreply, state}
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :door_obstructed)
+    {:noreply, %{state | status: :obstructed}}
   end
+
+  # ---------------------------------------------------------------------------
+  # Commands received from the bus (sent by Controller)
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_info({:command, :open}, %{status: status} = state) when status in [:open, :opening] do
+    {:noreply, handle_redundant_request(state, :open)}
+  end
+
+  def handle_info({:command, :open}, state) do
+    :telemetry.execute([:elevator, :hardware, :door, :open], %{}, %{redundant: false})
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :door_opening)
+    {:noreply, %{state | status: :opening}}
+  end
+
+  @impl true
+  def handle_info({:command, :close}, %{status: status} = state)
+      when status in [:closed, :closing] do
+    {:noreply, handle_redundant_request(state, :close)}
+  end
+
+  def handle_info({:command, :close}, state) do
+    :telemetry.execute([:elevator, :hardware, :door, :close], %{}, %{redundant: false})
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :door_closing)
+    {:noreply, %{state | status: :closing}}
+  end
+
+  # ---------------------------------------------------------------------------
+  # Physical completion — delivered by World after tick counting
+  # ---------------------------------------------------------------------------
 
   @impl true
   @spec handle_info(:fully_opened, map()) :: {:noreply, map()}
   def handle_info(:fully_opened, state) do
     :telemetry.execute([:elevator, :hardware, :door, :transit_complete], %{}, %{result: :open})
-    notify_controller(state, :door_opened)
-    new_state = %{update_status(state, :open) | timer: nil}
-    {:noreply, new_state}
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :door_opened)
+    {:noreply, %{state | status: :open}}
   end
 
   @impl true
   @spec handle_info(:fully_closed, map()) :: {:noreply, map()}
   def handle_info(:fully_closed, state) do
     :telemetry.execute([:elevator, :hardware, :door, :transit_complete], %{}, %{result: :closed})
-    notify_controller(state, :door_closed)
-    new_state = %{update_status(state, :closed) | timer: nil}
-    {:noreply, new_state}
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :door_closed)
+    {:noreply, %{state | status: :closed}}
   end
+
+  # Known hardware bus traffic not relevant to Door — ignore silently.
+  # These are broadcast by Motor, Sensor, and Controller on "elevator:hardware".
+  @impl true
+  def handle_info({:command, :move, _}, state), do: {:noreply, state}
+  def handle_info({:command, :crawl, _}, state), do: {:noreply, state}
+  def handle_info({:command, :stop}, state), do: {:noreply, state}
+  def handle_info({:motor_running, _}, state), do: {:noreply, state}
+  def handle_info({:motor_crawling, _}, state), do: {:noreply, state}
+  def handle_info(:motor_stopping, state), do: {:noreply, state}
+  def handle_info(:motor_stopped, state), do: {:noreply, state}
+  def handle_info({:floor_arrival, _}, state), do: {:noreply, state}
 
   @impl true
   @spec handle_info(term(), map()) :: {:noreply, map()}
@@ -145,14 +185,6 @@ defmodule Elevator.Hardware.Door do
   # ## Internal Logic
   # ---------------------------------------------------------------------------
 
-  @spec start_transit(t(), atom(), term()) :: t()
-  defp start_transit(state, new_status, timer_msg) do
-    state
-    |> cancel_timer()
-    |> start_timer(timer_msg, @op_ms)
-    |> update_status(new_status)
-  end
-
   @spec handle_redundant_request(t(), atom()) :: t()
   defp handle_redundant_request(%{status: status} = state, action) do
     :telemetry.execute([:elevator, :hardware, :door, action], %{}, %{
@@ -161,43 +193,5 @@ defmodule Elevator.Hardware.Door do
     })
 
     state
-  end
-
-  @spec update_status(t(), atom()) :: t()
-  defp update_status(state, status) do
-    :telemetry.execute([:elevator, :hardware, :door, :state_change], %{}, %{status: status})
-    %{state | status: status}
-  end
-
-  @spec start_timer(t(), term(), integer()) :: t()
-  defp start_timer(state, msg, ms) do
-    timer =
-      case Registry.lookup(Elevator.Registry, :time) do
-        [{pid, _}] -> Elevator.Time.send_after(pid, self(), ms, msg)
-        _ -> Process.send_after(self(), msg, ms)
-      end
-
-    %{state | timer: timer}
-  end
-
-  @spec cancel_timer(t()) :: t()
-  defp cancel_timer(%{timer: nil} = state), do: state
-
-  defp cancel_timer(%{timer: ref} = state) do
-    Process.cancel_timer(ref)
-    %{state | timer: nil}
-  end
-
-  @spec notify_controller(map(), atom()) :: :ok
-  defp notify_controller(state, msg) do
-    target = state.controller || lookup_controller()
-    if target, do: send(target, msg), else: :ok
-  end
-
-  defp lookup_controller do
-    case Registry.lookup(Elevator.Registry, :controller) do
-      [{pid, _}] -> pid
-      _ -> nil
-    end
   end
 end

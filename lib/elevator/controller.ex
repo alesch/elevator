@@ -9,7 +9,6 @@ defmodule Elevator.Controller do
   alias __MODULE__, as: Controller
 
   @type deps :: %{
-          optional(:door) => pid() | atom(),
           optional(:sensor) => pid() | atom(),
           optional(:vault) => pid() | atom()
         }
@@ -94,7 +93,6 @@ defmodule Elevator.Controller do
     data = %{
       state: Core.booting(),
       deps: %{
-        door: Keyword.get(opts, :door),
         sensor: Keyword.get(opts, :sensor),
         vault: Keyword.get(opts, :vault)
       },
@@ -276,12 +274,12 @@ defmodule Elevator.Controller do
   end
 
   defp do_execute({:open_door}, acc) do
-    lookup_hardware(acc, :door, &Hardware.Door.open/1)
+    Phoenix.PubSub.broadcast_from(Elevator.PubSub, self(), "elevator:hardware", {:command, :open})
     acc
   end
 
   defp do_execute({:close_door}, acc) do
-    lookup_hardware(acc, :door, &Hardware.Door.close/1)
+    Phoenix.PubSub.broadcast_from(Elevator.PubSub, self(), "elevator:hardware", {:command, :close})
     acc
   end
 

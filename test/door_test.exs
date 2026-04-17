@@ -6,9 +6,9 @@ defmodule Elevator.DoorTest do
   alias Elevator.Hardware.Door
 
   setup do
-    # Inject self() as the controller to catch notifications locally
-    # Use name: nil to prevent global registration and avoid collisions in parallel tests
-    pid = start_supervised!({Door, [controller: self(), name: nil]})
+    # Subscribe before starting Door to avoid missing the first broadcast.
+    Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:hardware")
+    pid = start_supervised!({Door, [name: nil]})
     %{door: pid}
   end
 
@@ -16,23 +16,18 @@ defmodule Elevator.DoorTest do
     assert Door.get_state(pid).status == :closed
   end
 
-  test "[S-HW-DOOR]: opening the door starts the opening timer", %{door: pid} do
+  test "[S-HW-DOOR]: opening the door enters the opening state and announces intent", %{door: pid} do
     Door.open(pid)
 
     state = Door.get_state(pid)
     assert state.status == :opening
-    assert is_reference(state.timer)
-
-    # Deterministic Proof: Opening takes 1 second (1000ms)
-    remaining = Process.read_timer(state.timer)
-    assert remaining > 0 and remaining <= 1000
+    assert_receive :door_opening
   end
 
   test "[S-SAFE-OBSTRUCT]: obstructing the door during closing instantly locks it out", %{
     door: pid
   } do
     Door.open(pid)
-    # Wait for casts to process
     _ = Door.get_state(pid)
 
     Door.close(pid)
@@ -43,17 +38,15 @@ defmodule Elevator.DoorTest do
 
     state = Door.get_state(pid)
     assert state.status == :obstructed
-    # Timer should be cancelled
-    assert state.timer == nil
 
-    # Verify the Controller (the test process) was notified of the safety alarm
+    # Verify the obstruction event was broadcast on the bus
     assert_receive :door_obstructed
   end
 
-  test "[S-HW-DOOR]: door notifies the Controller upon full opening", %{door: pid} do
+  test "[S-HW-DOOR]: door broadcasts :door_opened when World delivers :fully_opened", %{door: pid} do
     Door.open(pid)
 
-    # Manually trigger the transition to bypass waiting 1s
+    # World delivers physical completion (bypassing tick wait in this unit test)
     send(pid, :fully_opened)
 
     assert Door.get_state(pid).status == :open

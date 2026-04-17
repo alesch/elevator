@@ -6,23 +6,28 @@ defmodule Elevator.World do
   World subscribes to:
     "elevator:simulation" — clock ticks from Elevator.Time
     "elevator:hardware"   — motor events (running, crawling, stopping)
+                            door events  (opening, closing, obstructed)
 
   World delivers physical reality directly to hardware components via registry lookup:
     {:floor_arrival, floor} → Sensor  (Sensor then broadcasts on "elevator:hardware")
     :motor_stopped          → Motor   (Motor then broadcasts on "elevator:hardware")
+    :fully_opened           → Door    (Door  then broadcasts on "elevator:hardware")
+    :fully_closed           → Door    (Door  then broadcasts on "elevator:hardware")
 
   Test injection: pass `sensor_pid:` and `motor_pid:` opts to bypass registry lookup.
 
   Physical constants (at 250ms/tick):
-    @ticks_per_floor  running:  6  (6 × 250ms = 1500ms)
-                      crawling: 18 (18 × 250ms = 4500ms)
-    @brake_ticks               2  (2 × 250ms = 500ms)
+    @ticks_per_floor         running:  6  (6 × 250ms = 1500ms)
+                             crawling: 18 (18 × 250ms = 4500ms)
+    @brake_ticks                       2  (2 × 250ms = 500ms)
+    @ticks_per_door_transit            4  (4 × 250ms = 1000ms)
   """
   use GenServer
   alias Elevator.Core
 
   @ticks_per_floor %{running: 6, crawling: 18}
   @brake_ticks 2
+  @ticks_per_door_transit 4
 
   # Physical direction: nil when stopped, :up/:down when moving.
   # Distinct from Core.direction(), which uses :idle instead of nil.
@@ -34,6 +39,8 @@ defmodule Elevator.World do
           direction: direction(),
           tick_count: non_neg_integer(),
           brake_count: non_neg_integer(),
+          door: :idle | :opening | :closing,
+          door_tick_count: non_neg_integer(),
           pubsub: atom(),
           sensor_pid: pid() | atom() | nil,
           motor_pid: pid() | atom() | nil
@@ -83,6 +90,8 @@ defmodule Elevator.World do
        direction: nil,
        tick_count: 0,
        brake_count: 0,
+       door: :idle,
+       door_tick_count: 0,
        pubsub: pubsub,
        sensor_pid: sensor_pid,
        motor_pid: motor_pid
@@ -114,6 +123,25 @@ defmodule Elevator.World do
   end
 
   # ---------------------------------------------------------------------------
+  # Door events (from "elevator:hardware" or direct in tests)
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_info(:door_opening, state) do
+    {:noreply, %{state | door: :opening, door_tick_count: 0}}
+  end
+
+  @impl true
+  def handle_info(:door_closing, state) do
+    {:noreply, %{state | door: :closing, door_tick_count: 0}}
+  end
+
+  @impl true
+  def handle_info(:door_obstructed, state) do
+    {:noreply, %{state | door: :idle, door_tick_count: 0}}
+  end
+
+  # ---------------------------------------------------------------------------
   # Tick events (from "elevator:simulation" or direct in tests)
   # ---------------------------------------------------------------------------
 
@@ -121,31 +149,36 @@ defmodule Elevator.World do
   def handle_info({:tick, _n}, %{motor: :stopping} = state) do
     brake_count = state.brake_count + 1
 
-    if brake_count >= @brake_ticks do
-      send_to_motor(state, :motor_stopped)
-      {:noreply, %{state | motor: :stopped, direction: nil, brake_count: 0}}
-    else
-      {:noreply, %{state | brake_count: brake_count}}
-    end
+    motor_state =
+      if brake_count >= @brake_ticks do
+        send_to_motor(state, :motor_stopped)
+        %{state | motor: :stopped, direction: nil, brake_count: 0}
+      else
+        %{state | brake_count: brake_count}
+      end
+
+    {:noreply, tick_door(motor_state)}
   end
 
   def handle_info({:tick, _n}, %{motor: status} = state) when status in [:running, :crawling] do
     tick_count = state.tick_count + 1
     threshold = @ticks_per_floor[status]
 
-    if tick_count >= threshold do
-      next_floor = advance_floor(state.floor, state.direction)
-      pid = state.sensor_pid || registry_lookup(:sensor)
-      if pid, do: send(pid, {:floor_arrival, next_floor})
-      {:noreply, %{state | floor: next_floor, tick_count: 0}}
-    else
-      {:noreply, %{state | tick_count: tick_count}}
-    end
+    motor_state =
+      if tick_count >= threshold do
+        next_floor = advance_floor(state.floor, state.direction)
+        pid = state.sensor_pid || registry_lookup(:sensor)
+        if pid, do: send(pid, {:floor_arrival, next_floor})
+        %{state | floor: next_floor, tick_count: 0}
+      else
+        %{state | tick_count: tick_count}
+      end
+
+    {:noreply, tick_door(motor_state)}
   end
 
   def handle_info({:tick, _n}, state) do
-    # Motor is stopped — ticks are ignored
-    {:noreply, state}
+    {:noreply, tick_door(state)}
   end
 
   @impl true
@@ -161,6 +194,22 @@ defmodule Elevator.World do
   @spec advance_floor(integer(), direction()) :: integer()
   defp advance_floor(floor, :up), do: floor + 1
   defp advance_floor(floor, :down), do: floor - 1
+
+  # Door transit tick — runs independently of motor physics on every tick.
+  @spec tick_door(t()) :: t()
+  defp tick_door(%{door: :idle} = state), do: state
+
+  defp tick_door(%{door: mode, door_tick_count: count} = state) do
+    new_count = count + 1
+
+    if new_count >= @ticks_per_door_transit do
+      msg = if mode == :opening, do: :fully_opened, else: :fully_closed
+      if pid = registry_lookup(:door), do: send(pid, msg)
+      %{state | door: :idle, door_tick_count: 0}
+    else
+      %{state | door_tick_count: new_count}
+    end
+  end
 
   # Send a message to Motor: injected pid takes priority (test isolation),
   # falling back to registry lookup. Motor then broadcasts on the bus.

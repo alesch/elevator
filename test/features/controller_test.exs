@@ -17,7 +17,7 @@ defmodule Elevator.Features.ControllerTest do
     Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
     Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:hardware")
 
-    {:ok, ctrl} = Controller.start_link(door: self(), name: nil)
+    {:ok, ctrl} = Controller.start_link(name: nil)
 
     # Cold-start homing_check: vault=nil/sensor=nil → booting → rehoming
     assert_receive {:elevator_state, %{logic: %{phase: :rehoming}}}
