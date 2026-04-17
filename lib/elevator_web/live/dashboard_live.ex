@@ -213,7 +213,6 @@ defmodule ElevatorWeb.DashboardLive do
         <div class="right-panel">
           <div class="log-header">
             <span>ACTIVITY LOG</span>
-            <span class="text-xs opacity-50">REAL-TIME TELEMETRY</span>
           </div>
           <div id="log" class="activity-log" phx-hook="LogScroll">
             <%= for entry <- @activity_log do %>
@@ -236,7 +235,7 @@ defmodule ElevatorWeb.DashboardLive do
     </main>
 
     <div class="page-footer">
-      ❤️ Coded by Alex Schenkman, Gemini 3 Flash, and Claude Sonnet 4.6.
+      ❤️ Coded by Alex Schenkman,&nbsp;<br /><span class="page-footer-sub">Gemini 3/Sonnet 4.6.</span>
     </div>
     """
   end

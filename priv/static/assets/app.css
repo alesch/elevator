@@ -218,14 +218,14 @@ body {
 }
 
 .door-controls button {
-    width: 42px;
-    height: 42px;
+    width: 64px;
+    height: 44px;
     border-radius: 4px;
     border: 2px solid var(--glass-border);
     background: rgba(255, 255, 255, 0.05);
     color: #666;
     font-family: "Inter", sans-serif;
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-weight: 800;
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -323,9 +323,6 @@ body {
     letter-spacing: 2px;
     font-weight: 800;
     color: #445566;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
 }
 
 .activity-log {
@@ -472,6 +469,10 @@ body {
     background: rgba(255, 255, 255, 0.2);
 }
 
+.page-footer br {
+    display: none;
+}
+
 /* Page Footer */
 .page-footer {
     position: fixed;
@@ -499,7 +500,7 @@ body {
    - Hides activity log and most footer items
    - Shaft fills full width, aspect-ratio lock released
    ===================================================================== */
-@media (max-width: 600px) {
+@media (max-width: 768px) {
     body {
         align-items: flex-start;
         overflow-y: auto;
@@ -510,13 +511,16 @@ body {
         aspect-ratio: unset;
         max-width: unset;
         max-height: unset;
-        min-height: 100dvh;
+        min-height: unset;
+        height: auto;
+        overflow: visible;
         border-radius: 0;
         border-left: none;
         border-right: none;
     }
 
     .main-content {
+        flex: none;
         flex-direction: column;
         padding: 16px;
         gap: 16px;
@@ -544,11 +548,6 @@ body {
         font-size: 1.3rem;
     }
 
-    .door-controls button {
-        width: 64px;
-        height: 44px;
-        font-size: 1.3rem;
-    }
 
     /* Footer: hide everything except time controls */
     .status-footer {
@@ -589,12 +588,27 @@ body {
         min-height: 44px;
     }
 
-    /* Hide ribbon and page footer */
+    /* Hide ribbon */
     .github-ribbon {
         display: none;
     }
 
+    /* Show footer in two centered lines */
     .page-footer {
-        display: none;
+        position: static;
+        text-align: center;
+        margin-top: 38px;
+        padding: 0 20px 12px;
+        line-height: 1.6;
+        font-size: 0.65rem;
+    }
+
+    .page-footer-sub {
+        font-size: 0.55rem;
+        opacity: 0.7;
+    }
+
+    .page-footer br {
+        display: inline;
     }
 }
