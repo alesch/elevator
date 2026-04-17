@@ -220,7 +220,7 @@ defmodule ElevatorWeb.DashboardLive do
       <div class="status-info">
         <span class="status-label">QUEUE</span>
         <span class="status-value" style={"color: #{if @requests == [], do: "#445566", else: "#ffae00"}"}>
-          <%= if @requests == [], do: "—", else: @requests |> Enum.map(fn {_, f} -> f end) |> Enum.join(", ") %>
+          <%= if @requests == [], do: "[]", else: "[#{@requests |> Enum.map(fn {_, f} -> f end) |> Enum.join(" ")}]" %>
         </span>
       </div>
     </div>
