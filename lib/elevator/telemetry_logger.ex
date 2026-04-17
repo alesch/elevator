@@ -137,7 +137,7 @@ defmodule Elevator.TelemetryLogger do
   def handle_event([:elevator, :hardware, :motor, :move], _measurements, metadata, _config) do
     direction = Map.get(metadata, :direction, :unknown)
     speed = Map.get(metadata, :speed, :running)
-    log_and_broadcast("⚙️", "Motor: Moving #{direction} at #{speed} speed.")
+    log_and_broadcast("⚙️", "Motor: Moving #{direction}.")
   end
 
   def handle_event([:elevator, :hardware, :motor, :stop], _measurements, metadata, _config) do
