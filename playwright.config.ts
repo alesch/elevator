@@ -21,6 +21,6 @@ export default defineConfig({
   webServer: {
     command: 'MIX_ENV=e2e mix phx.server',
     url: 'http://localhost:4002',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: false,
   },
 });

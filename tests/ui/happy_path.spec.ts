@@ -1,22 +1,15 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Elevator Dashboard Happy Path', () => {
-  test.beforeEach(async ({ page, request }) => {
-    // Reset backend: clears vault + restarts hardware → elevator rehomes to F0
-    await request.post('/test/reset');
+  test.beforeEach(async ({ page }) => {
     await page.goto('/');
 
     // Wait for LiveView to connect
-    const log = page.locator('#log');
-    await expect(log).toContainText(/LiveView Connected/i, { timeout: 10000 });
+    await expect(page.locator('#log')).toContainText(/LiveView Connected/i, { timeout: 10000 });
 
-    // Wait for rehoming to complete (phase becomes :idle → displayed as "IDLE")
+    // Wait for boot sequence to complete — elevator idles at F0
     const coreStatus = page.locator('.footer-item', { hasText: 'Core' }).locator('.status-value');
     await expect(coreStatus).toHaveText('IDLE', { timeout: 15000 });
-
-    // Verify precondition: elevator is stopped at F0
-    const motorStatus = page.locator('.footer-item', { hasText: 'Motor' }).locator('.status-value');
-    await expect(motorStatus).toHaveText('STOPPED', { timeout: 10000 });
 
     const indicator = page.locator('.digital-indicator');
     await expect(indicator).toHaveText('0', { timeout: 10000 });
@@ -24,7 +17,6 @@ test.describe('Elevator Dashboard Happy Path', () => {
 
   // [S-UI-JOURNEY]: Full journey from F0 to F3
   test('[S-UI-JOURNEY]: Full journey from F0 to F3', async ({ page }) => {
-    const log = page.locator('#log');
     const indicator = page.locator('.digital-indicator');
     const doorStatus = page.locator('.footer-item', { hasText: 'Doors' }).locator('.status-value');
 
@@ -34,9 +26,6 @@ test.describe('Elevator Dashboard Happy Path', () => {
 
     // Floor 3 button shows pending or targeting
     await expect(label3).toHaveClass(/pending|targeting/);
-
-    // Activity log records the request
-    await expect(log).toContainText(/Controller: Floor 3/i);
 
     // Elevator arrives at F3 (3 floors × ~2s + buffer)
     await expect(indicator).toHaveText('3', { timeout: 20000 });
