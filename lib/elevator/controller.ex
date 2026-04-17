@@ -120,6 +120,8 @@ defmodule Elevator.Controller do
   @spec handle_cast({:request_floor, atom(), integer()}, t()) :: {:noreply, t()}
 
   def handle_cast({:request_floor, source, floor}, data) do
+    :telemetry.execute([:elevator, :controller, :request], %{}, %{source: source, floor: floor})
+
     data
     |> pulse_and_commit(
       :request_floor,
