@@ -347,13 +347,12 @@ body {
 
 /* --- Footer --- */
 .status-footer {
-    height: 80px;
     background: rgba(0, 0, 0, 0.4);
     border-top: 1px solid var(--glass-border);
     display: flex;
     justify-content: space-evenly;
     align-items: center;
-    padding: 0 40px;
+    padding: 12px 40px;
 }
 
 .footer-item {
@@ -410,7 +409,7 @@ body {
 }
 
 .time-item .status-info {
-    width: 160px;
+    width: auto;
 }
 
 .time-readout {
@@ -421,7 +420,6 @@ body {
     color: #8899aa;
     white-space: nowrap;
     text-transform: none;
-    min-width: 160px;
     display: inline-block;
 }
 
