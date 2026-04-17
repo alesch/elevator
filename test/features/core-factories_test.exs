@@ -5,7 +5,6 @@ defmodule Elevator.Features.CoreFactoriesTest do
 
   alias Elevator.Core
   alias Elevator.Gherkin.Arguments, as: Args
-  alias Elevator.Gherkin.CoreSteps
 
   import_steps(Elevator.Gherkin.CoreSteps)
 end
