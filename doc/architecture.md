@@ -69,7 +69,7 @@ Components communicate via Phoenix PubSub topics. No direct coupling is required
 
 | Channel | Publishers | Subscribers |
 | :--- | :--- | :--- |
-| `"elevator:hardware"` | Motor, Door, Sensor, World | Controller, World |
+| `"elevator:hardware"` | Motor, Sensor, Controller | Controller, Motor, World |
 | `"elevator:simulation"` | Time | World, Web Dashboard |
 | `"elevator:status"` | Controller | LiveView |
 

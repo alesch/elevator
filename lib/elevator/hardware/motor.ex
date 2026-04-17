@@ -55,11 +55,12 @@ defmodule Elevator.Hardware.Motor do
   @impl true
   @spec init(keyword()) :: {:ok, t()}
   def init(opts) do
+    pubsub = Keyword.get(opts, :pubsub, Elevator.PubSub)
+
     if Keyword.get(opts, :name) != nil do
       {:ok, _} = Registry.register(Elevator.Registry, :motor, nil)
+      Phoenix.PubSub.subscribe(pubsub, "elevator:hardware")
     end
-
-    pubsub = Keyword.get(opts, :pubsub, Elevator.PubSub)
 
     {:ok, %{status: :stopped, direction: nil, pubsub: pubsub}}
   end
@@ -71,7 +72,7 @@ defmodule Elevator.Hardware.Motor do
       speed: :running
     })
 
-    Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", {:motor_running, direction})
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_running, direction})
     {:noreply, %{state | status: :running, direction: direction}}
   end
 
@@ -82,7 +83,7 @@ defmodule Elevator.Hardware.Motor do
       speed: :crawling
     })
 
-    Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", {:motor_crawling, direction})
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_crawling, direction})
     {:noreply, %{state | status: :crawling, direction: direction}}
   end
 
@@ -97,7 +98,7 @@ defmodule Elevator.Hardware.Motor do
 
   def handle_cast(:stop_now, state) do
     :telemetry.execute([:elevator, :hardware, :motor, :stop], %{}, %{})
-    Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", :motor_stopping)
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :motor_stopping)
     {:noreply, %{state | status: :stopping}}
   end
 
@@ -106,9 +107,51 @@ defmodule Elevator.Hardware.Motor do
     {:reply, state, state}
   end
 
+  # Commands received from the bus (sent by Controller)
+
+  @impl true
+  def handle_info({:command, :move, direction}, state) do
+    :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
+      direction: direction,
+      speed: :running
+    })
+
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_running, direction})
+    {:noreply, %{state | status: :running, direction: direction}}
+  end
+
+  @impl true
+  def handle_info({:command, :crawl, direction}, state) do
+    :telemetry.execute([:elevator, :hardware, :motor, :move], %{}, %{
+      direction: direction,
+      speed: :crawling
+    })
+
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", {:motor_crawling, direction})
+    {:noreply, %{state | status: :crawling, direction: direction}}
+  end
+
+  @impl true
+  def handle_info({:command, :stop}, %{status: status} = state) when status in [:stopped, :stopping] do
+    :telemetry.execute([:elevator, :hardware, :motor, :stop], %{}, %{
+      status: status,
+      redundant: true
+    })
+
+    {:noreply, state}
+  end
+
+  def handle_info({:command, :stop}, state) do
+    :telemetry.execute([:elevator, :hardware, :motor, :stop], %{}, %{})
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :motor_stopping)
+    {:noreply, %{state | status: :stopping}}
+  end
+
+  # World signals braking is complete; Motor announces on bus and updates state.
+
   @impl true
   def handle_info(:motor_stopped, state) do
-    Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", :motor_stopped)
+    Phoenix.PubSub.broadcast_from(state.pubsub, self(), "elevator:hardware", :motor_stopped)
     {:noreply, %{state | status: :stopped, direction: nil}}
   end
 

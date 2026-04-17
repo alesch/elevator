@@ -7,8 +7,11 @@ defmodule Elevator.World do
     "elevator:simulation" — clock ticks from Elevator.Time
     "elevator:hardware"   — motor events (running, crawling, stopping)
 
-  World publishes to Motor directly:
-    :motor_stopped  — braking complete (Motor then broadcasts this on "elevator:hardware")
+  World delivers physical reality directly to hardware components via registry lookup:
+    {:floor_arrival, floor} → Sensor  (Sensor then broadcasts on "elevator:hardware")
+    :motor_stopped          → Motor   (Motor then broadcasts on "elevator:hardware")
+
+  Test injection: pass `sensor_pid:` and `motor_pid:` opts to bypass registry lookup.
 
   Physical constants (at 250ms/tick):
     @ticks_per_floor  running:  6  (6 × 250ms = 1500ms)
@@ -32,7 +35,7 @@ defmodule Elevator.World do
           tick_count: non_neg_integer(),
           brake_count: non_neg_integer(),
           pubsub: atom(),
-          controller: pid() | atom() | nil,
+          sensor_pid: pid() | atom() | nil,
           motor_pid: pid() | atom() | nil
         }
 
@@ -69,7 +72,7 @@ defmodule Elevator.World do
       Phoenix.PubSub.subscribe(pubsub, "elevator:hardware")
     end
 
-    controller = Keyword.get(opts, :controller)
+    sensor_pid = Keyword.get(opts, :sensor_pid)
     motor_pid = Keyword.get(opts, :motor_pid)
 
     {:ok,
@@ -81,7 +84,7 @@ defmodule Elevator.World do
        tick_count: 0,
        brake_count: 0,
        pubsub: pubsub,
-       controller: controller,
+       sensor_pid: sensor_pid,
        motor_pid: motor_pid
      }}
   end
@@ -119,7 +122,7 @@ defmodule Elevator.World do
     brake_count = state.brake_count + 1
 
     if brake_count >= @brake_ticks do
-      notify_motor(state, :motor_stopped)
+      send_to_motor(state, :motor_stopped)
       {:noreply, %{state | motor: :stopped, direction: nil, brake_count: 0}}
     else
       {:noreply, %{state | brake_count: brake_count}}
@@ -132,8 +135,8 @@ defmodule Elevator.World do
 
     if tick_count >= threshold do
       next_floor = advance_floor(state.floor, state.direction)
-      notify(state, {:floor_arrival, next_floor})
-      if pid = registry_lookup(:sensor), do: send(pid, {:floor_arrival, next_floor})
+      pid = state.sensor_pid || registry_lookup(:sensor)
+      if pid, do: send(pid, {:floor_arrival, next_floor})
       {:noreply, %{state | floor: next_floor, tick_count: 0}}
     else
       {:noreply, %{state | tick_count: tick_count}}
@@ -159,28 +162,10 @@ defmodule Elevator.World do
   defp advance_floor(floor, :up), do: floor + 1
   defp advance_floor(floor, :down), do: floor - 1
 
-  # Notify the controller: injected pid takes priority (test isolation),
-  # falling back to registry lookup, then PubSub broadcast (production).
-  @spec notify(t(), term()) :: :ok
-  defp notify(state, message) do
-    cond do
-      state.controller ->
-        send(state.controller, message)
-
-      pid = registry_lookup(:controller) ->
-        send(pid, message)
-
-      true ->
-        Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", message)
-    end
-
-    :ok
-  end
-
-  # Notify the motor: injected pid takes priority (test isolation),
+  # Send a message to Motor: injected pid takes priority (test isolation),
   # falling back to registry lookup. Motor then broadcasts on the bus.
-  @spec notify_motor(t(), term()) :: :ok
-  defp notify_motor(state, message) do
+  @spec send_to_motor(t(), term()) :: :ok
+  defp send_to_motor(state, message) do
     pid = state.motor_pid || registry_lookup(:motor)
     if pid, do: send(pid, message)
     :ok

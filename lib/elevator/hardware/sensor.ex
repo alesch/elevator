@@ -7,10 +7,11 @@ defmodule Elevator.Hardware.Sensor do
   """
   use GenServer
 
-  defstruct [:current_floor]
+  defstruct [:current_floor, :pubsub]
 
   @type t :: %__MODULE__{
-          current_floor: integer()
+          current_floor: integer(),
+          pubsub: atom()
         }
 
   # ---------------------------------------------------------------------------
@@ -37,6 +38,8 @@ defmodule Elevator.Hardware.Sensor do
   @impl true
   @spec init(keyword()) :: {:ok, t()} | {:stop, term()}
   def init(opts) do
+    pubsub = Keyword.get(opts, :pubsub, Elevator.PubSub)
+
     if Keyword.get(opts, :name) != nil do
       {:ok, _} = Registry.register(Elevator.Registry, :sensor, nil)
     end
@@ -51,7 +54,7 @@ defmodule Elevator.Hardware.Sensor do
       recovered: not is_nil(vault_floor)
     })
 
-    {:ok, %__MODULE__{current_floor: floor}}
+    {:ok, %__MODULE__{current_floor: floor, pubsub: pubsub}}
   end
 
   @impl true
@@ -64,6 +67,7 @@ defmodule Elevator.Hardware.Sensor do
   @spec handle_info({:floor_arrival, integer()}, t()) :: {:noreply, t()}
   def handle_info({:floor_arrival, floor}, state) do
     :telemetry.execute([:elevator, :hardware, :sensor, :arrival], %{}, %{floor: floor})
+    Phoenix.PubSub.broadcast(state.pubsub, "elevator:hardware", {:floor_arrival, floor})
     {:noreply, %{state | current_floor: floor}}
   end
 

@@ -16,9 +16,9 @@ defmodule Elevator.WorldTest do
   alias Elevator.World
 
   setup do
-    # Inject self() as the controller so World sends events directly to this
-    # test process. This avoids PubSub cross-test pollution in async: true mode.
-    pid = start_supervised!({World, [name: nil, floor: 0, controller: self(), motor_pid: self()]})
+    # Inject self() as sensor_pid and motor_pid so World sends events directly
+    # to this test process. This avoids PubSub cross-test pollution in async: true mode.
+    pid = start_supervised!({World, [name: nil, floor: 0, sensor_pid: self(), motor_pid: self()]})
     %{world: pid}
   end
 
@@ -43,7 +43,7 @@ defmodule Elevator.WorldTest do
   end
 
   test "[S-WORLD]: floor_arrival fires after 6 ticks going down", %{world: _pid} do
-    pid2 = start_supervised!({World, [name: nil, floor: 3, controller: self()]}, id: :world_down)
+    pid2 = start_supervised!({World, [name: nil, floor: 3, sensor_pid: self()]}, id: :world_down)
     send(pid2, {:motor_running, :down})
     tick(pid2, 6)
     assert_receive {:floor_arrival, 2}

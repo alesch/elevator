@@ -15,8 +15,9 @@ defmodule Elevator.Features.ControllerTest do
   # first broadcast.  We subscribe *before* starting so we never miss it.
   defgiven ~r/^the controller is running$/, _vars, context do
     Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
+    Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:hardware")
 
-    {:ok, ctrl} = Controller.start_link(motor: self(), door: self(), name: nil)
+    {:ok, ctrl} = Controller.start_link(door: self(), name: nil)
 
     # Cold-start homing_check: vault=nil/sensor=nil → booting → rehoming
     assert_receive {:elevator_state, %{logic: %{phase: :rehoming}}}
@@ -59,8 +60,8 @@ defmodule Elevator.Features.ControllerTest do
     # {:"$gen_cast", :stop_now}.  assert_received is non-blocking and safe
     # here because the When step already synchronised on the PubSub broadcast,
     # which is sent after execute_actions/2 has already dispatched the cast.
-    assert_received {:"$gen_cast", :stop_now},
-                    "Expected the motor to receive a :stop_now cast but it did not"
+    assert_received {:command, :stop},
+                    "Expected {:command, :stop} on elevator:hardware but it was not received"
 
     {:ok, context}
   end
