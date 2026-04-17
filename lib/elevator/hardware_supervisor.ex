@@ -17,16 +17,19 @@ defmodule Elevator.HardwareSupervisor do
     # Individual components discover each other via Registry.
     # No more manual PID injection at startup.
     children = [
-      # 1. The Physical Muscle
+      # 1. The Physical Simulation
+      {Elevator.World, [name: Elevator.World, floor: 1]},
+
+      # 2. The Physical Muscle
       {Elevator.Hardware.Motor, [name: Elevator.Hardware.Motor]},
 
-      # 2. The Nervous System
+      # 3. The Nervous System
       {Elevator.Hardware.Sensor, [current_floor: 0, name: Elevator.Hardware.Sensor]},
 
-      # 3. The Safety Boundary
+      # 4. The Safety Boundary
       {Elevator.Hardware.Door, [name: Elevator.Hardware.Door]},
 
-      # 4. The Orchestrator (The Brain)
+      # 5. The Orchestrator (The Brain)
       {Elevator.Controller, [name: Elevator.Controller]}
     ]
 
