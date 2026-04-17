@@ -4,7 +4,9 @@ import Config
 # you can enable the server option below.
 config :elevator, ElevatorWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
-  secret_key_base: System.get_env("SECRET_KEY_BASE"),
+  secret_key_base:
+    System.get_env("SECRET_KEY_BASE") ||
+      "long_random_string_at_least_64_chars_long_for_testing_purposes_",
   server: false
 
 # Print only warnings and errors during test
