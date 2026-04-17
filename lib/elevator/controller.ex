@@ -192,6 +192,13 @@ defmodule Elevator.Controller do
   end
 
   @impl true
+  @spec handle_info(:motor_stopping, t()) :: {:noreply, t()}
+  def handle_info(:motor_stopping, data) do
+    data
+    |> pulse_and_commit(:motor_stopping, %{}, Core.handle_event(data.state, :motor_stopping))
+  end
+
+  @impl true
   @spec handle_info(:motor_stopped, t()) :: {:noreply, t()}
   def handle_info(:motor_stopped, data) do
     data

@@ -14,3 +14,10 @@ Feature: Elevator Controller — Imperative Shell
     Given the controller is running
     When the floor sensor reads floor 0
     Then the motor receives a stop command
+
+  @S-SYS-MOTOR-STOPPING
+  Scenario: :motor_stopping hardware event is forwarded to Core and broadcast
+    Given the controller is running
+    When the floor sensor reads floor 0
+    And the motor confirms it is stopping
+    Then the core gets notified the motor status is stopping

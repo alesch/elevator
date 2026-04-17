@@ -33,6 +33,12 @@ defmodule Elevator.Features.ControllerTest do
   # controller.  get_state/1 is a synchronous call, so it returns only after
   # floor_arrival has been fully processed — meaning execute_actions/2 has
   # dispatched all hardware casts and broadcast_state/1 has fired.
+  defwhen ~r/^the motor confirms it is stopping$/, _vars, context do
+    send(context.controller, :motor_stopping)
+    Controller.get_state(context.controller)
+    {:ok, context}
+  end
+
   defwhen ~r/^the floor sensor reads floor (?<floor>.+)$/, %{floor: floor_str}, context do
     floor = Args.parse_floor(floor_str)
     send(context.controller, {:floor_arrival, floor})
@@ -51,6 +57,11 @@ defmodule Elevator.Features.ControllerTest do
   defthen ~r/^a state update is broadcast on elevator:status$/, _vars, context do
     assert_receive {:elevator_state, %{logic: %{phase: :arriving}}}
 
+    {:ok, context}
+  end
+
+  defthen ~r/^the core gets notified the motor status is stopping$/, _vars, context do
+    assert_receive {:elevator_state, %{hardware: %{motor_status: :stopping}}}
     {:ok, context}
   end
 

@@ -87,6 +87,13 @@ defmodule Elevator.Features.CoreSECATest do
     assert {:stop_motor} in actions
   end
 
+  # Hardware Feedback Ledger row: :motor_stopping -> motor_status: :stopping
+  test "(hardware) :motor_stopping updates motor_status to :stopping" do
+    {state, _actions} = Core.moving_to(0, 3) |> Core.handle_event(:motor_stopping)
+
+    assert Core.motor_status(state) == :stopping
+  end
+
   # ---------------------------------------------------------------------------
   # Phase: :arriving
   # ---------------------------------------------------------------------------

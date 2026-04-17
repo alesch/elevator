@@ -221,6 +221,12 @@ defmodule Elevator.Core do
     |> Map.put(:signal, :floor_arrival)
   end
 
+  defp do_ingest_event(state, :motor_stopping, _) do
+    state
+    |> put_in([Access.key(:hardware), :motor_status], :stopping)
+    |> Map.put(:signal, :motor_stopping)
+  end
+
   defp do_ingest_event(state, :motor_stopped, _) do
     state
     |> put_in([Access.key(:hardware), :motor_status], :stopped)
