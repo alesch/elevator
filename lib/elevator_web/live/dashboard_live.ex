@@ -52,6 +52,8 @@ defmodule ElevatorWeb.DashboardLive do
        controller_state: state.logic.phase,
        transit_ms: transit_ms,
        brake_ms: brake_ms,
+       tick_blink: false,
+       sim_speed: 1.0,
        activity_log: [
          %{actor: "🧠", id: 1, time: current_time(), msg: "LiveView Connected."}
        ]
@@ -98,7 +100,8 @@ defmodule ElevatorWeb.DashboardLive do
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:tick, _counter}, socket) do
     {transit_ms, brake_ms} = time_durations()
-    {:noreply, assign(socket, transit_ms: transit_ms, brake_ms: brake_ms)}
+    {:noreply, assign(socket, transit_ms: transit_ms, brake_ms: brake_ms,
+                              tick_blink: !socket.assigns.tick_blink)}
   end
 
   # Catch-all for unexpected industrial messages
@@ -117,6 +120,14 @@ defmodule ElevatorWeb.DashboardLive do
     Elevator.Controller.request_floor(:car, String.to_integer(floor))
     {:noreply, socket}
   end
+
+  def handle_event("set_speed", %{"speed" => value}, socket) do
+    {speed, _} = Float.parse(value)
+    Elevator.Time.set_speed(speed)
+    {:noreply, assign(socket, sim_speed: speed)}
+  end
+
+  def handle_event("set_speed", _params, socket), do: {:noreply, socket}
 
   def handle_event("open_door", _params, socket) do
     Elevator.Controller.open_door()
@@ -204,10 +215,45 @@ defmodule ElevatorWeb.DashboardLive do
 
       <!-- HEALTH FOOTER -->
       <div class="status-footer">
+        <.tick_item blink={@tick_blink} />
+        <.time_item speed={@sim_speed} />
         <.footer_item icon="🧠" label="Core" state={@controller_state} />
         <.footer_item icon="⚙️" label="Motor" state={@motor_state} />
         <.footer_item icon="🚪" label="Doors" state={@door_state} />
         <.queue_item requests={@requests} />
+      </div>
+    </div>
+    """
+  end
+
+  defp tick_item(assigns) do
+    ~H"""
+    <div class="footer-item tick-item">
+      <div class={["tick-dot", @blink && "tick-dot--on"]}></div>
+    </div>
+    """
+  end
+
+  defp time_item(assigns) do
+    ~H"""
+    <div class="footer-item time-item">
+      <div class="status-info">
+        <span class="status-label">TIME</span>
+        <span class="status-value time-readout">
+          <%= Float.round(@speed * 1.0, 1) %>x
+          &nbsp;
+          <%= round(250 / @speed) %>ms
+          &nbsp;
+          <%= Float.round(1000 / (250 / @speed), 1) %>Hz
+        </span>
+        <div class="speed-buttons">
+          <%= for s <- [0.5, 1.0, 2.0, 5.0] do %>
+            <button class={["speed-btn", @speed == s && "speed-btn--active"]}
+                    phx-click="set_speed" phx-value-speed={s}>
+              <%= s %>x
+            </button>
+          <% end %>
+        </div>
       </div>
     </div>
     """
@@ -219,7 +265,7 @@ defmodule ElevatorWeb.DashboardLive do
       <div class="status-icon">📋</div>
       <div class="status-info">
         <span class="status-label">QUEUE</span>
-        <span class="status-value" style={"color: #{if @requests == [], do: "#445566", else: "#ffae00"}"}>
+        <span class="status-value" style="color: #445566">
           <%= if @requests == [], do: "[]", else: "[#{@requests |> Enum.map(fn {_, f} -> f end) |> Enum.join(" ")}]" %>
         </span>
       </div>

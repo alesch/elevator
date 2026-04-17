@@ -51,6 +51,10 @@ defmodule Elevator.Time do
     GenServer.call(pid, :get_state)
   end
 
+  @doc "Changes the speed multiplier at runtime."
+  @spec set_speed(GenServer.server(), float()) :: :ok
+  def set_speed(pid \\ __MODULE__, speed), do: GenServer.cast(pid, {:set_speed, speed})
+
   # ---------------------------------------------------------------------------
   # ## Server Callbacks
   # ---------------------------------------------------------------------------
@@ -93,6 +97,11 @@ defmodule Elevator.Time do
   @impl true
   def handle_call(:get_state, _from, state) do
     {:reply, state, state}
+  end
+
+  @impl true
+  def handle_cast({:set_speed, speed}, state) do
+    {:noreply, %{state | speed: speed}}
   end
 
   @impl true

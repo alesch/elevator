@@ -384,6 +384,73 @@ body {
     text-transform: uppercase;
 }
 
+/* --- Tick Dot --- */
+.tick-item {
+    align-items: center;
+    justify-content: center;
+}
+
+.tick-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #445566;
+    transition: background-color 80ms ease-out;
+}
+
+.tick-dot--on {
+    background-color: #4a9aa3;
+}
+
+/* --- Time / Speed Control --- */
+.time-item {
+    min-width: 160px;
+}
+
+.time-item .status-info {
+    width: 160px;
+}
+
+.time-readout {
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: #8899aa;
+    white-space: nowrap;
+    text-transform: none;
+    min-width: 160px;
+    display: inline-block;
+}
+
+.speed-buttons {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.speed-btn {
+    font-size: 0.6rem;
+    font-family: inherit;
+    padding: 1px 5px;
+    border: 1px solid #334455;
+    border-radius: 3px;
+    background: transparent;
+    color: #556677;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+}
+
+.speed-btn:hover {
+    border-color: #4a9aa3;
+    color: #4a9aa3;
+}
+
+.speed-btn--active {
+    border-color: #4a9aa3;
+    color: #4a9aa3;
+    background: rgba(74, 154, 163, 0.12);
+}
+
 /* Scrollbar Styling */
 ::-webkit-scrollbar {
     width: 6px;
