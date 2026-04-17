@@ -237,7 +237,7 @@ defmodule ElevatorWeb.DashboardLive do
     </div>
 
     <div class="page-footer">
-      Coded by Alex Schenkman, Gemini 3 Flash, and Claude Sonnet 4.6.
+      ❤️ Coded by Alex Schenkman, Gemini 3 Flash, and Claude Sonnet 4.6.
     </div>
     """
   end
