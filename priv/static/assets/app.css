@@ -165,6 +165,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    font-family: "Inter", sans-serif;
     font-weight: 800;
     font-size: 1.1rem;
     color: #666;
@@ -313,6 +314,7 @@ body {
 .log-header {
     padding: 16px 20px;
     border-bottom: 1px solid var(--glass-border);
+    font-family: "Inter", sans-serif;
     font-size: 0.8rem;
     letter-spacing: 2px;
     font-weight: 800;
@@ -372,15 +374,17 @@ body {
 }
 
 .status-label {
-    font-size: 0.65rem;
+    font-family: "Inter", sans-serif;
+    font-size: 0.6rem;
     text-transform: uppercase;
     letter-spacing: 1.5px;
     color: #666;
 }
 
 .status-value {
-    font-size: 0.9rem;
-    font-weight: 700;
+    font-family: "Inter", sans-serif;
+    font-size: 0.8rem;
+    font-weight: 500;
     text-transform: uppercase;
 }
 
@@ -412,8 +416,9 @@ body {
 }
 
 .time-readout {
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-family: "Inter", sans-serif;
+    font-size: 0.7rem;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
     color: #8899aa;
     white-space: nowrap;
@@ -429,8 +434,8 @@ body {
 }
 
 .speed-btn {
-    font-size: 0.6rem;
-    font-family: inherit;
+    font-family: "Inter", sans-serif;
+    font-size: 0.55rem;
     padding: 1px 5px;
     border: 1px solid #334455;
     border-radius: 3px;
@@ -473,6 +478,7 @@ body {
     left: 0;
     right: 0;
     text-align: center;
+    font-family: "Inter", sans-serif;
     font-size: 0.8rem;
     color: #8899aa;
     letter-spacing: 0.05em;

@@ -163,7 +163,7 @@ defmodule ElevatorWeb.DashboardLive do
       <img width="149" height="149" src={~p"/images/forkme.png"} alt="Fork me on GitHub" />
     </a>
 
-    <div class="dashboard-container">
+    <main class="dashboard-container">
       <div class="main-content">
         <!-- SHAFT PANEL (25%) -->
         <div class="left-panel">
@@ -203,8 +203,8 @@ defmodule ElevatorWeb.DashboardLive do
             </div>
 
             <div class="door-controls">
-              <button phx-click="open_door">&lt;|&gt;</button>
-              <button phx-click="close_door">&gt;|&lt;</button>
+              <button type="button" phx-click="open_door">&lt;|&gt;</button>
+              <button type="button" phx-click="close_door">&gt;|&lt;</button>
             </div>
           </div>
         </div>
@@ -234,7 +234,7 @@ defmodule ElevatorWeb.DashboardLive do
         <.footer_item icon="🚪" label="Doors" state={@door_state} />
         <.queue_item requests={@requests} />
       </div>
-    </div>
+    </main>
 
     <div class="page-footer">
       ❤️ Coded by Alex Schenkman, Gemini 3 Flash, and Claude Sonnet 4.6.
@@ -264,7 +264,7 @@ defmodule ElevatorWeb.DashboardLive do
         </span>
         <div class="speed-buttons">
           <%= for s <- [0.5, 1.0, 2.0, 5.0] do %>
-            <button class={["speed-btn", @speed == s && "speed-btn--active"]}
+            <button type="button" class={["speed-btn", @speed == s && "speed-btn--active"]}
                     phx-click="set_speed" phx-value-speed={s}>
               <%= s %>x
             </button>
