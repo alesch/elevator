@@ -13,11 +13,11 @@ defmodule Elevator.SystemCase do
     * `:sensor_floor` — starting floor reported by the Sensor (default: `0`)
   """
 
-  import ExUnit.Callbacks, only: [start_supervised!: 1]
-
-  alias Elevator.Vault
-  alias Elevator.Hardware.{Motor, Sensor, Door}
   alias Elevator.Controller
+  alias Elevator.Hardware.{Door, Motor, Sensor}
+  alias Elevator.Vault
+
+  import ExUnit.Callbacks, only: [start_supervised!: 1]
 
   @spec start_system(keyword()) :: :ok
   def start_system(opts \\ []) do

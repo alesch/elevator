@@ -4,8 +4,9 @@ defmodule Elevator.Features.SweepTest do
     # async: true is actually slower for this feature
     async: false
 
-  alias Elevator.Sweep
   alias Elevator.Gherkin.Arguments
+  alias Elevator.Sweep
+
   import ExUnit.Assertions
 
   defmacro trace(context) do
