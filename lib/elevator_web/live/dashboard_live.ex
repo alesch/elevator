@@ -23,6 +23,7 @@ defmodule ElevatorWeb.DashboardLive do
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:status")
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:telemetry")
       Phoenix.PubSub.subscribe(Elevator.PubSub, "elevator:simulation")
+      Elevator.Time.set_speed(1.0)
     end
 
     # Initial state from the real Controller (via Discovery Layer)
