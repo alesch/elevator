@@ -202,6 +202,7 @@ defmodule Elevator.Sweep do
   end
 
   @spec any_requests?(t()) :: boolean()
+  @dialyzer {:no_match, any_requests?: 1}
   defp any_requests?(%Sweep{requests: reqs}), do: reqs != []
 
   @spec element_to_floor(request() | nil) :: floor() | nil
