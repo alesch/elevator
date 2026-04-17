@@ -51,13 +51,15 @@ defmodule ElevatorWeb.DashboardHelpers do
              :stopped,
              :clear,
              :open,
-             :docked
+             :docked,
+             :moving
            ],
       do: "#00f2ff"
 
   # Amber (Intent & Transitions)
-  def state_color(state) when state in [:stopping, :opening, :closing, :rehoming],
-    do: "#ffae00"
+  def state_color(state)
+      when state in [:stopping, :opening, :closing, :rehoming, :booting, :arriving, :leaving],
+      do: "#ffae00"
 
   # Red (Alert / Unspecified)
   def state_color(state) when state in [:obstructed],
