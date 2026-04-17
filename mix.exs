@@ -48,7 +48,7 @@ defmodule Elevator.MixProject do
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false},
-      {:cabbage, "~> 0.4.1", only: :test}
+      {:cabbage, git: "https://github.com/nickurban/cabbage.git", ref: "71d3496", only: :test}
     ]
   end
 
