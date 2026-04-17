@@ -335,19 +335,13 @@ body {
     white-space: nowrap;
     line-height: 1.4;
     margin-bottom: 4px;
-    border-left: 2px solid transparent;
     padding-left: 10px;
 }
 
 .log-entry.system {
-    border-left-color: var(--cyan-bright);
     color: var(--cyan-bright);
 }
-.log-entry.event {
-    border-left-color: var(--amber-warn);
-}
 .log-entry.error {
-    border-left-color: var(--red-danger);
     color: var(--red-danger);
 }
 
