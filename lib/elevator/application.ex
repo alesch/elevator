@@ -30,7 +30,10 @@ defmodule Elevator.Application do
         {Elevator.Vault, [name: Elevator.Vault]},
 
         # 5. Virtual Clock
-        {Elevator.Time, [name: Elevator.Time]}
+        {Elevator.Time, [name: Elevator.Time]},
+
+        # 6. Physical Simulation
+        {Elevator.World, [name: Elevator.World, floor: 0]}
       ] ++ hardware_profile()
 
     opts = [strategy: :one_for_one, name: Elevator.Supervisor]
