@@ -174,10 +174,12 @@ body {
     user-select: none;
 }
 
-.floor-label:hover {
-    border-color: var(--cyan-bright);
-    color: var(--cyan-bright);
-    box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+@media (hover: hover) {
+    .floor-label:hover {
+        border-color: var(--cyan-bright);
+        color: var(--cyan-bright);
+        box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+    }
 }
 
 .floor-label.pending {
@@ -230,10 +232,12 @@ body {
     user-select: none;
 }
 
-.door-controls button:hover {
-    border-color: var(--amber-warn);
-    color: var(--amber-warn);
-    box-shadow: 0 0 15px rgba(255, 174, 0, 0.2);
+@media (hover: hover) {
+    .door-controls button:hover {
+        border-color: var(--amber-warn);
+        color: var(--amber-warn);
+        box-shadow: 0 0 15px rgba(255, 174, 0, 0.2);
+    }
 }
 
 .door-controls button:active {
@@ -488,4 +492,103 @@ body {
     top: 0;
     right: 0;
     z-index: 9999;
+}
+
+/* =====================================================================
+   Mobile Layout (≤ 480px)
+   - Hides activity log and most footer items
+   - Shaft fills full width, aspect-ratio lock released
+   ===================================================================== */
+@media (max-width: 600px) {
+    body {
+        align-items: flex-start;
+        overflow-y: auto;
+    }
+
+    .dashboard-container {
+        width: 100vw;
+        aspect-ratio: unset;
+        max-width: unset;
+        max-height: unset;
+        min-height: 100dvh;
+        border-radius: 0;
+        border-left: none;
+        border-right: none;
+    }
+
+    .main-content {
+        flex-direction: column;
+        padding: 16px;
+        gap: 16px;
+        overflow: visible;
+    }
+
+    /* Hide activity log */
+    .right-panel {
+        display: none;
+    }
+
+    /* Shaft fills full width */
+    .left-panel {
+        width: 100%;
+    }
+
+    .shaft-container {
+        padding: 12px 10px;
+    }
+
+    /* Keep floor heights at 50px — must match floor_to_pixels/1 in Elixir */
+    .floor-label {
+        width: 46px;
+        height: 46px;
+        font-size: 1.2rem;
+    }
+
+    /* Footer: hide everything except time controls */
+    .status-footer {
+        justify-content: center;
+        padding: 0 20px;
+    }
+
+    .footer-item:not(.time-item) {
+        display: none;
+    }
+
+    .status-footer {
+        height: auto;
+        padding: 12px 20px;
+    }
+
+    .time-item {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .time-item .status-info {
+        width: auto;
+        align-items: center;
+    }
+
+    .speed-buttons {
+        justify-content: center;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .speed-btn {
+        font-size: 0.85rem;
+        padding: 10px 16px;
+        border-radius: 6px;
+        min-width: 48px;
+        min-height: 44px;
+    }
+
+    /* Hide ribbon and page footer */
+    .github-ribbon {
+        display: none;
+    }
+
+    .page-footer {
+        display: none;
+    }
 }
