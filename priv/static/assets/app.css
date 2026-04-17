@@ -389,17 +389,15 @@ body {
 }
 
 /* --- Tick Dot --- */
-.tick-item {
-    align-items: center;
-    justify-content: center;
-}
-
 .tick-dot {
-    width: 8px;
-    height: 8px;
+    display: inline-block;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
     background-color: #445566;
     transition: background-color 80ms ease-out;
+    vertical-align: middle;
+    margin-left: 4px;
 }
 
 .tick-dot--on {

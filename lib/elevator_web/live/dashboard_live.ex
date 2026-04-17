@@ -227,8 +227,7 @@ defmodule ElevatorWeb.DashboardLive do
 
       <!-- HEALTH FOOTER -->
       <div class="status-footer">
-        <.tick_item blink={@tick_blink} />
-        <.time_item speed={@sim_speed} />
+        <.time_item speed={@sim_speed} blink={@tick_blink} />
         <.footer_item icon="🧠" label="Core" state={@controller_state} />
         <.footer_item icon="⚙️" label="Motor" state={@motor_state} />
         <.footer_item icon="🚪" label="Doors" state={@door_state} />
@@ -242,19 +241,11 @@ defmodule ElevatorWeb.DashboardLive do
     """
   end
 
-  defp tick_item(assigns) do
-    ~H"""
-    <div class="footer-item tick-item">
-      <div class={["tick-dot", @blink && "tick-dot--on"]}></div>
-    </div>
-    """
-  end
-
   defp time_item(assigns) do
     ~H"""
     <div class="footer-item time-item">
       <div class="status-info">
-        <span class="status-label">TIME</span>
+        <span class="status-label">TIME <span class={["tick-dot", @blink && "tick-dot--on"]}></span></span>
         <span class="status-value time-readout">
           <%= Float.round(@speed * 1.0, 1) %>x
           &nbsp;
