@@ -327,7 +327,7 @@ defmodule ElevatorWeb.DashboardLive do
   # Returns {transit_ms, brake_ms} computed from the live Time state.
   # transit_ms: one floor at running speed (6 ticks)
   # brake_ms:   braking phase (2 ticks)
-  @spec time_durations() :: {pos_integer(), pos_integer()}
+  @spec time_durations() :: {pos_integer(), pos_integer(), pos_integer()}
   defp time_durations do
     time_state =
       case Registry.lookup(Elevator.Registry, :time) do
