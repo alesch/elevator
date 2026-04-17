@@ -32,7 +32,7 @@ defmodule ElevatorWeb.DashboardLive do
         _ -> %Core{}
       end
 
-    {transit_ms, brake_ms} = time_durations()
+    {transit_ms, brake_ms, door_ms} = time_durations()
 
     {:ok,
      assign(socket,
@@ -52,6 +52,7 @@ defmodule ElevatorWeb.DashboardLive do
        controller_state: state.logic.phase,
        transit_ms: transit_ms,
        brake_ms: brake_ms,
+       door_ms: door_ms,
        tick_blink: false,
        sim_speed: 1.0,
        activity_log: [
@@ -99,8 +100,8 @@ defmodule ElevatorWeb.DashboardLive do
   @spec handle_info({:tick, non_neg_integer()}, Phoenix.LiveView.Socket.t()) ::
           {:noreply, Phoenix.LiveView.Socket.t()}
   def handle_info({:tick, _counter}, socket) do
-    {transit_ms, brake_ms} = time_durations()
-    {:noreply, assign(socket, transit_ms: transit_ms, brake_ms: brake_ms,
+    {transit_ms, brake_ms, door_ms} = time_durations()
+    {:noreply, assign(socket, transit_ms: transit_ms, brake_ms: brake_ms, door_ms: door_ms,
                               tick_blink: !socket.assigns.tick_blink)}
   end
 
@@ -185,7 +186,7 @@ defmodule ElevatorWeb.DashboardLive do
                 <% end %>
 
                 <div class="car-container" style={car_style(@visual_floor, @motor_state, @transit_ms, @brake_ms)}>
-                  <.elevator_car door_state={@door_state} slow={@controller_state == :rehoming} />
+                  <.elevator_car door_state={@door_state} slow={@controller_state == :rehoming} door_ms={@door_ms} />
                 </div>
               </div>
             </div>
@@ -329,6 +330,6 @@ defmodule ElevatorWeb.DashboardLive do
       end
 
     scaled_tick = round(time_state.tick_ms / time_state.speed)
-    {scaled_tick * 6, scaled_tick * 2}
+    {scaled_tick * 6, scaled_tick * 2, scaled_tick * 4}
   end
 end
