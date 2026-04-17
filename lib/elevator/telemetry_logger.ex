@@ -81,7 +81,6 @@ defmodule Elevator.TelemetryLogger do
   @doc false
   def handle_event([:elevator, :controller, :request], _measurements, metadata, _config) do
     floor = Map.get(metadata, :floor, "???")
-    source = Map.get(metadata, :source, :unknown)
     log_and_broadcast("🧠", "Controller: Floor #{floor} requested")
   end
 
