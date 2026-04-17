@@ -2,6 +2,10 @@
 
 To run without waiting for real time, the system replaces wall-clock delays with a virtual clock and a physical simulation layer. Tests can run at any chosen speed without changing any application logic.
 
+In other words, in this `Elevator.World` life moves at discreet steps of 250ms. At every step (250ms) there is a `tick` message sent from `Elevator.Time` to the world. Physical events (i.e. motor stopping, doors opening) are calculated in ticks. This means that we can accelerate _time_ by sending ticks faster. 
+
+This is used in integration tests to be able to test this asynchronious system without waiting for real time to pass.  
+
 ## Time Module
 
 `Elevator.Time` is the system clock. It knows nothing about elevators.
