@@ -304,6 +304,7 @@ body {
 }
 
 /* --- Activity Log (75%) --- */
+/* Height matches shaft-container: padding(40) + indicator(72) + shaft-layout(6*floor-height) + door-controls(56) */
 .right-panel {
     flex: 1;
     display: flex;
@@ -312,6 +313,7 @@ body {
     border: 1px solid var(--glass-border);
     border-radius: var(--border-radius);
     overflow: hidden;
+    max-height: calc(6 * var(--floor-height) + 168px);
 }
 
 .log-header {
