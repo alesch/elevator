@@ -47,12 +47,10 @@ body {
     overflow: hidden;
 }
 
-/* 16:9 Aspect Ratio Locking */
 .dashboard-container {
     width: 95vw;
-    aspect-ratio: 16 / 9;
+    height: 90vh;
     max-width: 1600px;
-    max-height: 90vh;
     background-color: var(--bg-deep);
     border: 1px solid var(--glass-border);
     border-radius: var(--border-radius);
@@ -495,24 +493,22 @@ body {
 }
 
 /* =====================================================================
-   Mobile Layout (≤ 480px)
-   - Hides activity log and most footer items
-   - Shaft fills full width, aspect-ratio lock released
+   Mobile Layout (≤ 768px)
+   - No activity log
+   - Shaft fills full width, natural scroll
    ===================================================================== */
 @media (max-width: 768px) {
     body {
         align-items: flex-start;
+        height: auto;
+        min-height: 100vh;
         overflow-y: auto;
     }
 
     .dashboard-container {
-        width: 100vw;
-        aspect-ratio: unset;
-        max-width: unset;
-        max-height: unset;
-        min-height: unset;
+        width: 100%;
         height: auto;
-        overflow: visible;
+        max-width: unset;
         border-radius: 0;
         border-left: none;
         border-right: none;
@@ -526,31 +522,23 @@ body {
         overflow: visible;
     }
 
-    /* Hide activity log */
     .right-panel {
         display: none;
     }
 
-    /* Shaft fills full width */
     .left-panel {
         width: 100%;
     }
 
     .shaft-container {
+        flex: none;
         padding: 12px 10px;
     }
 
-    /* Keep floor heights at 50px — must match floor_to_pixels/1 in Elixir */
     .floor-label {
         width: 46px;
         height: 46px;
         font-size: 1.3rem;
-    }
-
-    /* Footer: hide everything except time controls */
-    .status-footer {
-        justify-content: center;
-        padding: 0 20px;
     }
 
     .footer-item:not(.time-item) {
@@ -558,6 +546,7 @@ body {
     }
 
     .status-footer {
+        justify-content: center;
         height: auto;
         padding: 12px 20px;
     }
@@ -586,12 +575,10 @@ body {
         min-height: 44px;
     }
 
-    /* Hide ribbon */
     .github-ribbon {
         display: none;
     }
 
-    /* Show footer in two centered lines */
     .page-footer {
         position: static;
         text-align: center;
