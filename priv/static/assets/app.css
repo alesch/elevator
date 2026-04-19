@@ -69,8 +69,8 @@ body {
     display: flex;
     flex-direction: row;
     overflow: hidden;
-    padding: 24px;
-    gap: 24px;
+    padding: 24px 24px 12px 24px;
+    gap: 12px;
 }
 
 /* --- Shaft Area (25%) --- */
