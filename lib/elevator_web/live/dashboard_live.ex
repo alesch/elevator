@@ -235,7 +235,7 @@ defmodule ElevatorWeb.DashboardLive do
     </main>
 
     <div class="page-footer">
-      Coded with ❤️ by Alex Schenkman&nbsp;<br /><span class="page-footer-sub">Gemini 3/Sonnet 4.6.</span>
+      Coded with ❤️ by Alex Schenkman&nbsp;<br /><span class="page-footer-sub">Gemini 3/Sonnet 4.6</span>
     </div>
     """
   end

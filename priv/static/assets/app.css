@@ -49,7 +49,7 @@ body {
 
 .dashboard-container {
     width: 95vw;
-    height: 90vh;
+    height: auto;
     max-width: 1600px;
     background-color: var(--bg-deep);
     border: 1px solid var(--glass-border);
@@ -65,7 +65,7 @@ body {
 }
 
 .main-content {
-    flex: 1;
+    flex: none;
     display: flex;
     flex-direction: row;
     overflow: hidden;
@@ -83,7 +83,7 @@ body {
 }
 
 .shaft-container {
-    flex: 1;
+    flex: none;
     display: flex;
     flex-direction: column;
     background: var(--glass-bg);
@@ -466,22 +466,24 @@ body {
     background: rgba(255, 255, 255, 0.2);
 }
 
-.page-footer br {
-    display: none;
-}
-
 /* Page Footer */
 .page-footer {
     position: fixed;
-    bottom: 8px;
+    bottom: 12px;
     left: 0;
     right: 0;
     text-align: center;
     font-family: "Inter", sans-serif;
     font-size: 0.8rem;
+    line-height: 1.6;
     color: #8899aa;
     letter-spacing: 0.05em;
     pointer-events: none;
+}
+
+.page-footer-sub {
+    font-size: 0.7rem;
+    color: #5e6e7e;
 }
 
 /* GitHub Ribbon */
@@ -590,7 +592,7 @@ body {
 
     .page-footer-sub {
         font-size: 0.55rem;
-        opacity: 0.7;
+        color: #5e6e7e;
     }
 
     .page-footer br {
