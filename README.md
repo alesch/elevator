@@ -1,48 +1,49 @@
-# 🚀 The Elixir Elevator Project
+# Modelling and elevator with Elixir 
 
-An elevator simulation built with **Elixir** and **Phoenix LiveView**. This project is a "Living Lab" for exercising the **Actor Model**, **FICS Architecture**, and engineering best practices.  
-Coded with Antigravity using Gemini 3 Flash, and three agents collaborating.
+This is an elevator simulation built with **Elixir** and **Phoenix LiveView**. I've built this to learn Elixir, and got to exercise the following:
+- the **Actor Model**
+- a **pure functional architecture**
+- Augmented AI developmen with Zed, and Sonnet 4.6 
+- Multiagent orchestration with Antigravity and Gemini 3 Flash
+- **BDD** with gherkin features and scenarios
+- **TDD** with regular Exunit 
+- End-to-end (**e2e**) testing with Playwright and ExUnit
+- Continuos integration (**CI/CD**) with **Github actions**.
+- Quality gates with static and security analysis (**OWASP**) 
+- Deployment with **Docker** on fly.io.
 
 ---
 
-## 🧠 Engineering Philosophy
+## Specifications
 
-### 1. BDD & TDD (Behavior-Driven Development)
-
-- **The Storybook**: Every observable behavior is defined in formal Gherkin feature files within the **[`features/`](features/)** directory.
-- **The Rulebook**: The underlying business logic and state machine constraints are defined in **[`doc/core_rules.md`](doc/core_rules.md)**.
-- **Traceable TDD**: Every `ExUnit` or `Playwright` test is explicitly linked to a Scenario ID (e.g., `[S-MOVE-WAKEUP]`). No code is written until a failing test proves the need for it.
+All specs are inside [`doc/specs/`](doc/spec/)
+- **Rules**: Business logic in [`rules.md`](doc/spec/core_rules.md).
+- **Behaviors**: Observable behavior is defined in formal Gherkin feature files within the [`features/`](features/) directory.
+- **Traceability**: Every test is explicitly linked to a Scenario ID (e.g., `[S-MOVE-WAKEUP]`). No code is written until a failing test proves the need for it. See [`traceability.md`](doc/specs/traceability.md)
 
 ---
 
-### 2. FICS (Functional Core, Imperative Shell)
+## Architecture overview
 
-The system is split into two halves:
+The system is built around a brain containing all the logic and simple and quite dumb components collaborating through a message bus. See [`architecture.md`](doc/architecture.md)
 
-- **The Brain (Functional Core)**: Pure, mathematical logic in `lib/elevator/core.ex`. It has no side effects and is 100% testable.
-- **The Servo (Imperative Shell)**: The worker in `lib/elevator/controller.ex`. It monitors the Brain's intent and tells the hardware (Motor, Doors) what to do.
+---
 
-## 🛠️ The Tech Stack
+## The Tech Stack
 
-- **Elixir (OTP)**: Using lightweight processes and immutable state for fault-tolerant logic.
-- **Phoenix LiveView**: A real-time, "No-Build" frontend architecture. We use vanilla CSS and standard JavaScript.
+- **Elixir (OTP)**: Using lightweight processes and immutable state for concurrent fault-tolerant logic.
+- **Phoenix LiveView**: A real-time, "No-Build" frontend architecture. With vanilla CSS and standard JavaScript.
 - **Mise**: Automated toolchain management to ensure all developers (and agents) use the exact same versions of Elixir, Erlang, and Node.js.
 
 ---
 
-## 🚢 CI/CD & Deployment
+## CI/CD & Deployment
 
-- **CI (GitHub Actions)**: Every commit is automatically verified through a comprehensive "Hardening Pipeline":
-  - **TDD Compliance**: Running the full Elixir unit test suite (`ExUnit`).
-  - **Hygiene**: Strict check for code formatting and code quality lints (`Credo`).
-  - **Static Analysis**: Deep type-checking with **Dialyzer**.
-  - **Security Hardening**: **Sobelow** for static security analysis and **Dependency Audit** for known vulnerabilities.
-- **CD (Fly.io)**: Continuous deployment via an automated **Docker** build process.
-  - Images are built and scanned on GitHub Actions, pushed to the GitHub Container Registry (**GHCR**), and deployed directly to the `arn` (Stockholm) region.
+See [`doc/ci_cd_pipeline.md`](doc/ci_cd_pipeline.md)
 
 ---
 
-## 🤖 Multi-Agent Collaboration: "The Sandbox"
+## Multi-Agent Collaboration: "The Sandbox"
 
 - **Git Worktrees**: Each agent works in their own isolated sandbox (e.g., `agents/ui_agent/`) with their own branch.
 - **Parallel Servers**: Agents run their local GUI on dedicated ports (4000, 4001, etc.) via dynamic environment variables.
@@ -50,20 +51,57 @@ The system is split into two halves:
 
 ---
 
-## 🔬 Quality Assurance
+## Quality Assurance
 
 - **ExUnit**: High-reliability logic proofs for the Brain and parts of the Servo.
 - **Playwright**: End-to-End GUI testing to verify the "Happy Path" in a real browser environment.
 
-## 📂 Repository Atlas
+## Repository Atlas
+
+### Core Directories
 
 - **[`lib/elevator/`](lib/elevator/)**: The **Functional Core** (The Brain). Pure logic and state transitions.
 - **[`lib/elevator_web/`](lib/elevator_web/)**: The **Imperative Shell** (Human Interface). LiveView, GUI, and hardware-mapped controllers.
-- **[`doc/`](doc/)**: Design specifications, scenarios, rules, and the multi-agent orchestration guide.
 - **[`test/`](test/)**: High-reliability logic proofs and controller integration tests using `ExUnit`.
 - **[`tests/`](tests/)**: End-to-End browser validation using `Playwright`.
 - **[`agents/`](agents/)**: Private agent sandboxes.
 
 ---
 
-*Created by **Alex Schenkman**, Gemini 3 Flash, and the Antigravity Collaboration Engine.*
+## Table of contents ([`doc/`](doc/))
+
+```
+doc/
+├── architecture.md                    # System architecture overview
+├── ci_cd_pipeline.md                  # CI/CD and deployment configuration
+├── pending.md                         # Outstanding tasks and future work
+├── simulation.md                      # Simulation mechanics and design
+│
+├── agents/                            # Multi-agent collaboration guide
+│   ├── README.md                      # Sandbox and orchestration overview
+│   ├── Dev_agents.md                  # Development agent roles
+│   ├── GUI_agents.md                  # UI/Frontend agent roles
+│   ├── Bug_Reporting.md               # Bug reporting procedures
+│   └── gherkin-refactoring.md         # Gherkin refactoring work
+│
+├── components/                        # Detailed component specifications
+│   ├── core.md                        # Core (Brain) module design
+│   ├── controller.md                  # Controller component design
+│   ├── pulse.md                       # Pulse (timing) mechanism
+│   │
+│   └── hardware/                      # Hardware component specifications
+│       ├── door.md                    # Door component
+│       ├── motor.md                   # Motor component
+│       └── sensor.md                  # Sensor component
+│
+└── specs/                             # Formal specifications
+    ├── rules.md                       # Business logic and rules
+    ├── states.md                      # State machine transitions (source of truth)
+    ├── scenarios.md                   # Test scenarios catalog
+    ├── traceability.md                # Test-to-scenario traceability matrix
+    └── gherkin_library.md             # Gherkin syntax and patterns
+```
+
+---
+
+*Created by **Alex Schenkman**, on April 2026*
