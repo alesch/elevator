@@ -68,39 +68,7 @@ See [`doc/ci_cd_pipeline.md`](doc/ci_cd_pipeline.md)
 
 ---
 
-## Table of contents ([`doc/`](doc/))
-
-```
-doc/
-├── architecture.md                    # System architecture overview
-├── ci_cd_pipeline.md                  # CI/CD and deployment configuration
-├── pending.md                         # Outstanding tasks and future work
-├── simulation.md                      # Simulation mechanics and design
-│
-├── agents/                            # Multi-agent collaboration guide
-│   ├── README.md                      # Sandbox and orchestration overview
-│   ├── Dev_agents.md                  # Development agent roles
-│   ├── GUI_agents.md                  # UI/Frontend agent roles
-│   ├── Bug_Reporting.md               # Bug reporting procedures
-│   └── gherkin-refactoring.md         # Gherkin refactoring work
-│
-├── components/                        # Detailed component specifications
-│   ├── core.md                        # Core (Brain) module design
-│   ├── controller.md                  # Controller component design
-│   ├── pulse.md                       # Pulse (timing) mechanism
-│   │
-│   └── hardware/                      # Hardware component specifications
-│       ├── door.md                    # Door component
-│       ├── motor.md                   # Motor component
-│       └── sensor.md                  # Sensor component
-│
-└── specs/                             # Formal specifications
-    ├── rules.md                       # Business logic and rules
-    ├── states.md                      # State machine transitions (source of truth)
-    ├── scenarios.md                   # Test scenarios catalog
-    ├── traceability.md                # Test-to-scenario traceability matrix
-    └── gherkin_library.md             # Gherkin syntax and patterns
-```
+See an overview of [all available documentation](TOC.md).
 
 ---
 

@@ -13,15 +13,3 @@ We follow a strict path for every change:
 3 **Split complex tasks**: If a task is complex, split it into smaller plan artifacts and get approval for each artifact.
 
 4 **No rabbit holes**: If things are not going your way after two iterations, STOP and ask Alex for guidance.
-
-## 5. Ground Truth Files
-
-* **[`doc/rules.md`](file:///home/alex/dev/elevator/doc/rules.md)**: The "Rulebook" for the Brain's logic.
-
-* **[`states.md`](file:///home/alex/dev/elevator/doc/states.md)**: All the valid states and transitions for the Core and the Controller.
-
-* **[`features/`](file:///home/alex/dev/elevator/features/)**: The "Storybook" of what the system should do, defined in formal Gherkin scenarios.
-
-* **[`doc/ARCHITECTURE.md`](file:///home/alex/dev/elevator/doc/ARCHITECTURE.md)**: The "Blueprint" of the technical components.
-
-* **[`doc/pulse.md`](file:///home/alex/dev/elevator/doc/pulse.md)**: Describes the Pulse implementation in the Core.
