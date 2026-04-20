@@ -13,9 +13,9 @@
 - [gherkin.md](doc/agents/gherkin.md) — Gherkin rules
 
 **[components/](doc/components/)** — Detailed component specifications
-- [core.md](doc/components/core.md) — Core (Brain) module design
-- [controller.md](doc/components/controller.md) — Controller component design
-- [pulse.md](doc/components/pulse.md) — Pulse (timing) mechanism
+- [core.md](doc/components/core.md) — Brain, pure functional core module
+- [controller.md](doc/components/controller.md) — Controller, Imperative shell
+- [pulse.md](doc/components/pulse.md) — Pulse (Ingest -> Transit -> Actions)
 
 **[components/hardware/](doc/components/hardware/)** — Hardware components
 - [door.md](doc/components/hardware/door.md) — Door component
@@ -23,7 +23,7 @@
 - [sensor.md](doc/components/hardware/sensor.md) — Sensor component
 
 **[specs/](doc/specs/)** — Formal specifications
-- [rules.md](doc/specs/rules.md) — Business logic and rules
+- [rules.md](doc/specs/rules.md) — Business logic
 - [states.md](doc/specs/states.md) — State machine transitions (source of truth)
 - [scenarios.md](doc/specs/scenarios.md) — Test scenarios catalog
 - [traceability.md](doc/specs/traceability.md) — Test-to-scenario traceability matrix

@@ -22,31 +22,48 @@ There is **no esbuild, no webpack, no Tailwind**. The CSS is served as-is from `
 
 ## 2. Layout Structure
 
+### Desktop (≥ 769px)
+
 ```text
 <a class="github-ribbon">  (position: fixed, top-right corner)
-<main class="dashboard-container">   (16:9 aspect-ratio locked, max 90vh)
-├── .main-content      (flex row, overflow: hidden — clips anything that overflows)
+<main class="dashboard-container">   (height: auto, content-sized, centered in 100vh)
+├── .main-content      (flex: none, flex row — sizes from content, NOT from viewport)
 │   ├── .left-panel    (fixed width: --shaft-width = 280px, flex column)
-│   │   └── .shaft-container  (flex: 1, glassmorphism box — fills left-panel height)
+│   │   └── .shaft-container  (flex: none — content-sized, glassmorphism box)
 │   │       ├── .digital-indicator   (current floor display, JetBrains Mono font)
 │   │       ├── .shaft-layout        (flex row: labels column + shaft visual)
 │   │       │   ├── .floor-labels    (6 clickable floor buttons, floor 5 → 0)
 │   │       │   └── .shaft-visual    (dashed shaft, contains the moving car)
 │   │       │       └── .car-container  (position: absolute, bottom: Xpx)
 │   │       │           └── .elevator-car  (doors animate open/close)
-│   │       └── .door-controls       (open/close buttons, INSIDE shaft-container)
-│   └── .right-panel   (flex: 1, activity log — JetBrains Mono font)
-└── .status-footer     (fixed 80px, justify-content: space-evenly)
+│   │       └── .door-controls       (open/close buttons, last item in shaft-container)
+│   └── .right-panel   (flex: 1, activity log — height capped to match shaft-container)
+└── .status-footer     (padding: 12px 40px, justify-content: space-evenly)
     ├── .time-item      (TIME label + tick dot + readout + speed buttons)
     ├── .footer-item    (Core)
     ├── .footer-item    (Motor)
     ├── .footer-item    (Doors)
     └── .footer-item    (Queue)
-<div class="page-footer">  (position: fixed, bottom credits line)
+<div class="page-footer">  (position: fixed, bottom: 12px — two-line credits)
+```
+
+### Mobile (≤ 768px)
+
+```text
+<main class="dashboard-container">   (width: 100%, height: auto, natural document scroll)
+├── .main-content      (flex: none, flex column)
+│   └── .left-panel    (width: 100%)
+│       └── .shaft-container  (flex: none — content-sized, fills screen width)
+│   [.right-panel is display: none — activity log hidden on mobile]
+└── .status-footer     (time controls only, all other .footer-item hidden)
+<div class="page-footer">  (position: static, two lines, margin-top spacing)
 ```
 
 > [!IMPORTANT]
 > `.main-content` has `overflow: hidden`. Anything that overflows its children will be **silently clipped**. This is the most common source of invisible UI elements.
+
+> [!IMPORTANT]
+> The container is `height: auto` — it sizes from content. Do **not** set `flex: 1` on `.main-content` or `.shaft-container`. Doing so reintroduces an unconstrained growing layout that breaks both the spacing and the right-panel height cap.
 
 ---
 
@@ -63,7 +80,30 @@ The car's `bottom:` position is computed in Elixir as `floor * N` pixels. The fl
 
 ---
 
-## 4. Car Positioning
+## 4. The Right-Panel Height Coupling (Critical)
+
+The activity log panel is capped to match the shaft-container height exactly:
+
+```css
+.right-panel {
+    max-height: calc(6 * var(--floor-height) + 168px);
+}
+```
+
+The `168px` constant is the sum of all shaft-container content that is **not** the shaft-layout:
+
+| Element | Height |
+| :--- | :--- |
+| `shaft-container` padding (20px top + 20px bottom) | **40px** |
+| `.digital-indicator` (60px height + 12px margin-bottom) | **72px** |
+| `.door-controls` (12px padding-top + 44px button height) | **56px** |
+| **Total** | **168px** |
+
+If you add or remove elements inside `.shaft-container`, update this `168px` constant so the panels stay the same height. If you change `--floor-height`, the formula stays in sync automatically.
+
+---
+
+## 5. Car Positioning
 
 The elevator car moves via inline style:
 
@@ -77,7 +117,26 @@ The CSS transition on `.car-container` handles the animation. The duration is co
 
 ---
 
-## 5. Fonts
+## 6. Layout Budget
+
+The shaft-container is content-sized. Its total height:
+
+| Element | Height |
+| :--- | :--- |
+| `.digital-indicator` | 60px + 12px margin = **72px** |
+| `.shaft-layout` (6 floors × 50px) | **300px** |
+| `.door-controls` (12px padding-top + 44px button) | **56px** |
+| `shaft-container` padding (20px × 2) | **40px** |
+| **Total** | **~468px** |
+
+To add UI elements inside `.shaft-container`:
+- Reduce `--floor-height` (and `floor_to_pixels`) to reclaim vertical space.
+- Update the `168px` constant in `.right-panel { max-height }` accordingly.
+- Do **not** add elements as siblings of `.shaft-container` inside `.left-panel`.
+
+---
+
+## 7. Fonts
 
 Fonts are loaded from **Google Fonts CDN** in `root.html.heex` with `&display=swap`:
 - **Inter** — all UI text
@@ -85,9 +144,12 @@ Fonts are loaded from **Google Fonts CDN** in `root.html.heex` with `&display=sw
 
 Every CSS rule has an **explicit `font-family`** declaration. Do not rely on inheritance — elements rendered outside `.dashboard-container` (e.g. `position: fixed`) do not inherit `body` fonts reliably across all browsers.
 
+> [!WARNING]
+> Chrome has a configurable minimum font size (`chrome://settings/fonts`). If set above 0, any CSS `font-size` below that threshold is silently ignored. The activity log uses `font-size: 0.85rem` — if a user reports that resizing the log text has no effect, this setting is the likely cause.
+
 ---
 
-## 6. Static Assets
+## 8. Static Assets
 
 Phoenix serves `priv/static/` via the plug in `endpoint.ex`. The allowed paths are declared in `ElevatorWeb.static_paths/0` in `elevator_web.ex`:
 
@@ -99,7 +161,7 @@ To add a new static file, place it in the correct subfolder and reference it wit
 
 ---
 
-## 7. Security (CSP)
+## 9. Security (CSP)
 
 The Content Security Policy is set in `router.ex`:
 
@@ -114,35 +176,30 @@ If you add new external resources (CDN stylesheets, external images), you must u
 
 ---
 
-## 8. Reloading Changes
+## 10. Reloading Changes
 
 | Change type | How to reload |
 | :--- | :--- |
 | Template (`.ex` LiveView file) | Phoenix LiveReloader hot-reloads automatically |
-| CSS (`app.css`) | Requires manual refresh: `Ctrl+R` |
+| CSS (`app.css`) | `phx-track-static` triggers an auto-reload when the LiveSocket is connected; otherwise `Ctrl+R` |
 | Elixir helpers/components | Phoenix LiveReloader hot-reloads automatically |
 
 Always test in **Incognito/Private Mode** to avoid cookie conflicts from prior sessions on different ports.
 
 ---
 
-## 9. Layout Budget (Approximate)
+## 11. Known Fragilities
 
-The `shaft-container` has roughly **480–560px** of vertical space depending on the viewport. Its content budget:
+These areas work correctly but are brittle — be careful when touching them:
 
-| Element | Height |
-| :--- | :--- |
-| `.digital-indicator` | 60px + 12px margin = **72px** |
-| `.shaft-layout` (6 floors × 50px) | **300px** |
-| `.door-controls` (buttons + padding) | **~54px** |
-| `shaft-container` padding (12px × 2) | **40px** |
-| **Total** | **~466px** |
-
-If you need to add UI elements inside `.shaft-container`, reduce `--floor-height` (and `floor_to_pixels`) to reclaim space. Do **not** add elements as siblings of `.shaft-container` inside `.left-panel` — `shaft-container` uses `flex: 1` and will leave no room for them.
+- **`168px` constant** in `.right-panel { max-height }` must be manually kept in sync if shaft-container content changes (see Section 4).
+- **`.digital-indicator` positioning** uses `left: calc(50px + 20px + ...)` to center over the shaft visual — hardcoded to floor-label width (50px) and shaft-layout gap (20px).
+- **`.door-controls` margin-left** hardcodes `calc(50px + 20px)` for the same reason.
+- **Mobile status footer** hides CORE / MOTOR / DOORS / QUEUE — only TIME is shown on mobile.
 
 ---
 
-## 10. PubSub & State Flow
+## 12. PubSub & State Flow
 
 ```text
 Elevator.Controller
