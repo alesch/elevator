@@ -14,6 +14,17 @@ This is an elevator simulation built with **Elixir** and **Phoenix LiveView**. I
 
 ---
 
+## Live demo 
+[`https://elevator.fly.dev/`](https://elevator.fly.dev/)
+
+### Desktop version  
+
+<img src="doc/assets/elevator-desktop.png" width="800" alt="Desktop view">
+
+### Mobile version
+
+<img src="doc/assets/elevator-mobile.png" width="400" alt="Desktop view">
+
 ## Specifications
 
 All specs are inside [`doc/specs/`](doc/spec/)
