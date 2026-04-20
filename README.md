@@ -43,30 +43,16 @@ See [`doc/ci_cd_pipeline.md`](doc/ci_cd_pipeline.md)
 
 ---
 
-## Multi-Agent Collaboration: "The Sandbox"
-
-- **Git Worktrees**: Each agent works in their own isolated sandbox (e.g., `agents/ui_agent/`) with their own branch.
-- **Parallel Servers**: Agents run their local GUI on dedicated ports (4000, 4001, etc.) via dynamic environment variables.
-- **Live Mission Log**: A shared "Whiteboard" in **[`doc/agent_comms.md`](doc/agent_comms.md)** tracks missions in real-time across all sandboxes.
-
----
-
 ## Quality Assurance
 
-- **ExUnit**: High-reliability logic proofs for the Brain and parts of the Servo.
-- **Playwright**: End-to-End GUI testing to verify the "Happy Path" in a real browser environment.
-
-## Repository Atlas
-
-### Core Directories
-
-- **[`lib/elevator/`](lib/elevator/)**: The **Functional Core** (The Brain). Pure logic and state transitions.
-- **[`lib/elevator_web/`](lib/elevator_web/)**: The **Imperative Shell** (Human Interface). LiveView, GUI, and hardware-mapped controllers.
-- **[`test/`](test/)**: High-reliability logic proofs and controller integration tests using `ExUnit`.
-- **[`tests/`](tests/)**: End-to-End browser validation using `Playwright`.
-- **[`agents/`](agents/)**: Private agent sandboxes.
+- **ExUnit**: logic proofs for the Brain and parts of the Servo.
+- **Gherkin features**: Steps imlemented with **[Cabbage](https://github.com/cabbage-ex/cabbage)** into plain ExUnit.
+- **Integration testing**: A couple of tests testing all components in a fast simulation.
+- **Playwright**: "Happy Path" in a real browser environment.
 
 ---
+
+## Repository Atlas
 
 See an overview of [all available documentation](TOC.md).
 
