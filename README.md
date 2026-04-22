@@ -69,4 +69,4 @@ See an overview of [all available documentation](TOC.md).
 
 ---
 
-*Created by **Alex Schenkman**, on April 2026*
+*Created by **Alex Schenkman**, on April 2026, and assisted by Gemini 3 and Sonnet 4.6*
